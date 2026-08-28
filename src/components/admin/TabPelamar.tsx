@@ -1,9 +1,11 @@
 /**
  * TabPelamar.tsx — Admin candidate database tab
  * Source: legacy/index.html page-admin → admin-pelamar
- * Matched 1:1 with legacy screenshot
+ * With modals: Input Manual, Laporan Bulanan, Toggle View
  */
 import { useState, useEffect } from 'preact/hooks';
+import InputManualModal from './InputManualModal.tsx';
+import LaporanBulananModal from './LaporanBulananModal.tsx';
 
 type Kandidat = {
   id: string;
@@ -28,6 +30,9 @@ export default function TabPelamar() {
   const [filterJft, setFilterJft] = useState('all');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [simpleView, setSimpleView] = useState(false);
+  const [showInputModal, setShowInputModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const PAGE_SIZE = 20;
 
   useEffect(() => { fetchKandidat(); }, []);
@@ -76,6 +81,10 @@ export default function TabPelamar() {
     URL.revokeObjectURL(url);
   }
 
+  function handleSave(newKand: Kandidat) {
+    setKandidat(prev => [newKand, ...prev]);
+  }
+
   return (
     <div>
       {/* Header with buttons */}
@@ -88,10 +97,12 @@ export default function TabPelamar() {
               placeholder="Find Nama, Code, Tahapan..."
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
-          <button class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-table-list mr-1"></i> Tampilan Sederhana</button>
+          <button onClick={() => setShowInputModal(true)} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
+          <button onClick={() => setSimpleView(!simpleView)} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
+            <i class={`fas ${simpleView ? 'fa-table-list' : 'fa-table-cells-large'} mr-1`}></i> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
+          </button>
           <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
-          <button class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
+          <button onClick={() => setShowReportModal(true)} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
         </div>
       </div>
 
@@ -114,8 +125,29 @@ export default function TabPelamar() {
 
       {loading ? (
         <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-sky-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat data pelamar...</p></div>
+      ) : simpleView ? (
+        /* Simple View — compact list */
+        <div class="space-y-2">
+          {shown.length === 0 ? (
+            <p class="text-slate-500 text-sm text-center py-8">Belum ada pelamar.</p>
+          ) : shown.map((k) => (
+            <div key={k.id || k.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 hover:bg-white/5 transition">
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-sky-300 font-bold text-xs">{k.id || k.wa}</span>
+                <span class="font-bold text-white text-sm">{k.nama}{k.isVIP && ' 🏆'}</span>
+                <span class="font-mono text-purple-300 text-xs">{k.idLoker}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
+                <button class="w-7 h-7 flex items-center justify-center bg-emerald-600 text-white rounded text-xs"><i class="fab fa-whatsapp"></i></button>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
+        /* Full View — table */
+        <div class="overflow-x-auto rounded-xl border border-sla
+te-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
@@ -133,13 +165,8 @@ export default function TabPelamar() {
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-all">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">
-                    {k.nama || '-'}
-                    {k.isVIP && <span class="ml-1 text-amber-400 text-xs" title="VIP">🏆</span>}
-                  </td>
-                  <td class="p-4">
-                    <span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span>
-                  </td>
+                  <td class="p-4 font-bold text-white">{k.nama || '-'}{k.isVIP && <span class="ml-1 text-amber-400 text-xs">🏆</span>}</td>
+                  <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
                   <td class="p-4">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
                     <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
@@ -147,11 +174,11 @@ export default function TabPelamar() {
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition" title="Histori"><i class="fas fa-clock"></i></button>
+                      <button class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition"><i class="fas fa-clock"></i></button>
                       <button class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
                       <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-edit mr-1"></i> Edit</button>
                       <button class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-robot mr-1"></i> AI CV</button>
-                      <button class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
+                      <button class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition"><i class="fab fa-whatsapp"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -166,6 +193,10 @@ export default function TabPelamar() {
           <button onClick={() => setPage(p => p + 1)} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><i class="fas fa-chevron-down mr-1"></i> Muat Lebih Banyak</button>
         )}
       </div>
+
+      {/* Modals */}
+      <InputManualModal open={showInputModal} onClose={() => setShowInputModal(false)} onSave={handleSave} />
+      <LaporanBulananModal open={showReportModal} onClose={() => setShowReportModal(false)} kandidat={filtered} />
     </div>
   );
 }
