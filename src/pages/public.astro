@@ -1,11 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import LayananSection from '../components/public/LayananSection.astro';
+import LokerTable from '../components/public/LokerTable.tsx';
 import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
 ---
 
-<BaseLayout title="Program & Layanan — ASJ Portal" description="Penerimaan siswa baru, pengurusan visa Jepang, pendaftaran ujian JFT & SSW Prometric">
+<BaseLayout title="Lowongan & Layanan — ASJ Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW">
   <App client:load />
   <Toast client:load />
 
@@ -15,7 +16,26 @@ import Toast from '../components/Toast.tsx';
       <i class="fas fa-arrow-left"></i> Kembali ke Portal
     </a>
 
-    <!-- Layanan Section (migrated from legacy) -->
-    <LayananSection />
+    <!-- Tab Navigation: Loker vs Layanan -->
+    <div class="flex justify-center relative z-10">
+      <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors">
+        <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md" onclick="document.getElementById('section-loker').classList.remove('hidden');document.getElementById('section-layanan').classList.add('hidden');this.classList.add('bg-sky-600','text-white','shadow-md');this.classList.remove('text-slate-400');document.getElementById('tab-pub-layanan').classList.remove('bg-sky-600','text-white','shadow-md');document.getElementById('tab-pub-layanan').classList.add('text-slate-400')">
+          <i class="fas fa-briefcase mr-2"></i> Lowongan Loker
+        </button>
+        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white" onclick="document.getElementById('section-layanan').classList.remove('hidden');document.getElementById('section-loker').classList.add('hidden');this.classList.add('bg-sky-600','text-white','shadow-md');this.classList.remove('text-slate-400');document.getElementById('tab-pub-loker').classList.remove('bg-sky-600','text-white','shadow-md');document.getElementById('tab-pub-loker').classList.add('text-slate-400')">
+          <i class="fas fa-handshake mr-2"></i> Program &amp; Layanan ASJ
+        </button>
+      </div>
+    </div>
+
+    <!-- Section: Loker (Preact island) -->
+    <div id="section-loker">
+      <LokerTable client:load />
+    </div>
+
+    <!-- Section: Layanan (static Astro) -->
+    <div id="section-layanan" class="hidden">
+      <LayananSection />
+    </div>
   </main>
 </BaseLayout>
