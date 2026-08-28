@@ -54,8 +54,44 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <Footer />
   <BottomNav />
   
-  <!-- Service Worker Registration -->
+  <!-- Fase 3: Auth initialization (restore session from localStorage) -->
   <script>
+    // Restore session on page load
+    (function initAuth() {
+      try {
+        // Check admin session
+        const adminLogin = localStorage.getItem('asj_admin_login');
+        const adminName = localStorage.getItem('asj_admin_name');
+        const adminSession = localStorage.getItem('asj_admin_session');
+        
+        if (adminLogin === 'sukses' && adminName && adminSession) {
+          // Show admin nav
+          const navMode = document.getElementById('nav-mode');
+          const navAdmin = document.getElementById('nav-admin-mode');
+          if (navMode) navMode.classList.add('hidden');
+          if (navAdmin) navAdmin.classList.remove('hidden');
+        }
+        
+        // Check kandidat session
+        const kandidatLogin = localStorage.getItem('asj_kandidat_login');
+        const kandidatName = localStorage.getItem('asj_kandidat_name');
+        const kandidatSession = localStorage.getItem('asj_kandidat_session');
+        
+        if (kandidatLogin === 'sukses' && kandidatName && kandidatSession) {
+          // Show kandidat nav
+          const navMode = document.getElementById('nav-mode');
+          const navKandidat = document.getElementById('nav-kandidat-mode');
+          const namaEl = document.getElementById('nama-kandidat-login');
+          if (navMode) navMode.classList.add('hidden');
+          if (navKandidat) navKandidat.classList.remove('hidden');
+          if (namaEl) namaEl.textContent = kandidatName;
+        }
+      } catch (e) {
+        console.warn('[Auth] Session restore failed:', e);
+      }
+    })();
+    
+    // Service Worker Registration
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
