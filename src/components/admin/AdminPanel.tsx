@@ -8,8 +8,12 @@ import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
 import TabMail from './TabMail.tsx';
 
-import TabDbJob from './TabDbJob.tsx';
+import TabDbJob from './TabDbJob.tsx';
+
 import TabTambah from './TabTambah.tsx';
+
+import TabJadwal from './TabJadwal.tsx';
+import TabWA from './TabWA.tsx';
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
@@ -149,31 +153,13 @@ function TabPelamarOld() {
 
 
 
-function TabJadwal() {
-  return (
-    <div>
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-amber-400 font-bold text-lg"><i class="fas fa-calendar-alt mr-2"></i> Jadwal Agenda</h2>
-        <button class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition"><i class="fas fa-plus mr-1"></i> Buat Jadwal</button>
-      </div>
-      <p class="text-slate-500 text-sm text-center py-8">Jadwal akan dimuat dari backe
-nd.</p>
-    </div>
-  );
-}
+// TabJadwal imported from ./TabJadwal.tsx
 
 // TabTambah imported from ./TabTambah.tsx
 
 // TabDbJob imported from ./TabDbJob.tsx
 
-function TabWA() {
-  return (
-    <div>
-      <h2 class="text-emerald-400 font-bold mb-4 text-lg"><i class="fab fa-whatsapp mr-2"></i> Kelola Template WA Pintar</h2>
-      <p class="text-slate-500 text-sm text-center py-8">WA Pintar templates akan dimuat dari backend.</p>
-    </div>
-  );
-}
+
 
 function TabConfig() {
   return (
