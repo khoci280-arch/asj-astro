@@ -9,9 +9,14 @@ import { z } from 'zod';
 
 // ─── Candidate Registration / Login ───
 
-/** WA number: must start with 62, 12-15 digits */
+/**
+ * WA number — flexible format:
+ * - Indonesia: 628xx (12-15 digit)
+ * - Japan (+81): 81xx (10-15 digit)
+ * - Internasional lain: 10-15 digit (tanpa spasi/simbol)
+ */
 export const waSchema = z.string()
-  .regex(/^62\d{10,13}$/, 'Nomor WA harus 62 + 10-13 digit');
+  .regex(/^(\+?62|\+?81|\+?\d{1,3})\d{8,13}$/, 'Nomor WA tidak valid. Gunakan format 628xx (Indo) atau 81xx (Jepang), 10-15 digit');
 
 /** Email (optional) */
 export const emailSchema = z.string()
