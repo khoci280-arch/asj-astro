@@ -20,6 +20,10 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "@preact/preset-vite": "^2.10.6",
+    "@testing-library/preact": "^3.2.4",
+    "jsdom": "^30.0.1",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.11"
   }
 }
