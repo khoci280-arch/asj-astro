@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Toast from '../components/Toast.tsx';
+import LoginModal from '../components/LoginModal.tsx';
 ---
 <BaseLayout title="PT Amanah Sakura Japan — Job Portal">
   <div class="py-8">
@@ -53,4 +55,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
     </section>
   </div>
+
+  <!-- Preact Islands (Fase 4) -->
+  <Toast client:load />
+  <LoginModal client:load mode="closed" onClose={() => {}} onSwitchMode={() => {}} />
 </BaseLayout>
