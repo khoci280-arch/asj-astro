@@ -30,6 +30,7 @@ export default function LokerTable() {
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [showCekModal, setShowCekModal] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   const [cekQuery, setCekQuery] = useState('');
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function LokerTable() {
             <i class="fas fa-filter"></i> Filter
           </span>
           <button onClick={() => { document.documentElement.classList.toggle('dark'); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5 ml-2">
-            <i class="fas fa-moon"></i> Dark
+            <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")}></i> {isDark ? "Dark" : "Light"}
           </button>
           {['ALL', 'OPEN', 'URGENT', 'CLOSE'].map((f) => (
             <button
