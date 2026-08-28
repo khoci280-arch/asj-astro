@@ -1,6 +1,7 @@
 /**
  * TabPelamar.tsx — Admin candidate database tab
  * Source: legacy/index.html page-admin → admin-pelamar
+ * Matched 1:1 with legacy screenshot
  */
 import { useState, useEffect } from 'preact/hooks';
 
@@ -15,10 +16,12 @@ type Kandidat = {
   gender: string;
   usia: string;
   jft: string;
+  isVIP?: boolean;
 };
 
 export default function TabPelamar() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([]);
+  const [allKandidat, setAllKandidat] = useState<Kandidat[]>([]);
   const [search, setSearch] = useState('');
   const [filterGender, setFilterGender] = useState('all');
   const [filterAge, setFilterAge] = useState('all');
@@ -37,8 +40,10 @@ export default function TabPelamar() {
         body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
       });
       const data = await res.json();
-      if (data.success && data.kandidat) {
-        setKandidat(data.kandidat);
+      if (data.success) {
+        const k = data.kandidat || [];
+        setKandidat(k);
+        setAllKandidat(data.allKandidat || k);
       }
     } catch (err) {
       console.error('[TabPelamar] Failed:', err);
@@ -51,7 +56,8 @@ export default function TabPelamar() {
     const matchSearch = !search ||
       (k.nama || '').toLowerCase().includes(search.toLowerCase()) ||
       (k.wa || '').includes(search) ||
-      (k.idLoker || '').toLowerCase().includes(search.toLowerCase());
+      (k.idLoker || '').toLowerCase().includes(search.toLowerCase()) ||
+      (k.tahapan || '').toLowerCase().includes(search.toLowerCase());
     const matchGender = filterGender === 'all' || (k.gender || '').toLowerCase() === filterGender;
     const matchJft = filterJft === 'all' || (k.jft || '').toLowerCase().includes(filterJft);
     return matchSearch && matchGender && matchJft;
@@ -60,7 +66,7 @@ export default function TabPelamar() {
   const shown = filtered.slice(0, (page + 1) * PAGE_SIZE);
 
   function exportCsv() {
-    const headers = ['ID', 'Nama', 'WA', 'Job', 'Tahapan', 'Status', 'Catatan'];
+    const headers = ['ID Kandidat', 'Nama Lengkap', 'WA', 'Job Dilamar', 'Tahapan', 'Status', 'Catatan'];
     const rows = filtered.map(k => [k.id, k.nama, k.wa, k.idLoker, k.tahapan, k.status, k.catatan]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -72,6 +78,7 @@ export default function TabPelamar() {
 
   return (
     <div>
+      {/* Header with buttons */}
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-sky-900/50 pb-4 mb-4 gap-4">
         <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-users mr-2"></i> Database Pelamar</h2>
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
@@ -81,7 +88,10 @@ export default function TabPelamar() {
               placeholder="Find Nama, Code, Tahapan..."
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
+          <button class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
+          <button class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-table-list mr-1"></i> Tampilan Sederhana</button>
           <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+          <button class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
         </div>
       </div>
 
@@ -91,6 +101,10 @@ export default function TabPelamar() {
         <select value={filterGender} onChange={(e) => { setFilterGender((e.target as HTMLSelectElement).value); setPage(0); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">Semua Gender</option><option value="l">Laki-laki (L)</option><option value="p">Perempuan (P)</option>
+        </select>
+        <select value={filterAge} onChange={(e) => { setFilterAge((e.target as HTMLSelectElement).value); setPage(0); }}
+          class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
+          <option value="all">Semua Usia</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
         </select>
         <select value={filterJft} onChange={(e) => { setFilterJft((e.target as HTMLSelectElement).value); setPage(0); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
@@ -105,11 +119,11 @@ export default function TabPelamar() {
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
-                <th scope="col" class="p-4">ID</th>
-                <th scope="col" class="p-4">Nama</th>
-                <th scope="col" class="p-4">Job</th>
+                <th scope="col" class="p-4">ID Kandidat</th>
+                <th scope="col" class="p-4">Nama Lengkap</th>
+                <th scope="col" class="p-4">Job Dilamar</th>
                 <th scope="col" class="p-4">Tahapan & Status</th>
-                <th scope="col" class="p-4">Catatan</th>
+                <th scope="col" class="p-4">Catatan Admin</th>
                 <th scope="col" class="p-4 text-center">Aksi</th>
               </tr>
             </thead>
@@ -118,18 +132,26 @@ export default function TabPelamar() {
                 <tr><td colSpan={6} class="p-6 text-center text-slate-500">Belum ada pelamar.</td></tr>
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-all">
-                  <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">{k.nama || '-'}</td>
-                  <td class="p-4 font-mono text-purple-300 text-xs">{k.idLoker || '-'}</td>
+                  <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
+                  <td class="p-4 font-bold text-white">
+                    {k.nama || '-'}
+                    {k.isVIP && <span class="ml-1 text-amber-400 text-xs" title="VIP">🏆</span>}
+                  </td>
+                  <td class="p-4">
+                    <span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span>
+                  </td>
                   <td class="p-4">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
-                    <span class="ml-1 text-xs text-slate-400">({k.status || '-'})</span>
+                    <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
                   </td>
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
                   <td class="p-4 text-center">
-                    <div class="flex justify-center gap-2">
-                      <button class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-eye mr-1"></i> Profil</button>
-                      <button class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fab fa-whatsapp mr-1"></i> WA</button>
+                    <div class="flex flex-wrap justify-center gap-1">
+                      <button class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition" title="Histori"><i class="fas fa-clock"></i></button>
+                      <button class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
+                      <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-edit mr-1"></i> Edit</button>
+                      <button class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-robot mr-1"></i> AI CV</button>
+                      <button class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -139,7 +161,7 @@ export default function TabPelamar() {
         </div>
       )}
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
-        <span class="text-slate-300 font-bold text-xs">{filtered.length} kandidat</span>
+        <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {allKandidat.length} kandidat</span>
         {shown.length < filtered.length && (
           <button onClick={() => setPage(p => p + 1)} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><i class="fas fa-chevron-down mr-1"></i> Muat Lebih Banyak</button>
         )}
