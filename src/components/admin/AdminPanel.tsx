@@ -8,7 +8,8 @@ import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
 import TabMail from './TabMail.tsx';
 
-import TabDbJob from './TabDbJob.tsx';
+import TabDbJob from './TabDbJob.tsx';
+import TabTambah from './TabTambah.tsx';
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
@@ -161,14 +162,7 @@ nd.</p>
   );
 }
 
-function TabTambah() {
-  return (
-    <div>
-      <h2 class="text-red-400 font-bold mb-4 text-lg"><i class="fas fa-plus-circle mr-2"></i> Form Input Loker Baru</h2>
-      <p class="text-slate-500 text-sm text-center py-8">Form tambah loker akan dimigrate selanjutnya.</p>
-    </div>
-  );
-}
+// TabTambah imported from ./TabTambah.tsx
 
 // TabDbJob imported from ./TabDbJob.tsx
 
