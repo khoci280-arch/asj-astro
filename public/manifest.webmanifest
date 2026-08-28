@@ -1,0 +1,22 @@
+{
+  "name": "ASJ Portal — Amanah Sakura Japan",
+  "short_name": "ASJ Portal",
+  "description": "Job Portal PT Amanah Sakura Japan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp",
+      "sizes": "192x192",
+      "type": "image/webp"
+    },
+    {
+      "src": "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp",
+      "sizes": "512x512",
+      "type": "image/webp"
+    }
+  ]
+}

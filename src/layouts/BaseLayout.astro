@@ -25,21 +25,16 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <meta name="referrer" content="no-referrer" />
   <base target="_top" />
   
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  
-  <!-- Google Fonts: Montserrat -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/montserrat/v29/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-Y3tcoqK5.woff2" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
   
-  <!-- Global CSS (Tailwind v4) -->
   <style is:global>
     @import '../styles/global.css';
   </style>
@@ -54,31 +49,21 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <Footer />
   <BottomNav />
   
-  <!-- Fase 3: Auth initialization (restore session from localStorage) -->
   <script>
-    // Restore session on page load
+    // ─── Fase 3: Auth restore ───
     (function initAuth() {
       try {
-        // Check admin session
         const adminLogin = localStorage.getItem('asj_admin_login');
         const adminName = localStorage.getItem('asj_admin_name');
-        const adminSession = localStorage.getItem('asj_admin_session');
-        
-        if (adminLogin === 'sukses' && adminName && adminSession) {
-          // Show admin nav
+        if (adminLogin === 'sukses' && adminName) {
           const navMode = document.getElementById('nav-mode');
           const navAdmin = document.getElementById('nav-admin-mode');
           if (navMode) navMode.classList.add('hidden');
           if (navAdmin) navAdmin.classList.remove('hidden');
         }
-        
-        // Check kandidat session
         const kandidatLogin = localStorage.getItem('asj_kandidat_login');
         const kandidatName = localStorage.getItem('asj_kandidat_name');
-        const kandidatSession = localStorage.getItem('asj_kandidat_session');
-        
-        if (kandidatLogin === 'sukses' && kandidatName && kandidatSession) {
-          // Show kandidat nav
+        if (kandidatLogin === 'sukses' && kandidatName) {
           const navMode = document.getElementById('nav-mode');
           const navKandidat = document.getElementById('nav-kandidat-mode');
           const namaEl = document.getElementById('nama-kandidat-login');
@@ -86,14 +71,25 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
           if (navKandidat) navKandidat.classList.remove('hidden');
           if (namaEl) namaEl.textContent = kandidatName;
         }
-      } catch (e) {
-        console.warn('[Auth] Session restore failed:', e);
-      }
+      } catch (e) { console.warn('[Auth] Restore failed:', e); }
     })();
-    
-    // Service Worker Registration
+
+    // ─── Fase 5: Service Worker + Auto-Reload ───
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Check for SW updates every 5 minutes
+        setInterval(() => {
+          reg.update().catch(() => {});
+        }, 5 * 60 * 1000);
+      }).catch(() => {});
+      
+      // Listen for ASJ_FORCE_RELOAD from SW
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'ASJ_FORCE_RELOAD') {
+          console.log('[SW] New version detected — reloading...');
+          window.location.reload();
+        }
+      });
     }
   </script>
 </body>
