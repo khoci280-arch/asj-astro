@@ -6,6 +6,7 @@
 import { useState } from 'preact/hooks';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
+import TabMail from './TabMail.tsx';
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
@@ -143,21 +144,7 @@ function TabPelamarOld() {
   );
 }
 
-function TabMail() {
-  return (
-    <div>
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-envelope mr-2"></i> Mail Inbox</h2>
-        <div class="flex gap-2">
-          {['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'].map((s) => (
-            <button key={s} class="px-3 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 rounded transition">{s}</button>
-          ))}
-        </div>
-      </div>
-      <p class="text-slate-500 text-sm text-center py-8">Mail inbox akan dimuat dari backend.</p>
-    </div>
-  );
-}
+
 
 function TabJadwal() {
   return (

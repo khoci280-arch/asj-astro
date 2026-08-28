@@ -133,3 +133,36 @@ export async function fetchKandidatFromAPI() {
     setKandidatLoading(false);
   }
 }
+
+// ── Mail State ──────────────────────────────────────────
+export const mailFilterStatus = atom<string>('MENUNGGU');
+export const mailSearchText = atom<string>('');
+export const mailList = atom<any[]>([]);
+
+export function setMailFilterStatus(val: string) {
+  mailFilterStatus.set(val);
+}
+
+export function setMailSearchText(val: string) {
+  mailSearchText.set(val);
+}
+
+export function setMailList(list: any[]) {
+  mailList.set(list);
+}
+
+export async function fetchMailFromAPI() {
+  try {
+    const res = await fetch('/.netlify/functions/getAppData', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setMailList(data.formInbox || []);
+    }
+  } catch (err) {
+    console.error('[adminStore] fetchMail failed:', err);
+  }
+}
