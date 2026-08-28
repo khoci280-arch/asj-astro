@@ -1,10 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AdminPanel from '../components/admin/AdminPanel.tsx';
+import App from '../components/App.tsx';
+import Toast from '../components/Toast.tsx';
 ---
-<BaseLayout title="Admin — ASJ Portal">
-  <div class="py-8 text-center">
-    <h2 class="text-3xl font-black text-emerald-400 mb-4">/admin</h2>
-    <p class="text-slate-400">Halaman ini akan di-migrate dari legacy pada Fase 4.</p>
-    <a href="/" class="mt-6 inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold transition">← Kembali ke Beranda</a>
-  </div>
+
+<BaseLayout title="Panel Admin — ASJ Portal" description="Admin panel: kelola kandidat, loker, mail, jadwal">
+  <App client:load />
+  <Toast client:load />
+
+  <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
+    <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
+      <i class="fas fa-arrow-left"></i> Kembali ke Portal
+    </a>
+    <AdminPanel client:load />
+  </main>
 </BaseLayout>
