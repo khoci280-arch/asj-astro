@@ -8,6 +8,8 @@ import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
 import TabMail from './TabMail.tsx';
 
+import TabDbJob from './TabDbJob.tsx';
+
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
 const TABS: { id: Tab; icon: string; label: string; color: string }[] = [
@@ -168,14 +170,7 @@ function TabTambah() {
   );
 }
 
-function TabDbJob() {
-  return (
-    <div>
-      <h2 class="text-purple-400 font-bold mb-4 text-lg"><i class="fas fa-server mr-2"></i> Histori Job Internal</h2>
-      <p class="text-slate-500 text-sm text-center py-8">DB Job Internal akan dimuat dari backend.</p>
-    </div>
-  );
-}
+// TabDbJob imported from ./TabDbJob.tsx
 
 function TabWA() {
   return (
