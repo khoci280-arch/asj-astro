@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #10b981;
+  --color-secondary: #f59e0b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}

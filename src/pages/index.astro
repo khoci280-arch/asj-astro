@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="ASJ Portal v2">
+  <main class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold text-center text-emerald-400 mb-4">
+      🌸 ASJ Portal v2
+    </h1>
+    <p class="text-center text-slate-400 mb-8">
+      Amanah Sakura Japan — Powered by Astro + Preact
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+      <a href="/candidate" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
+        <h2 class="text-xl font-bold text-emerald-300 mb-2">👤 Kandidat</h2>
+        <p class="text-sm text-slate-400">Portal kandidat — CV, Lamaran, Status</p>
+      </a>
+      <a href="/admin" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
+        <h2 class="text-xl font-bold text-amber-300 mb-2">🛡️ Admin</h2>
+        <p class="text-sm text-slate-400">Panel admin — Kelola kandidat & loker</p>
+      </a>
+      <a href="/public" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
+        <h2 class="text-xl font-bold text-sky-300 mb-2">🌐 Publik</h2>
+        <p class="text-sm text-slate-400">Loker, Pendaftaran Siswa, Visa</p>
+      </a>
+    </div>
+  </main>
+</BaseLayout>

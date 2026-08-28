@@ -1,0 +1,23 @@
+{
+  "name": "asj-portal-v2",
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "astro dev --host 0.0.0.0",
+    "build": "astro build",
+    "preview": "astro preview --host 0.0.0.0",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^4.0.0",
+    "@nanostores/preact": "^0.5.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^5.12.0",
+    "nanostores": "^0.11.0",
+    "preact": "^10.25.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}
