@@ -161,14 +161,6 @@ function TabPelamarOld() {
 
 
 
-function TabConfig() {
-  return (
-    <div>
-      <h2 class="text-white font-bold mb-4 text-lg"><i class="fas fa-cogs mr-2 text-slate-300"></i> Pengaturan Sistem</h2>
-      <p class="text-slate-500 text-sm text-center py-8">System config akan dimuat dari backend.</p>
-    </div>
-  );
-}
 
 function TabPlaceholder({ tab }: { tab: string }) {
   return (

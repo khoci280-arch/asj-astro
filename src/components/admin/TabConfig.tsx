@@ -1,0 +1,108 @@
+/**
+ * TabConfig.tsx - Pengaturan Sistem tab
+ * Source: legacy admin.html admin-config (lines 802-861)
+ */
+import { useState, useEffect } from 'preact/hooks';
+
+interface ConfigGroup { id: string; label: string; options: string[]; }
+
+export default function TabConfig() {
+  const [configs, setConfigs] = useState<ConfigGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [migrating, setMigrating] = useState(false);
+  const [migStatus, setMigStatus] = useState('');
+  const [migResults, setMigResults] = useState<string[]>([]);
+  const [migPending, setMigPending] = useState('');
+  const [pengumuman, setPengumuman] = useState('');
+  const [editingConfig, setEditingConfig] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch('/.netlify/functions/getAppData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const d = await r.json();
+        if (d.success) { setConfigs(d.sysConfig || []); if (d.pengumuman) setPengumuman(d.pengumuman); }
+      } catch (e) { console.error(e); } finally { setLoading(false); }
+    } load(); }, []);
+
+  async function handleMigrate() {
+    setMigrating(true); setMigStatus('Running...'); setMigResults([]);
+    try {
+      const r = await fetch('/.netlify/functions/runMigration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const d = await r.json();
+      if (d.success) { setMigStatus('Done!'); setMigResults(d.results || []); if (d.pendingSQL) setMigPending(d.pendingSQL); }
+      else setMigStatus('Failed: ' + (d.error || 'Unknown'));
+    } catch (e) { setMigStatus('Error: ' + e); }
+    setMigrating(false);
+  }
+
+  async function handleSaveConfig(id: string) {
+    const options = editValue.split('
+').map(s => s.trim()).filter(Boolean);
+    try {
+      const r = await fetch('/.netlify/functions/updateSysConfig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options }) });
+      const d = await r.json();
+      if (d.success) { setEditingConfig(null); location.reload(); } else alert('Failed: ' + d.error);
+    } catch (e) { alert('Error: ' + e); }
+  }
+
+  async function handleSavePengumuman() {
+    try {
+      const r = await fetch('/.netlify/functions/savePengumuman', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pengumuman }) });
+      const d = await r.json();
+      if (d.success) alert('Pengumuman saved!'); else alert('Failed: ' + d.error);
+    } catch (e) { alert('Error: ' + e); }
+  }
+
+  if (loading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-slate-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat pengaturan...</p></div>;
+
+  return (<div>
+    <h2 class="text-white font-bold mb-6 border-b border-slate-700 pb-3 text-lg"><i class="fas fa-cogs mr-2 text-slate-300"></i> Pengaturan Sistem (Dropdown)</h2>
+    <p class="text-sm text-slate-300 mb-6">Kelola pilihan dropdown yang akan muncul di formulir (menggantikan Sheet SYS CONFIG).</p>
+
+    <div class="bg-black/40 border border-indigo-500/40 p-5 rounded-xl mb-6 shadow-inner">
+      <h3 class="text-sm font-bold text-indigo-400 mb-2 uppercase tracking-wider"><i class="fas fa-database mr-1"></i> Migrasi Database (Otomatis)</h3>
+      <p class="text-xs text-slate-300 mb-3">Jalankan pembaruan struktur &amp; pembersihan data: seed preset rincian biaya, cek kolom loker/master, normalisasi gender, rapikan nama, dan bersihkan NIK.</p>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button onClick={handleMigrate} disabled={migrating} class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-lg disabled:opacity-50"><i class="fas fa-play mr-1"></i> {migrating ? 'Running...' : 'Jalankan Migrasi'}</button>
+        <span class="text-xs text-slate-300">{migStatus}</span>
+      </div>
+      {migResults.length > 0 && <div class="mt-3 space-y-1.5">{migResults.map((r, i) => <div key={i} class="text-xs text-slate-300">{r}</div>)}</div>}
+      {migPending && <div class="mt-3"><p class="text-xs font-bold text-amber-400 mb-1">SQL yang perlu dijalankan manual:</p><pre class="bg-black/60 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-200 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">{migPending}</pre></div>}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      {configs.map(c => (
+        <div key={c.id} class="bg-black/40 border border-slate-700 p-4 rounded-xl shadow-inner">
+          <h4 class="text-sm font-bold text-slate-300 mb-2">{c.label}</h4>
+          {editingConfig === c.id ? (
+            <div>
+              <textarea value={editValue} onInput={(e) => setEditValue((e.target as HTMLTextAreaElement).value)} rows={6} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-xs outline-none focus:border-indigo-500 transition font-mono"></textarea>
+              <div class="flex gap-2 mt-2">
+                <button onClick={() => handleSaveConfig(c.id)} class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition">Save</button>
+                <button onClick={() => setEditingConfig(null)} class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div class="text-xs text-slate-500 mb-2">{c.options.length} options</div>
+              <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[10px] text-slate-500">+{c.options.length - 5} more</span>}</div>
+              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('
+')); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><i class="fas fa-edit mr-1"></i> Edit</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <div class="bg-black/40 border border-rose-500/50 p-5 rounded-xl flex flex-col shadow-inner">
+      <h3 class="text-sm font-bold text-rose-400 mb-2 uppercase tracking-wider"><i class="fas fa-bullhorn mr-1"></i> Pengumuman Berjalan (Live)</h3>
+      <p class="text-xs text-slate-300 mb-3">Teks ini akan muncul berjalan (Marquee) di semua halaman.</p>
+      <div class="flex gap-2">
+        <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder="Ketik pengumuman di sini... (Kosongkan untuk menghapus)" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
+        <button onClick={handleSavePengumuman} class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-lg"><i class="fas fa-save mr-1"></i> Simpan &amp; Tayangkan</button>
+      </div>
+    </div>
+  </div>);
+}
