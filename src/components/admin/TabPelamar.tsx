@@ -3,59 +3,37 @@
  * Source: legacy/index.html page-admin → admin-pelamar
  * With modals: Input Manual, Laporan Bulanan, Toggle View
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
+import {
+  kandidatList, allKandidatList, kandidatLoading,
+  adminSearch, adminFilterGender, adminFilterAge, adminFilterJft,
+  adminPage, adminSimpleView, PAGE_SIZE,
+  setAdminSearch, setAdminFilterGender, setAdminFilterAge, setAdminFilterJft,
+  nextPage, toggleSimpleView,
+  openInputModal, openReportModal,
+  fetchKandidatFromAPI,
+} from '../../store/adminStore';
 import InputManualModal from './InputManualModal.tsx';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 
-type Kandidat = {
-  id: string;
-  nama: string;
-  wa: string;
-  idLoker: string;
-  tahapan: string;
-  status: string;
-  catatan: string;
-  gender: string;
-  usia: string;
-  jft: string;
-  isVIP?: boolean;
-};
+import type { Kandidat } from "../../store/adminStore";
 
 export default function TabPelamar() {
-  const [kandidat, setKandidat] = useState<Kandidat[]>([]);
-  const [allKandidat, setAllKandidat] = useState<Kandidat[]>([]);
-  const [search, setSearch] = useState('');
-  const [filterGender, setFilterGender] = useState('all');
-  const [filterAge, setFilterAge] = useState('all');
-  const [filterJft, setFilterJft] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [simpleView, setSimpleView] = useState(false);
-  const [showInputModal, setShowInputModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const PAGE_SIZE = 20;
+                        
+  useEffect(() => { fetchKandidatFromAPI(); }, []);
+  const kandidat = useStore(kandidatList);
+  const allKandidat = useStore(allKandidatList);
+  const loading = useStore(kandidatLoading);
+  const search = useStore(adminSearch);
+  const filterGender = useStore(adminFilterGender);
+  const filterAge = useStore(adminFilterAge);
+  const filterJft = useStore(adminFilterJft);
+  const page = useStore(adminPage);
+  const simpleView = useStore(adminSimpleView);
 
-  useEffect(() => { fetchKandidat(); }, []);
 
-  async function fetchKandidat() {
-    try {
-      const res = await fetch('/.netlify/functions/getAppData', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const k = data.kandidat || [];
-        setKandidat(k);
-        setAllKandidat(data.allKandidat || k);
-      }
-    } catch (err) {
-      console.error('[TabPelamar] Failed:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // fetchKandidat moved to adminStore.fetchKandidatFromAPI()
 
   const filtered = kandidat.filter((k) => {
     const matchSearch = !search ||
@@ -81,9 +59,7 @@ export default function TabPelamar() {
     URL.revokeObjectURL(url);
   }
 
-  function handleSave(newKand: Kandidat) {
-    setKandidat(prev => [newKand, ...prev]);
-  }
+
 
   return (
     <div>
@@ -93,31 +69,31 @@ export default function TabPelamar() {
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
           <div class="relative flex-1 md:w-64">
             <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-            <input type="text" value={search} onInput={(e) => { setSearch((e.target as HTMLInputElement).value); setPage(0); }}
+            <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); setPage(0); }}
               placeholder="Find Nama, Code, Tahapan..."
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button onClick={() => setShowInputModal(true)} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
-          <button onClick={() => setSimpleView(!simpleView)} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
+          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
+          <button onClick={() => toggleSimpleView()} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
             <i class={`fas ${simpleView ? 'fa-table-list' : 'fa-table-cells-large'} mr-1`}></i> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
           </button>
           <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
-          <button onClick={() => setShowReportModal(true)} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
+          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
         </div>
       </div>
 
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
         <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><i class="fas fa-filter"></i> Filter:</div>
-        <select value={filterGender} onChange={(e) => { setFilterGender((e.target as HTMLSelectElement).value); setPage(0); }}
+        <select value={filterGender} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">Semua Gender</option><option value="l">Laki-laki (L)</option><option value="p">Perempuan (P)</option>
         </select>
-        <select value={filterAge} onChange={(e) => { setFilterAge((e.target as HTMLSelectElement).value); setPage(0); }}
+        <select value={filterAge} onChange={(e) => { setAdminFilterAge((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">Semua Usia</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
         </select>
-        <select value={filterJft} onChange={(e) => { setFilterJft((e.target as HTMLSelectElement).value); setPage(0); }}
+        <select value={filterJft} onChange={(e) => { setAdminFilterJft((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">Semua Level JFT</option><option value="a2">A2 / N4</option><option value="b1">B1 / N3</option>
         </select>
@@ -190,13 +166,13 @@ te-800">
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
         <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {allKandidat.length} kandidat</span>
         {shown.length < filtered.length && (
-          <button onClick={() => setPage(p => p + 1)} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><i class="fas fa-chevron-down mr-1"></i> Muat Lebih Banyak</button>
+          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><i class="fas fa-chevron-down mr-1"></i> Muat Lebih Banyak</button>
         )}
       </div>
 
       {/* Modals */}
-      <InputManualModal open={showInputModal} onClose={() => setShowInputModal(false)} onSave={handleSave} />
-      <LaporanBulananModal open={showReportModal} onClose={() => setShowReportModal(false)} kandidat={filtered} />
+      <InputManualModal />
+      <LaporanBulananModal />
     </div>
   );
 }

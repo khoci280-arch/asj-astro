@@ -2,15 +2,15 @@
  * LaporanBulananModal.tsx — Monthly report modal
  * Source: legacy → showMonthlyReport
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
+import { reportModalOpen, closeReportModal, kandidatList } from '../../store/adminStore';
 
-type Props = {
-  open: boolean;
-  onClose: () => void;
-  kandidat: any[];
-};
 
-export default function LaporanBulananModal({ open, onClose, kandidat }: Props) {
+
+export default function LaporanBulananModal() {
+  const open = useStore(reportModalOpen);
+  const onClose = closeReportModal;
+  const kandidat = useStore(kandidatList);
   if (!open) return null;
 
   // Group by job

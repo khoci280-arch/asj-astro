@@ -4,12 +4,11 @@
  * Matched 1:1 with legacy screenshot
  */
 import { useState } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
+import { inputModalOpen, closeInputModal, addKandidat } from '../../store/adminStore';
 
-type Props = {
-  open: boolean;
-  onClose: () => void;
-  onSave: (data: any) => void;
-};
+// Props: no longer needed — reads from store directly
+// Kept minimal for backward compat
 
 const EXTRA_DOC_TYPES = [
   { value: 'PAS PHOTO', label: 'PAS PHOTO' },
@@ -38,7 +37,9 @@ const EXTRA_DOC_TYPES = [
   { value: 'LAINNYA', label: 'LAINNYA' },
 ];
 
-export default function InputManualModal({ open, onClose, onSave }: Props) {
+export default function InputManualModal() {
+  const open = useStore(inputModalOpen);
+  const onClose = closeInputModal;
   const [nama, setNama] = useState('');
   const [wa, setWa] = useState('');
   const [loker, setLoker] = useState('');
@@ -114,7 +115,7 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
       });
       const data = await res.json();
       if (data.success) {
-        onSave(data.kandidat);
+        addKandidat(data.kandidat);
         setNama(''); setWa(''); setLoker(''); setGender(''); setUsia('');
         setTinggi(''); setBerat(''); setPendidikan('');
         setPhoto(null); setCv(null); setJft(null); setSsw(null);
