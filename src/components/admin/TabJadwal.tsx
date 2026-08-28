@@ -1,0 +1,77 @@
+/**
+ * TabJadwal.tsx - Jadwal Agenda tab
+ * Source: legacy admin.html admin-jadwal (lines 668-697)
+ */
+import { useState, useEffect } from 'preact/hooks';
+
+interface Jadwal { id: string; nama: string; loker: string; waktu: string; lokasi: string; tsk: string; link: string; }
+
+export default function TabJadwal() {
+  const [jadwal, setJadwal] = useState<Jadwal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [tskList, setTskList] = useState<string[]>([]);
+  const [nama, setNama] = useState('');
+  const [loker, setLoker] = useState('');
+  const [waktu, setWaktu] = useState('');
+  const [lokasi, setLokasi] = useState('');
+  const [tsk, setTsk] = useState('');
+  const [link, setLink] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch('/.netlify/functions/getAppData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const d = await r.json();
+        if (d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
+      } catch (e) { console.error(e); } finally { setLoading(false); }
+    } load(); }, []);
+
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
+    try {
+      const r = await fetch('/.netlify/functions/submitJadwal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama, loker, waktu, lokasi, tsk, link }) });
+      const d = await r.json(); if (d.success) { alert('Jadwal tersimpan!'); location.reload(); } else alert('Gagal: ' + (d.error || 'Unknown'));
+    } catch (e) { alert('Error: ' + e); }
+  }
+
+  const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
+
+  if (loading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-amber-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat jadwal...</p></div>;
+
+  return (<div>
+    <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>
+      <h2 class='text-amber-400 font-bold text-lg'><i class='fas fa-calendar-alt mr-2'></i> Jadwal Agenda</h2>
+      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><i class='fas fa-plus mr-1'></i> {showForm ? 'Tutup' : 'Buat Jadwal'}</button>
+    </div>
+
+    {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
+      <form onSubmit={handleSubmit} class='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>NAMA AGENDA</label><input type='text' value={nama} onInput={(e)=>setNama((e.target as HTMLInputElement).value)} required class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>ID LOKER</label><input type='text' value={loker} onInput={(e)=>setLoker((e.target as HTMLInputElement).value)} placeholder='UMUM / ASJ...' class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>WAKTU (TGL & JAM)</label><input type='datetime-local' value={waktu} onInput={(e)=>setWaktu((e.target as HTMLInputElement).value)} required class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>LOKASI / MEDIA ZOOM</label><input type='text' value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>PENGURUS (TSK)</label><select value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>LINK TAUTAN ZOOM (Opsional)</label><input type='url' value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
+        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><i class='fas fa-save mr-2'></i> Simpan Jadwal</button></div>
+      </form>
+    </div>}
+
+    <table class='w-full min-w-[800px] text-sm text-left whitespace-nowrap'>
+      <thead class='bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider'><tr>
+        <th class='p-4'>ID Jadwal</th><th class='p-4'>Agenda</th><th class='p-4'>Job / Waktu</th><th class='p-4'>Lokasi / Link</th><th class='p-4 text-center'>Aksi</th>
+      </tr></thead>
+      <tbody class='divide-y divide-slate-800'>
+        {jadwal.length===0 ? <tr><td colSpan={5} class='p-6 text-center text-slate-500'>Tidak ada jadwal</td></tr> :
+        jadwal.map(j => (
+          <tr key={j.id} class='border-b border-slate-800 hover:bg-white/5'>
+            <td class='p-4 font-mono text-amber-300 font-bold'>{j.id}</td>
+            <td class='p-4 font-bold text-white'>{j.nama}</td>
+            <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[10px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
+            <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>Link Zoom</a>}</td>
+            <td class='p-4 text-center'><button class='px-3 py-1.5 bg-amber-600 text-white rounded font-bold shadow text-[10px]'><i class='fas fa-edit'></i> Edit</button><button class='ml-2 px-3 py-1.5 bg-red-600 text-white rounded font-bold shadow text-[10px]'><i class='fas fa-trash'></i></button></td>
+          </tr>))}
+      </tbody>
+    </table>
+  </div>);
+}
