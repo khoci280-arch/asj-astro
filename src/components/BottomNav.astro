@@ -54,4 +54,20 @@
       <span class="text-[9px] font-bold" data-lang="header.logout">Keluar</span>
     </button>
   </div>
+<script>
+    (function() {
+      try {
+        var raw = localStorage.getItem("asj_auth");
+        if (!raw) return;
+        var auth = JSON.parse(raw);
+        if (auth && auth.isLoggedIn) {
+          if (auth.role === "admin") {
+            document.getElementById("bottom-nav-admin").classList.remove("hidden");
+          } else if (auth.role === "kandidat") {
+            document.getElementById("bottom-nav-kandidat").classList.remove("hidden");
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
 </div>

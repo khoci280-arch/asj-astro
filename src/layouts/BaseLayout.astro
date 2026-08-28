@@ -41,6 +41,17 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 <body id="asj-body" class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-500 flow-root">
   
   <slot />
+<div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-6">
+  <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
+    <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-red-600/60 shadow-md">
+      <i class="fas fa-bullhorn text-white animate-bounce text-lg"></i>
+    </div>
+    <div class="ml-12 mr-2 overflow-hidden"><div id="marquee-text" class="text-white text-sm font-bold tracking-wide whitespace-nowrap animate-[marquee-scroll_20s_linear_infinite]"></div></div>
+  </div>
+</div>
+<script>
+  fetch("/.netlify/functions/getAppData", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["admin"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
+</script>
   
   <Footer />
   <BottomNav />
