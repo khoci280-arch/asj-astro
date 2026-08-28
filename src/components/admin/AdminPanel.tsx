@@ -5,6 +5,7 @@
  */
 import { useState } from 'preact/hooks';
 import TabKelola from './TabKelola.tsx';
+import TabPelamar from './TabPelamar.tsx';
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
@@ -119,7 +120,7 @@ function TabKelolaOld() {
   );
 }
 
-function TabPelamar() {
+function TabPelamarOld() {
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
