@@ -11,7 +11,32 @@ type Props = {
   onSave: (data: any) => void;
 };
 
-const EXTRA_DOC_TYPES = ['PAS PHOTO', 'CV', 'JFT', 'SSW', 'KK', 'KTP', 'AKTE', 'IJAZAH'];
+const EXTRA_DOC_TYPES = [
+  { value: 'PAS PHOTO', label: 'PAS PHOTO' },
+  { value: 'CV', label: 'CV' },
+  { value: 'JFT', label: 'JFT (Sertifikat Bahasa Jepang)' },
+  { value: 'SSW', label: 'SSW (Sertifikat SSW)' },
+  { value: 'KTP', label: 'KTP' },
+  { value: 'KK', label: 'KK (Kartu Keluarga)' },
+  { value: 'AKTE', label: 'AKTE KELAHIRAN' },
+  { value: 'IJAZAH SD', label: 'IJAZAH SD' },
+  { value: 'IJAZAH SMP', label: 'IJAZAH SMP' },
+  { value: 'IJAZAH SMA', label: 'IJAZAH SMA' },
+  { value: 'UNIVERSITAS', label: 'IJAZAH UNIVERSITAS' },
+  { value: 'SIM', label: 'SIM (Surat Izin Mengemudi)' },
+  { value: 'PASPORT', label: 'PASPORT' },
+  { value: 'MCU', label: 'MCU (Medical Check Up)' },
+  { value: 'EKTLN', label: 'EKTLN (Kartu Tenaga Kerja)' },
+  { value: 'KONTRAK KERJA', label: 'KONTRAK KERJA' },
+  { value: 'SERTIFIKAT JAPAN', label: 'SERTIFIKAT JAPAN' },
+  { value: 'SURAT IJIN ORTU', label: 'SURAT IJIN ORTU' },
+  { value: 'PERNYATAAN CPMI', label: 'PERNYATAAN CPMI' },
+  { value: 'STATUS PERKAWINAN', label: 'STATUS PERKAWINAN' },
+  { value: 'SURAT SEHAT', label: 'SURAT SEHAT PUSKESMAS' },
+  { value: 'BPJS', label: 'BPJS KETENAGAKERJAAN' },
+  { value: 'PSIKOTES', label: 'HASIL PSIKOTES' },
+  { value: 'LAINNYA', label: 'LAINNYA' },
+];
 
 export default function InputManualModal({ open, onClose, onSave }: Props) {
   const [nama, setNama] = useState('');
@@ -188,7 +213,7 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
                 <div key={i} class="flex gap-2 items-center">
                   <select value={d.type} onChange={(e) => updateExtraDocType(i, (e.target as HTMLSelectElement).value)}
                     class="w-40 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-sky-500 transition">
-                    {EXTRA_DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    {EXTRA_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                   <div class="flex-1 flex items-center gap-2">
                     <label class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded cursor-pointer transition">
