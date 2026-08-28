@@ -11,6 +11,8 @@ type Props = {
   onSave: (data: any) => void;
 };
 
+const EXTRA_DOC_TYPES = ['PAS PHOTO', 'CV', 'JFT', 'SSW', 'KK', 'KTP', 'AKTE', 'IJAZAH'];
+
 export default function InputManualModal({ open, onClose, onSave }: Props) {
   const [nama, setNama] = useState('');
   const [wa, setWa] = useState('');
@@ -27,7 +29,9 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
   const [cv, setCv] = useState<File | null>(null);
   const [jft, setJft] = useState<File | null>(null);
   const [ssw, setSsw] = useState<File | null>(null);
-  const [extraDocs, setExtraDocs] = useState<{ type: string; file: File | null }[]>([]);
+  const [extraDocs, setExtraDocs] = useState<{ type: string; file: File | null }[]>([
+    { type: 'PAS PHOTO', file: null }
+  ]);
 
   if (!open) return null;
 
@@ -36,18 +40,19 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
   }
 
   function removeExtraDoc(i: number) {
+    if (extraDocs.length <= 1) return; // keep at least 1 row
     setExtraDocs(extraDocs.filter((_, idx) => idx !== i));
   }
 
   function updateExtraDocType(i: number, type: string) {
     const updated = [...extraDocs];
-    updated[i].type = type;
+    updated[i] = { ...updated[i], type };
     setExtraDocs(updated);
   }
 
   function updateExtraDocFile(i: number, file: File | null) {
     const updated = [...extraDocs];
-    updated[i].file = file;
+    updated[i] = { ...updated[i], file };
     setExtraDocs(updated);
   }
 
@@ -87,7 +92,8 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
         onSave(data.kandidat);
         setNama(''); setWa(''); setLoker(''); setGender(''); setUsia('');
         setTinggi(''); setBerat(''); setPendidikan('');
-        setPhoto(null); setCv(null); setJft(null); setSsw(null); setExtraDocs([]);
+        setPhoto(null); setCv(null); setJft(null); setSsw(null);
+        setExtraDocs([{ type: 'PAS PHOTO', file: null }]);
         onClose();
       } else {
         alert(data.error || 'Gagal menyimpan kandidat.');
@@ -146,8 +152,7 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
               <div class="col-span-2"><label class="block text-xs font-bold text-slate-400 mb-1">PENDIDIKAN</label>
                 <select value={pendidikan} onChange={(e) => setPendidikan((e.target as HTMLSelectElement).value)}
                   class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
-                  <option value="">-</option><option value="SMA">SMA</option><option value
-="SMK">SMK</option><option value="MA">MA</option><option value="D3">D3</option><option value="S1">S1</option>
+                  <option value="">-</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="MA">MA</option><option value="D3">D3</option><option value="S1">S1</option>
                 </select></div>
             </div>
 
@@ -171,21 +176,44 @@ export default function InputManualModal({ open, onClose, onSave }: Props) {
                 {ssw && <span class="block mt-1 text-xs font-bold text-emerald-400">{ssw.name}</span>}</div>
             </div>
 
-            {/* Extra docs */}
-            <div class="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl space-y-3">
-              <label class="block text-xs font-bold text-emerald-400 mb-1"><i class="fas fa-folder-plus mr-1"></i> UPLOAD DOKUMEN LAINNYA (Opsional)</label>
+            {/* Extra docs — legacy layout with column headers + +/- buttons */}
+            <div class="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl space-y-2">
+              <label class="block text-xs font-bold text-emerald-400 mb-2"><i class="fas fa-folder-plus mr-1"></i> UPLOAD DOKUMEN LAINNYA (Opsional)</label>
+              <div class="flex gap-2 items-center text-[10px] font-bold text-slate-400 px-1">
+                <span class="w-40">JENIS DOKUMEN</span>
+                <span class="flex-1">FILE (PDF/Gambar)</span>
+                <span class="w-8 text-center"></span>
+              </div>
               {extraDocs.map((d, i) => (
                 <div key={i} class="flex gap-2 items-center">
                   <select value={d.type} onChange={(e) => updateExtraDocType(i, (e.target as HTMLSelectElement).value)}
-                    class="w-40 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none">
-                    <option>PAS PHOTO</option><option>CV</option><option>JFT</option><option>SSW</option><option>KK</option><option>KTP</option><option>AKTE</option><option>IJAZAH</option>
+                    class="w-40 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-sky-500 transition">
+                    {EXTRA_DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => updateExtraDocFile(i, (e.target as HTMLInputElement).files?.[0] || null)}
-                    class="flex-1 text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-white" />
-                  <button type="button" onClick={() => removeExtraDoc(i)} class="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded text-xs"><i class="fas fa-minus"></i></button>
+                  <div class="flex-1 flex items-center gap-2">
+                    <label class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded cursor-pointer transition">
+                      <i class="fas fa-upload text-[10px]"></i> Choose File
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+                        onChange={(e) => updateExtraDocFile(i, (e.target as HTMLInputElement).files?.[0] || null)} />
+                    </label>
+                    <span class="text-[10px] text-slate-400 truncate">{d.file ? d.file.name : 'No file chosen'}</span>
+                  </div>
+                  <button type="button" onClick={() => removeExtraDoc(i)}
+                    class="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">
+                    <i class="fas fa-minus"></i>
+                  </button>
                 </div>
               ))}
-              <button type="button" onClick={addExtraDoc} class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition"><i class="fas fa-plus mr-1"></i> Tambah Dokumen</button>
+              <div class="flex items-center gap-2 pt-1">
+                <button type="button" onClick={addExtraDoc}
+                  class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
+                  <i class="fas fa-plus mr-1"></i> Tambah
+                </button>
+                <button type="button" onClick={() => removeExtraDoc(extraDocs.length - 1)}
+                  class="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition">
+                  <i class="fas fa-minus mr-1"></i> Hapus
+                </button>
+              </div>
             </div>
 
             <button type="submit" disabled={saving}
