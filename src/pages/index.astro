@@ -1,27 +1,56 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
-<BaseLayout title="ASJ Portal v2">
-  <main class="container mx-auto px-4 py-8">
-    <h1 class="text-4xl font-bold text-center text-emerald-400 mb-4">
-      🌸 ASJ Portal v2
-    </h1>
-    <p class="text-center text-slate-400 mb-8">
-      Amanah Sakura Japan — Powered by Astro + Preact
-    </p>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-      <a href="/candidate" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
-        <h2 class="text-xl font-bold text-emerald-300 mb-2">👤 Kandidat</h2>
-        <p class="text-sm text-slate-400">Portal kandidat — CV, Lamaran, Status</p>
+<BaseLayout title="PT Amanah Sakura Japan — Job Portal">
+  <div class="py-8">
+    <!-- Hero Section -->
+    <section class="text-center mb-12">
+      <h2 class="text-3xl md:text-5xl font-black text-emerald-400 mb-4">
+        🌸 Selamat Datang
+      </h2>
+      <p class="text-lg text-slate-400 max-w-2xl mx-auto">
+        Wujudkan mimpi karir di Jepang lewat jalur resmi. 
+        Program <strong class="text-white">Tokutei Ginou (SSW)</strong> dan <strong class="text-white">Magang</strong> dengan kuota eksklusif.
+      </p>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
+      <a href="/candidate" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-emerald-500/50 transition-all duration-300">
+        <div class="text-4xl mb-3">👤</div>
+        <h3 class="text-xl font-bold text-emerald-300 mb-2 group-hover:text-emerald-200">Portal Kandidat</h3>
+        <p class="text-sm text-slate-400">CV, Lamaran, Status Tahapan</p>
       </a>
-      <a href="/admin" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
-        <h2 class="text-xl font-bold text-amber-300 mb-2">🛡️ Admin</h2>
-        <p class="text-sm text-slate-400">Panel admin — Kelola kandidat & loker</p>
+      <a href="/admin" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-amber-500/50 transition-all duration-300">
+        <div class="text-4xl mb-3">🛡️</div>
+        <h3 class="text-xl font-bold text-amber-300 mb-2 group-hover:text-amber-200">Panel Admin</h3>
+        <p class="text-sm text-slate-400">Kelola Kandidat, Loker, Mail</p>
       </a>
-      <a href="/public" class="block p-6 bg-slate-800 rounded-xl hover:bg-slate-700 transition">
-        <h2 class="text-xl font-bold text-sky-300 mb-2">🌐 Publik</h2>
-        <p class="text-sm text-slate-400">Loker, Pendaftaran Siswa, Visa</p>
+      <a href="/public" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-sky-500/50 transition-all duration-300">
+        <div class="text-4xl mb-3">🌐</div>
+        <h3 class="text-xl font-bold text-sky-300 mb-2 group-hover:text-sky-200">Loker Publik</h3>
+        <p class="text-sm text-slate-400">Lowongan, Pendaftaran Siswa, Visa</p>
       </a>
-    </div>
-  </main>
+    </section>
+
+    <!-- Stats Placeholder -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+      <div class="text-center p-4 bg-slate-800/30 rounded-xl">
+        <div class="text-2xl font-black text-emerald-400">--</div>
+        <div class="text-xs text-slate-500">Loker Aktif</div>
+      </div>
+      <div class="text-center p-4 bg-slate-800/30 rounded-xl">
+        <div class="text-2xl font-black text-amber-400">--</div>
+        <div class="text-xs text-slate-500">Kandidat</div>
+      </div>
+      <div class="text-center p-4 bg-slate-800/30 rounded-xl">
+        <div class="text-2xl font-black text-sky-400">--</div>
+        <div class="text-xs text-slate-500">Berangkat</div>
+      </div>
+      <div class="text-center p-4 bg-slate-800/30 rounded-xl">
+        <div class="text-2xl font-black text-pink-400">--</div>
+        <div class="text-xs text-slate-500">Siswa Baru</div>
+      </div>
+    </section>
+  </div>
 </BaseLayout>

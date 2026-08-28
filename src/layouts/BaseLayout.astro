@@ -1,28 +1,58 @@
 ---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import BottomNav from '../components/BottomNav.astro';
+
 export interface Props {
   title: string;
   description?: string;
+  lang?: string;
 }
 
-const { title, description = 'ASJ Portal — Amanah Sakura Japan' } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id' } = Astro.props;
 ---
 <!DOCTYPE html>
-<html lang="id">
+<html lang={lang}>
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content={description} />
-  <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <title>{title}</title>
+  <meta name="theme-color" content="#020617" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ASJ Portal" />
+  <meta name="referrer" content="no-referrer" />
+  <base target="_top" />
   
-  <!-- Tailwind CSS -->
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- Google Fonts: Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/montserrat/v29/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-Y3tcoqK5.woff2" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  
+  <!-- Global CSS (Tailwind v4) -->
   <style is:global>
     @import '../styles/global.css';
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <slot />
+<body id="asj-body" class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-500 flow-root">
+  <Header />
+  
+  <main id="asj-main" class="max-w-7xl mx-auto px-4">
+    <slot />
+  </main>
+  
+  <Footer />
+  <BottomNav />
   
   <!-- Service Worker Registration -->
   <script>
