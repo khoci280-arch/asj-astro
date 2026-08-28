@@ -21,6 +21,13 @@ type CandidateData = {
   cvMiniProgress: number;
   cvMasterProgress: number;
   riwayat: Riwayat[];
+  jadwal: { id: string; nama: string; waktu: string; lokasi: string; link: string; }[];
+  catatan: string;
+  berkasProgress: number;
+  berkasTotal: number;
+  berkasList: { name: string; done: boolean; }[];
+  needRevision: boolean;
+  revisionNote: string;
 };
 
 export default function CandidateDash() {
@@ -49,6 +56,13 @@ export default function CandidateDash() {
           cvMiniProgress: d.cvMiniProgress || 0,
           cvMasterProgress: d.cvMasterProgress || 0,
           riwayat: d.riwayat || [],
+          jadwal: d.jadwal || [],
+          catatan: d.catatan || "",
+          berkasProgress: d.berkasProgress || 0,
+          berkasTotal: d.berkasTotal || 17,
+          berkasList: d.berkasList || [],
+          needRevision: d.needRevision || false,
+          revisionNote: d.revisionNote || "",
         });
       }
     } catch (e) { console.error('[CandidateDash]', e); }
@@ -68,6 +82,19 @@ export default function CandidateDash() {
         <span>Tahapan:</span> <span class="font-black text-sky-400">{data.tahapan}</span> ({data.status})
       </div>
 
+      {/* Jadwal Panel */}
+      {data.jadwal.length > 0 && (
+        <div class="mb-6 md:mb-8 max-w-xl mx-auto bg-gradient-to-r from-amber-950 to-rose-950 border border-amber-500/40 p-5 rounded-[2rem] text-left shadow-xl relative overflow-hidden">
+          <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><i class="fas fa-calendar-alt"></i></div>
+          <h3 class="relative z-10 text-lg font-black text-amber-400 mb-4"><i class="fas fa-calendar-check mr-2 text-rose-400 animate-pulse"></i> JADWAL ANDA</h3>
+          <div class="relative z-10 space-y-3">
+            {data.jadwal.map((j, i) => (<div key={i} class="bg-black/30 border border-amber-900/50 rounded-xl p-4"><div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[10px] text-amber-400 font-mono">{j.waktu}</span></div><p class="text-xs text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>{j.lokasi}</p></div>))}
+          </div>
+        </div>
+      )}
+
+      {/* Catatan Admin */}
+      {data.catatan && (<div class="mb-8 max-w-xl mx-auto bg-sky-900/20 border border-sky-500/30 p-5 rounded-2xl text-center shadow-lg"><p class="text-xs text-sky-400 font-bold uppercase mb-2"><i class="fas fa-envelope-open-text mr-1"></i> Pesan dari Admin:</p><p class="text-sm text-slate-200 italic">"{data.catatan}"</p></div>)}
       {/* CV Progress */}
       <div class="max-w-xl mx-auto mb-6 md:mb-8 bg-black/40 border border-slate-700 p-4 md:p-5 rounded-2xl text-left shadow-lg">
         <div class="flex justify-between items-center mb-2">
@@ -128,6 +155,11 @@ button>
         </div>
       </div>
 
+      {/* Area Revisi Dokumen */}
+      {data.needRevision && (<div class="bg-red-950 border border-red-500/40 rounded-[2rem] p-5 mb-6 md:mb-8 text-left"><h3 class="text-red-400 font-bold mb-2 text-lg"><i class="fas fa-exclamation-triangle mr-2"></i> Dokumen Perlu Direvisi</h3><p class="text-sm text-slate-300 mb-5">{data.revisionNote || "Silakan perbaiki dan upload ulang."}</p><button class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg">Upload File Revisi</button></div>)}
+
+      {/* Pemberkasan Progress */}
+      {data.berkasTotal > 0 && (<div class="mb-8 max-w-xl mx-auto"><div class="bg-black/60 border border-emerald-500/30 rounded-[2rem] p-5 mb-4 text-left"><div class="flex items-center justify-between mb-3"><h4 class="text-sm font-black text-emerald-400 uppercase"><i class="fas fa-tasks mr-1.5"></i> Progres Pemberkasan</h4><span class="text-lg font-black text-white">{data.berkasProgress}%</span></div><div class="h-2.5 bg-slate-800 rounded-full overflow-hidden mb-3"><div class="h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full transition-[width] duration-500" style={"width:" + data.berkasProgress + "%"}></div></div><div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">{data.berkasList.map((b, i) => (<div key={i} class={"flex items-center gap-2 text-xs px-2 py-1 rounded " + (b.done ? "text-emerald-400" : "text-slate-500")}><i class={"fas " + (b.done ? "fa-check-circle" : "fa-circle")}></i> {b.name}</div>))}</div></div><button class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 text-white rounded-[1.5rem] font-black shadow-lg hover:-translate-y-1 transition text-sm border border-emerald-400/30"><i class="fas fa-folder-open mr-2"></i> LENGKAPI PEMBERKASAN & BIODATA</button></div>)}
       <a href="/public" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm inline-block">Lihat Lowongan Kerja Publik</a>
     </div>
   );
