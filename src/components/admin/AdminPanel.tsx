@@ -4,6 +4,7 @@
  * Preact island — interactive (sidebar + tab switching)
  */
 import { useState } from 'preact/hooks';
+import TabKelola from './TabKelola.tsx';
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
@@ -103,7 +104,7 @@ function TabContent({ tab }: { tab: Tab }) {
   }
 }
 
-function TabKelola() {
+function TabKelolaOld() {
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
