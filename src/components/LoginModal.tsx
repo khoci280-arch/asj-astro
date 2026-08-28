@@ -13,7 +13,8 @@ interface Props {
 }
 
 export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
-  // userStore accessed via imports
+  const $user = useStore(userStore);
+  if ($user.isLoggedIn) { onClose(); return null; }
   const [adminStep, setAdminStep] = useState<AdminStep>(1);
   const [selectedAdmin, setSelectedAdmin] = useState("");
   const [loading, setLoading] = useState(false);
