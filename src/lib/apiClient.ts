@@ -5,7 +5,7 @@
  * All backend requests MUST go through this client.
  * Token is auto-read from nanostores and injected into Authorization header.
  */
-import { authStore, logout } from '../store/authStore';
+import { authStore, logout } from '../store/authReactive';
 import { showToast } from '../components/Toast';
 
 const API_BASE = '/.netlify/functions';
