@@ -10,3 +10,72 @@
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
+
+
+/* ─── Marquee (Pengumuman Berjalan) ─── */
+.marquee-track {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+.marquee-content {
+  display: inline-block;
+  animation: marquee-scroll 20s linear infinite;
+  padding-left: 100%;
+}
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* ─── Custom Scrollbar ─── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ─── Fade In Animation ─── */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive Table ─── */
+@media (max-width: 768px) {
+  .responsive-table thead { display: none; }
+  .responsive-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+  }
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #1e293b;
+  }
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-right: 1rem;
+  }
+}

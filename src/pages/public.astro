@@ -16,13 +16,23 @@ import Toast from '../components/Toast.tsx';
       <i class="fas fa-arrow-left"></i> Kembali ke Portal
     </a>
 
-    <!-- Tab Navigation: Loker vs Layanan -->
+    <!-- Global Announcement Marquee -->
+    <div id="global-announcement" class="hidden">
+       <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
+           <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-rose-600/60 shadow-md">
+               <i class="fas fa-bullhorn text-white animate-bounce text-lg"></i>
+           </div>
+           <div class="marquee-track ml-12 mr-2"><div id="marquee-text" class="marquee-content text-white text-sm font-bold tracking-wide"></div></div>
+       </div>
+    </div>
+
+    <!-- Tab Navigation: Loker vs Layanan (with URL hash persistence) -->
     <div class="flex justify-center relative z-10">
-      <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors">
-        <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md" onclick="document.getElementById('section-loker').classList.remove('hidden');document.getElementById('section-layanan').classList.add('hidden');this.classList.add('bg-sky-600','text-white','shadow-md');this.classList.remove('text-slate-400');document.getElementById('tab-pub-layanan').classList.remove('bg-sky-600','text-white','shadow-md');document.getElementById('tab-pub-layanan').classList.add('text-slate-400')">
+      <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors" id="tab-pub-wrap">
+        <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md">
           <i class="fas fa-briefcase mr-2"></i> Lowongan Loker
         </button>
-        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white" onclick="document.getElementById('section-layanan').classList.remove('hidden');document.getElementById('section-loker').classList.add('hidden');this.classList.add('bg-sky-600','text-white','shadow-md');this.classList.remove('text-slate-400');document.getElementById('tab-pub-loker').classList.remove('bg-sky-600','text-white','shadow-md');document.getElementById('tab-pub-loker').classList.add('text-slate-400')">
+        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white">
           <i class="fas fa-handshake mr-2"></i> Program &amp; Layanan ASJ
         </button>
       </div>
@@ -38,4 +48,67 @@ import Toast from '../components/Toast.tsx';
       <LayananSection />
     </div>
   </main>
+
+  <script is:inline>
+    // Tab switching with URL hash persistence
+    (function() {
+      var secLoker = document.getElementById('section-loker');
+      var secLayanan = document.getElementById('section-layanan');
+      var btnLoker = document.getElementById('tab-pub-loker');
+      var btnLayanan = document.getElementById('tab-pub-layanan');
+
+      function switchTab(tab) {
+        if (tab === 'layanan') {
+          secLoker.classList.add('hidden');
+          secLayanan.classList.remove('hidden');
+          btnLoker.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
+          btnLoker.classList.add('text-slate-400');
+          btnLayanan.classList.add('bg-sky-600', 'text-white', 'shadow-md');
+          btnLayanan.classList.remove('text-slate-400');
+        } else {
+          secLayanan.classList.add('hidden');
+          secLoker.classList.remove('hidden');
+          btnLayanan.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
+          btnLayanan.classList.add('text-slate-400');
+          btnLoker.classList.add('bg-sky-600', 'text-white', 'shadow-md');
+          btnLoker.classList.remove('text-slate-400');
+        }
+        // Update URL hash without scrolling
+        if (history.replaceState) {
+          history.replaceState(null, '', '#' + tab);
+        }
+      }
+
+      btnLoker.addEventListener('click', function() { switchTab('loker'); });
+      btnLayanan.addEventListener('click', function() { switchTab('layanan'); });
+
+      // Read initial tab from URL hash
+      var hash = window.location.hash.replace('#', '');
+      if (hash === 'layanan') {
+        switchTab('layanan');
+      }
+
+      // Listen for hash changes (back/forward navigation)
+      window.addEventListener('hashchange', function() {
+        var h = window.location.hash.replace('#', '');
+        switchTab(h === 'layanan' ? 'layanan' : 'loker');
+      });
+
+      // Load marquee from backend
+      fetch('/.netlify/functions/getAppData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getAppData', args: ['public'] })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success && d.pengumuman) {
+          var el = document.getElementById('global-announcement');
+          var txt = document.getElementById('marquee-text');
+          if (el && txt && d.pengumuman.trim()) {
+            txt.textContent = d.pengumuman;
+            el.classList.remove('hidden');
+          }
+        }
+      }).catch(function() {});
+    })();
+  </script>
 </BaseLayout>
