@@ -15,6 +15,8 @@ import TabTambah from './TabTambah.tsx';
 import TabJadwal from './TabJadwal.tsx';
 import TabWA from './TabWA.tsx';
 
+import TabConfig from './TabConfig.tsx';
+
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
 const TABS: { id: Tab; icon: string; label: string; color: string }[] = [
@@ -111,57 +113,8 @@ function TabContent({ tab }: { tab: Tab }) {
     default:
       return <TabPlaceholder tab={tab} />;
   }
-}
-
-function TabKelolaOld() {
-  return (
-    <div>
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-red-400 font-bold text-lg"><i class="fas fa-globe mr-2"></i> Loker Publik</h2>
-        <div class="relative w-72">
-          <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-          <input type="text" placeholder="Cari Kode / Pekerjaan..." class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
-        </div>
-      </div>
-      <p class="text-slate-500 text-sm text-center py-8">Data loker akan dimuat dari backend.</p>
-    </div>
-  );
-}
-
-function TabPelamarOld() {
-  return (
-    <div>
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-users mr-2"></i> Database Pelamar</h2>
-        <div class="flex gap-2">
-          <button class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
-          <button class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
-        </div>
-      </div>
-      <div class="flex gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-        <select class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 outline-none">
-          <option>Semua Gender</option><option>Laki-laki</option><option>Perempuan</option>
-        </select>
-        <select class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 outline-none">
-          <option>Semua Usia</option><option>&lt; 20</option><option>20-25</option><option>&gt; 25</option>
-        </select>
-      </div>
-      <p class="text-slate-500 text-sm text-center py-8">Data pelamar akan dimuat dari backend.</p>
-    </div>
-  );
-}
-
-
-
-// TabJadwal imported from ./TabJadwal.tsx
-
-// TabTambah imported from ./TabTambah.tsx
-
-// TabDbJob imported from ./TabDbJob.tsx
-
-
-
-
+}
+
 function TabPlaceholder({ tab }: { tab: string }) {
   return (
     <div class="text-center py-8">

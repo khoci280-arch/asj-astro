@@ -38,8 +38,7 @@ export default function TabConfig() {
   }
 
   async function handleSaveConfig(id: string) {
-    const options = editValue.split('
-').map(s => s.trim()).filter(Boolean);
+    const options = editValue.split('\n').map(s => s.trim()).filter(Boolean);
     try {
       const r = await fetch('/.netlify/functions/updateSysConfig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options }) });
       const d = await r.json();
@@ -88,8 +87,7 @@ export default function TabConfig() {
             <div>
               <div class="text-xs text-slate-500 mb-2">{c.options.length} options</div>
               <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[10px] text-slate-500">+{c.options.length - 5} more</span>}</div>
-              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('
-')); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><i class="fas fa-edit mr-1"></i> Edit</button>
+              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('\n')); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><i class="fas fa-edit mr-1"></i> Edit</button>
             </div>
           )}
         </div>
