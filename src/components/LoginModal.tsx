@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { userStore, loginAsAdmin, loginAsKandidat } from '../store/userStore';
+import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive';
 import { showToast } from './Toast';
 
 type ModalMode = "closed" | "login" | "daftar";
@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
-  const $user = useStore(userStore);
+  const $user = useStore(authStore);
   if ($user.isLoggedIn) { onClose(); return null; }
   const [adminStep, setAdminStep] = useState<AdminStep>(1);
   const [selectedAdmin, setSelectedAdmin] = useState("");

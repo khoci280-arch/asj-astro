@@ -50,26 +50,53 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <BottomNav />
   
   <script>
-    // ─── Fase 3: Auth restore ───
+    // ─── Fase 3 (Reactive): Auth restore via authReactive.ts ───
+    // Nanostores handles cross-tab sync + session expiry automatically.
+    // This script only does DOM manipulation for Astro static elements
+    // (Header nav modes) that aren't Preact components yet.
     (function initAuth() {
       try {
         const adminLogin = localStorage.getItem('asj_admin_login');
         const adminName = localStorage.getItem('asj_admin_name');
+        const adminTs = localStorage.getItem('asj_admin_ts');
+        const SESSION_MAX_AGE = 24 * 60 * 60 * 1000;
+        
         if (adminLogin === 'sukses' && adminName) {
-          const navMode = document.getElementById('nav-mode');
-          const navAdmin = document.getElementById('nav-admin-mode');
-          if (navMode) navMode.classList.add('hidden');
-          if (navAdmin) navAdmin.classList.remove('hidden');
+          const ts = adminTs ? parseInt(adminTs) : 0;
+          if (Date.now() - ts < SESSION_MAX_AGE) {
+            const navMode = document.getElementById('nav-mode');
+            const navAdmin = document.getElementById('nav-admin-mode');
+            if (navMode) navMode.classList.add('hidden');
+            if (navAdmin) navAdmin.classList.remove('hidden');
+          } else {
+            // Session expired → clear
+            localStorage.removeItem('asj_admin_login');
+            localStorage.removeItem('asj_admin_name');
+            localStorage.removeItem('asj_admin_session');
+            localStorage.removeItem('asj_admin_ts');
+          }
         }
-        const kandidatLogin = localStorage.getItem('asj_kandidat_login');
-        const kandidatName = localStorage.getItem('asj_kandidat_name');
-        if (kandidatLogin === 'sukses' && kandidatName) {
-          const navMode = document.getElementById('nav-mode');
-          const navKandidat = document.getElementById('nav-kandidat-mode');
-          const namaEl = document.getElementById('nama-kandidat-login');
-          if (navMode) navMode.classList.add('hidden');
-          if (navKandidat) navKandidat.classList.remove('hidden');
-          if (namaEl) namaEl.textContent = kandidatName;
+        
+        const kanLogin = localStorage.getItem('asj_kandidat_login');
+        const kanName = localStorage.getItem('asj_kandidat_name');
+        const kanTs = localStorage.getItem('asj_kandidat_ts');
+        
+        if (kanLogin === 'sukses' && kanName) {
+          const ts = kanTs ? parseInt(kanTs) : 0;
+          if (Date.now() - ts < SESSION_MAX_AGE) {
+            const navMode = document.getElementById('nav-mode');
+            const navKandidat = document.getElementById('nav-kandidat-mode');
+            const namaEl = document.getElementById('nama-kandidat-login');
+            if (navMode) navMode.classList.add('hidden');
+            if (navKandidat) navKandidat.classList.remove('hidden');
+            if (namaEl) namaEl.textContent = kanName;
+          } else {
+            localStorage.removeItem('asj_kandidat_login');
+            localStorage.removeItem('asj_kandidat_name');
+            localStorage.removeItem('asj_kandidat_wa');
+            localStorage.removeItem('asj_kandidat_session');
+            localStorage.removeItem('asj_kandidat_ts');
+          }
         }
       } catch (e) { console.warn('[Auth] Restore failed:', e); }
     })();
@@ -77,16 +104,11 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     // ─── Fase 5: Service Worker + Auto-Reload ───
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
-        // Check for SW updates every 5 minutes
-        setInterval(() => {
-          reg.update().catch(() => {});
-        }, 5 * 60 * 1000);
+        setInterval(() => { reg.update().catch(() => {}); }, 5 * 60 * 1000);
       }).catch(() => {});
-      
-      // Listen for ASJ_FORCE_RELOAD from SW
       navigator.serviceWorker.addEventListener('message', (e) => {
         if (e.data?.type === 'ASJ_FORCE_RELOAD') {
-          console.log('[SW] New version detected — reloading...');
+          console.log('[SW] New version — reloading...');
           window.location.reload();
         }
       });
