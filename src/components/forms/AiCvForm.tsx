@@ -103,10 +103,9 @@ export default function AiCvForm() {
     setShowSuggestions(false);
     try {
       const trimmedHistory = messages.slice(-20).map(m => ({ role: m.role, content: m.text }));
-      const res = await apiClient.post('/.netlify/functions/ai-cv', {
-        message: msg,
-        history: trimmedHistory,
-        cvData: cv
+      const res = await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'processAIChat', payload: [{ message: msg, history: trimmedHistory, cvData: cv }] })
       });
       if (res.ok) {
         const data = await res.json();
@@ -149,7 +148,7 @@ export default function AiCvForm() {
       const fd = new FormData();
       fd.append('cvData', JSON.stringify(cv));
       Object.entries(docs).forEach(([k, f]) => { if (f) fd.append(k, f); });
-      const res = await fetch('/.netlify/functions/save-ai-cv', {
+      const res = await fetch('/.netlify/functions/ai-form-submit', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: fd

@@ -56,10 +56,9 @@ export default function SiswaBaruForm() {
     setInput('');
     setSending(true);
     try {
-      const res = await apiClient.post('/.netlify/functions/ai-siswa-baru', {
-        message: text,
-        history: messages.map(m => ({ role: m.role, content: m.text })),
-        biodata
+      const res = await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'processSiswaAIChat', payload: [{ message: text, history: messages.map(m => ({ role: m.role, content: m.text })), biodata }] })
       });
       if (res.ok) {
         const data = await res.json();
@@ -96,7 +95,7 @@ export default function SiswaBaruForm() {
     Object.entries(docs).forEach(([k, f]) => { if (f) formData.append(k, f); });
     try {
       const token = authStore.get().token;
-      const res = await fetch('/.netlify/functions/submit-siswa-baru', {
+      const res = await fetch('/.netlify/functions/ai-form-submit', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: formData

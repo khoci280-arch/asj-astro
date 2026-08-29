@@ -48,7 +48,7 @@ export default function LokerTable() {
 
   async function fetchJobs() {
     try {
-      const res = await fetch('/.netlify/functions/getAppData', {
+      const res = await fetch('/.netlify/functions/get-app-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['public'] }),
@@ -79,15 +79,18 @@ export default function LokerTable() {
 
   return (
     <div class="animate-fade-in">
-      {/* Filter bar + Theme toggle */}
-      <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900 transition-colors">
+      {/* Control bar: Theme toggle (left) + Filter buttons (right) — same as legacy */}
+      <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border shadow-lg mb-6 gap-4 transition-colors bg-slate-900 border-slate-700">
         <div class="flex gap-2 items-center flex-wrap">
-          <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest">
+          <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><i class="fas fa-paint-brush"></i> Tema</span>
+          <button onClick={() => { document.documentElement.classList.toggle('light'); var isL = document.documentElement.classList.contains('light'); setIsDark(!isL); localStorage.setItem('asjTheme', isL ? 'light' : 'dark'); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+            <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")}></i> {isDark ? 'Dark' : 'Light'}
+          </button>
+        </div>
+        <div class="flex gap-2 items-center flex-wrap">
+          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest">
             <i class="fas fa-filter"></i> Filter
           </span>
-          <button onClick={() => { document.documentElement.classList.toggle('light'); var isL = document.documentElement.classList.contains('light'); setIsDark(!isL); localStorage.setItem('asjTheme', isL ? 'light' : 'dark'); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5 ml-2">
-            <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")}></i> {isDark ? "Dark" : "Light"}
-          </button>
           {['ALL', 'OPEN', 'URGENT', 'CLOSE'].map((f) => (
             <button
               key={f}
@@ -97,8 +100,8 @@ export default function LokerTable() {
               {f === 'ALL' ? 'Semua' : f === 'OPEN' ? 'Buka' : f === 'URGENT' ? 'Urgent' : 'Tutup'}
             </button>
           ))}
+          <span class="text-xs text-slate-500 font-bold ml-2">{filtered.length} {t('public.lowongan_count')}</span>
         </div>
-        <span class="text-xs text-slate-500 font-bold">{filtered.length} {t('public.lowongan_count')}</span>
       </div>
 
       {/* Table */}
@@ -115,9 +118,9 @@ export default function LokerTable() {
           </thead>
           <tbody class="divide-y divide-white/5 transition-colors duration-300">
             {loading ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> t('public.loading')</td></tr>
+              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> {t('public.loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-inbox mr-2"></i> t('public.no_data')</td></tr>
+              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-inbox mr-2"></i> {t('public.no_data')}</td></tr>
             ) : (
               filtered.map((job, i) => (
                 <tr key={job.code || i} class="hover:bg-white/5 transition-colors">
@@ -137,7 +140,7 @@ export default function LokerTable() {
                   </td>
                   <td class="p-4 text-center">
                     {(job.status || '').toUpperCase() === 'CLOSE' ? (
-                      <span class="text-xs text-slate-500 font-bold">t('public.close')</span>
+                      <span class="text-xs text-slate-500 font-bold">{t('public.close')}</span>
                     ) : (
                       <button onClick={() => openWhatsApp(job)} class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg inline-flex items-center gap-1">
                         <i class="fab fa-whatsapp"></i> Lamar

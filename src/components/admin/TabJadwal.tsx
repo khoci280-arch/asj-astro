@@ -21,7 +21,7 @@ export default function TabJadwal() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/getAppData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
         const d = await r.json();
         if (d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
       } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -30,7 +30,7 @@ export default function TabJadwal() {
   async function handleSubmit(e: Event) {
     e.preventDefault();
     try {
-      const r = await fetch('/.netlify/functions/submitJadwal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama, loker, waktu, lokasi, tsk, link }) });
+      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama, loker, waktu, lokasi, tsk, link }) });
       const d = await r.json(); if (d.success) { alert('Jadwal tersimpan!'); location.reload(); } else alert('Gagal: ' + (d.error || 'Unknown'));
     } catch (e) { alert('Error: ' + e); }
   }

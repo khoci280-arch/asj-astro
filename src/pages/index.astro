@@ -11,62 +11,33 @@ import LayananSection from '../components/public/LayananSection.astro';
   <Toast client:load />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
-    <!-- Hero Section -->
-    <section class="text-center py-8 md:py-12">
-      <h2 class="text-3xl md:text-5xl font-black text-emerald-400 mb-4 drop-shadow-lg">🌸 Selamat Datang</h2>
-      <p class="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-        Wujudkan mimpi karir di Jepang lewat jalur resmi.
-        Program <strong class="text-white">Tokutei Ginou (SSW)</strong> dan <strong class="text-white">Magang</strong> dengan kuota eksklusif.
-      </p>
-    </section>
-
-    <!-- Tab Navigation: Loker vs Layanan (with URL hash) -->
-    <div class="flex justify-center relative z-10">
-      <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors" id="tab-pub-wrap">
+    <!-- Tab Navigation: Loker vs Layanan (same as legacy) -->
+    <div class="flex justify-center mb-8 relative z-10">
+      <div id="tab-pub-wrap" class="inline-flex bg-slate-900 border-slate-700 rounded-full p-1 shadow-2xl border transition-colors">
         <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md">
           <i class="fas fa-briefcase mr-2"></i> Lowongan Loker
         </button>
-        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white">
+        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white">
           <i class="fas fa-handshake mr-2"></i> Program &amp; Layanan ASJ
         </button>
       </div>
     </div>
 
     <!-- Section: Loker -->
-    <div id="section-loker">
+    <div id="public-loker-section" class="block animate-fade-in">
       <LokerTable client:load />
     </div>
 
     <!-- Section: Layanan -->
-    <div id="section-layanan" class="hidden">
+    <div id="public-layanan-section" class="hidden animate-fade-in space-y-8">
       <LayananSection />
     </div>
-
-    <!-- Quick Links -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
-      <a href="/candidate" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-emerald-500/50 transition-all duration-300 text-center">
-        <div class="text-4xl mb-3">👤</div>
-        <h3 class="text-xl font-bold text-emerald-300 mb-2 group-hover:text-emerald-200">Portal Kandidat</h3>
-        <p class="text-sm text-slate-400">CV, Lamaran, Status Tahapan</p>
-      </a>
-      <a href="/admin" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-amber-500/50 transition-all duration-300 text-center">
-        <div class="text-4xl mb-3">🛡️</div>
-        <h3 class="text-xl font-bold text-amber-300 mb-2 group-hover:text-amber-200">Panel Admin</h3>
-        <p class="text-sm text-slate-400">Kelola Kandidat, Loker, Mail</p>
-      </a>
-      <a href="/public" class="group block p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 hover:border-sky-500/50 transition-all duration-300 text-center">
-        <div class="text-4xl mb-3">🌐</div>
-        <h3 class="text-xl font-bold text-sky-300 mb-2 group-hover:text-sky-200">Loker Publik</h3>
-        <p class="text-sm text-slate-400">Lowongan, Pendaftaran Siswa, Visa</p>
-      </a>
-    </section>
   </main>
 
   <script is:inline>
-    // Tab switching with URL hash persistence
     (function() {
-      var secLoker = document.getElementById('section-loker');
-      var secLayanan = document.getElementById('section-layanan');
+      var secLoker = document.getElementById('public-loker-section');
+      var secLayanan = document.getElementById('public-layanan-section');
       var btnLoker = document.getElementById('tab-pub-loker');
       var btnLayanan = document.getElementById('tab-pub-layanan');
       if (!secLoker || !secLayanan || !btnLoker || !btnLayanan) return;
@@ -74,18 +45,22 @@ import LayananSection from '../components/public/LayananSection.astro';
       function switchTab(tab) {
         if (tab === 'layanan') {
           secLoker.classList.add('hidden');
+          secLoker.classList.remove('block');
           secLayanan.classList.remove('hidden');
+          secLayanan.classList.add('block');
           btnLoker.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
-          btnLoker.classList.add('text-slate-400');
+          btnLoker.classList.add('bg-transparent', 'text-slate-400');
           btnLayanan.classList.add('bg-sky-600', 'text-white', 'shadow-md');
-          btnLayanan.classList.remove('text-slate-400');
+          btnLayanan.classList.remove('bg-transparent', 'text-slate-400');
         } else {
           secLayanan.classList.add('hidden');
+          secLayanan.classList.remove('block');
           secLoker.classList.remove('hidden');
+          secLoker.classList.add('block');
           btnLayanan.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
-          btnLayanan.classList.add('text-slate-400');
+          btnLayanan.classList.add('bg-transparent', 'text-slate-400');
           btnLoker.classList.add('bg-sky-600', 'text-white', 'shadow-md');
-          btnLoker.classList.remove('text-slate-400');
+          btnLoker.classList.remove('bg-transparent', 'text-slate-400');
         }
         if (history.replaceState) history.replaceState(null, '', '#' + tab);
       }

@@ -109,7 +109,7 @@ export default function InputManualModal() {
       });
       formData.append('token', session.token || '');
 
-      const res = await fetch('/.netlify/functions/tambahKandidatManual', {
+      const res = await fetch('/.netlify/functions/candidates', {
         method: 'POST',
         body: formData,
       });

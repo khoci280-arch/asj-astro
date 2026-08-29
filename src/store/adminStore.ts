@@ -116,7 +116,7 @@ export function toggleSimpleView() {
 export async function fetchKandidatFromAPI() {
   setKandidatLoading(true);
   try {
-    const res = await fetch('/.netlify/functions/getAppData', {
+    const res = await fetch('/.netlify/functions/get-app-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
@@ -153,7 +153,7 @@ export function setMailList(list: any[]) {
 
 export async function fetchMailFromAPI() {
   try {
-    const res = await fetch('/.netlify/functions/getAppData', {
+    const res = await fetch('/.netlify/functions/get-app-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),

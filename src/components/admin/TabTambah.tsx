@@ -30,7 +30,7 @@ export default function TabTambah() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/getAppData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
         const d = await r.json();
         if (d.success && d.dropdowns) setDd(d.dropdowns);
       } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -46,7 +46,7 @@ export default function TabTambah() {
       fd.append('lokasi', JSON.stringify(lokasi)); fd.append('customLokasi', customLokasi); fd.append('syarat', JSON.stringify(syarat)); fd.append('customSyarat', customSyarat);
       fd.append('reqFiles', JSON.stringify(reqFiles)); fd.append('customReqFile', customReqFile); fd.append('keterangan', keterangan); fd.append('totalBiaya', totalBiaya);
       if (templateFile) fd.append('template', templateFile); if (pamfletFile) fd.append('pamflet', pamfletFile);
-      const r = await fetch('/.netlify/functions/submitFormAdmin', { method: 'POST', body: fd });
+      const r = await fetch('/.netlify/functions/jobs', { method: 'POST', body: fd });
       const d = await r.json(); if (d.success) { alert('Loker berhasil ditambahkan!'); location.reload(); } else alert('Gagal: ' + (d.error || 'Unknown'));
     } catch (e) { alert('Error: ' + e); } finally { setSubmitting(false); }
   }

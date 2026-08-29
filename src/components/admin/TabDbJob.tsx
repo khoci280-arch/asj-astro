@@ -28,7 +28,7 @@ export default function TabDbJob() {
 
   async function fetchLoker() {
     try {
-      const res = await fetch('/.netlify/functions/getAppData', {
+      const res = await fetch('/.netlify/functions/get-app-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),

@@ -42,11 +42,11 @@ export default function ShareView() {
     setLoading(true);
     setError('');
     try {
-      const res = await apiClient.get(`/.netlify/functions/share-view?code=${code}`);
+      const res = await fetch('/.netlify/functions/share-data?job=' + encodeURIComponent(code));
       if (!res.ok) throw new Error('Not found');
       const data = await res.json();
       setJob(data.job);
-      setCandidates(data.candidates || []);
+      setCandidates((data.candidates || []).map((c: any) => ({ ...c, photo: c.pas_photo || c.photo || "" })));
     } catch (e) {
       setError((e as Error).message || 'Access Denied or Not Found');
     } finally {
@@ -107,7 +107,7 @@ export default function ShareView() {
       <header class="sticky top-0 z-50 bg-slate-900/[.97] border-b border-slate-700/50 shadow-2xl">
         <div class="max-w-7xl mx-auto px-3 md:px-8 py-3 md:py-4 flex flex-wrap md:flex-nowrap justify-between items-center gap-2 md:gap-4">
           <div class="flex items-center gap-3 md:gap-4 min-w-0">
-            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="ASJ Logo" class="w-10 h-10 md:w-14 md:h-14 object-contain" />
+            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ Logo" class="w-10 h-10 md:w-14 md:h-14 object-contain" />
             <div class="min-w-0">
               <h1 class="text-sm sm:text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-white leading-tight truncate">PT AMANAH SAKURA JAPAN</h1>
               <p class="text-[9px] md:text-xs font-bold text-pink-300 tracking-[0.2em] uppercase mt-0.5">
@@ -198,7 +198,7 @@ export default function ShareView() {
             {filtered.map(c => (
               <div key={c.id} class={`bg-slate-900/[.97] border rounded-2xl p-4 md:p-5 transition-all hover:shadow-pink-500/10 hover:border-pink-500/30 ${selected.has(c.id) ? 'border-pink-500 shadow-[0_0_20px_rgba(236,72,153,.15)]' : 'border-slate-700/50'}`}>
                 <div class="flex gap-3 md:gap-4">
-                  <img src={c.photo || 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/default-avatar.png'} alt={c.nama}
+                  <img src={c.photo || 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png'} alt={c.nama}
                     class="w-[72px] h-[96px] md:w-[84px] md:h-[112px] rounded-lg object-cover border border-slate-700/50 shrink-0" />
                   <div class="flex-1 min-w-0">
                     <h3 class="text-sm md:text-base font-bold text-white truncate">{c.nama}</h3>

@@ -16,7 +16,7 @@ export default function TabWA() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/getAppData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
         const d = await r.json();
         if (d.success) setTemplates(d.waTemplates || []);
       } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -27,7 +27,7 @@ export default function TabWA() {
     try {
       const body: Record<string, string> = { nama, isi };
       if (editingId) body.id = editingId;
-      const r = await fetch('/.netlify/functions/submitWaTemplate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (d.success) { alert(editingId ? 'Template updated!' : 'Template saved!'); location.reload(); } else alert('Failed: ' + (d.error || 'Unknown'));
     } catch (e) { alert('Error: ' + e); }
@@ -37,7 +37,7 @@ export default function TabWA() {
   function handleCancel() { setEditingId(''); setNama(''); setIsi(''); }
   function handleDelete(id: string) {
     if (!confirm('Hapus template ini?')) return;
-    fetch('/.netlify/functions/deleteWaTemplate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
       .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert('Gagal: ' + d.error); }).catch(e => alert('Error: ' + e));
   }
 

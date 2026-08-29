@@ -80,7 +80,7 @@ export default function ApplyFullForm() {
     setWaMsg('');
     setWaWarn('');
     try {
-      const res = await apiClient.post('/.netlify/functions/cek-riwayat', { wa });
+      const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cekDataPelamar', payload: [{ wa }] }) });
       if (res.ok) {
         const data = await res.json();
         if (data.found) {
@@ -140,7 +140,7 @@ export default function ApplyFullForm() {
       Object.entries(uploads).forEach(([key, u]) => {
         if (u.file) fd.append(key, u.file);
       });
-      const res = await fetch('/.netlify/functions/submit-apply', {
+      const res = await fetch('/.netlify/functions/apply', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: fd

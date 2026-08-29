@@ -58,7 +58,7 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   </div>
 </div>
 <script>
-  fetch("/.netlify/functions/getAppData", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["admin"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
+  fetch("/.netlify/functions/get-app-data", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["admin"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
 </script>
   
   <Footer />

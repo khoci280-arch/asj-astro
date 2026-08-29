@@ -90,7 +90,7 @@ export default function MasterFullForm() {
   const gateLogin = async () => {
     var vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
-      const res = await apiClient.post('/.netlify/functions/master-login', { wa: gateWa, password: gatePass });
+      const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
       if (res.ok) {
         const d = await res.json();
         authStore.set({ token: d.token, wa: gateWa, user: d.user || 'kandidat' });
@@ -126,7 +126,7 @@ export default function MasterFullForm() {
       fd.append('isDraft', String(isDraft));
       Object.entries(files).forEach(([k, f]) => { if (f) fd.append(k, f); });
       const token = authStore.get().token;
-      const res = await fetch('/.netlify/functions/save-master', {
+      const res = await fetch('/.netlify/functions/master-data', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: fd
@@ -179,7 +179,7 @@ export default function MasterFullForm() {
             <div class="text-slate-400 text-xs mt-1">Form terhubung ke WA <span class="text-sky-400 font-bold">{gateWa}</span></div>
             <div class="text-slate-500 text-[11px] mt-1">Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.</div>
           </div>
-          <label class="label">Password kandidat</label>
+          <label class="label">{t("form.mf_password")}</label>
           <input type="password" class="input" value={gatePass} placeholder={t("form.mf_password")}
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
