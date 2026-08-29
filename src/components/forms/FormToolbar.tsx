@@ -3,7 +3,7 @@
  * Includes: Back to Portal + Theme toggle + Language toggle
  */
 import { useStore } from '@nanostores/preact';
-import { langStore } from '../../store/i18n';
+import { langStore, t } from '../../store/i18n';
 import { useState } from 'preact/hooks';
 
 interface Props {
@@ -25,7 +25,7 @@ export default function FormToolbar({ title }: Props) {
   return (
     <div class="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-3 py-2 bg-black/70 backdrop-blur-sm border-b border-white/10">
       <a href="/" class="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-all hover:scale-105">
-        <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">Portal</span>
+        <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">{t('button.portal')}</span>
       </a>
       {title && <span class="text-xs font-bold text-slate-300 hidden sm:inline">{title}</span>}
       <div class="flex items-center gap-2">

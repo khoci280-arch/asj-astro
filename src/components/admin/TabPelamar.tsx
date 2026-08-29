@@ -3,6 +3,7 @@
  * Source: legacy/index.html page-admin → admin-pelamar
  * With modals: Input Manual, Laporan Bulanan, Toggle View
  */
+import { SkeletonTable } from '../Skeleton';
 import { useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {

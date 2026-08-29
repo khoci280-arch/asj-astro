@@ -4,6 +4,9 @@
  * Preact island — interactive (filters + data fetch + theme toggle + cek siswa modal)
  */
 import { useState, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
+import { langStore, t } from '../../store/i18n';
+import { SkeletonTable } from '../Skeleton';
 
 type Job = {
   code: string;
@@ -32,6 +35,7 @@ export default function LokerTable() {
   const [showCekModal, setShowCekModal] = useState(false);
   const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
   const [cekQuery, setCekQuery] = useState('');
+  const lang = useStore(langStore);
 
   useEffect(() => {
     fetchJobs();
@@ -92,7 +96,7 @@ export default function LokerTable() {
             </button>
           ))}
         </div>
-        <span class="text-xs text-slate-500 font-bold">{filtered.length} lowongan</span>
+        <span class="text-xs text-slate-500 font-bold">{filtered.length} {t('public.lowongan_count')}</span>
       </div>
 
       {/* Table */}
@@ -109,9 +113,9 @@ export default function LokerTable() {
           </thead>
           <tbody class="divide-y divide-white/5 transition-colors duration-300">
             {loading ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> Memuat data lowongan...</td></tr>
+              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> t('public.loading')</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-inbox mr-2"></i> Tidak ada lowongan ditemukan.</td></tr>
+              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-inbox mr-2"></i> t('public.no_data')</td></tr>
             ) : (
               filtered.map((job, i) => (
                 <tr key={job.code || i} class="hover:bg-white/5 transition-colors">
@@ -131,7 +135,7 @@ export default function LokerTable() {
                   </td>
                   <td class="p-4 text-center">
                     {(job.status || '').toUpperCase() === 'CLOSE' ? (
-                      <span class="text-xs text-slate-500 font-bold">Ditutup</span>
+                      <span class="text-xs text-slate-500 font-bold">t('public.close')</span>
                     ) : (
                       <button onClick={() => openWhatsApp(job)} class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg inline-flex items-center gap-1">
                         <i class="fab fa-whatsapp"></i> Lamar
@@ -149,7 +153,7 @@ export default function LokerTable() {
       {showCekModal && (
         <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowCekModal(false)}>
           <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 class="text-lg font-bold text-white mb-4"><i class="fas fa-search mr-2 text-sky-400"></i> Cek Data Siswa Terdaftar</h3>
+            <h3 class="text-lg font-bold text-white mb-4"><i class="fas fa-search mr-2 text-sky-400"></i> t('form.placeholder_search')</h3>
             <input type="text" value={cekQuery} onInput={(e) => setCekQuery((e.target as HTMLInputElement).value)} placeholder="Cari nama / NIS..." class="w-full p-3 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition mb-4" />
             <div class="text-xs text-slate-500 text-center py-4">Data akan dimuat dari backend.</div>
             <button onClick={() => setShowCekModal(false)} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm transition">Tutup</button>
