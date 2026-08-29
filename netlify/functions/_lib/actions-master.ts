@@ -1245,6 +1245,7 @@ async function handleSimpanUpdateMaster(payload, sessionToken) {
 
 export {
   findMasterByWa,
+  buildMasterNested,
   handleGetMasterDataByWa,
   handleGetDrafCvMaster,
   handleSubmitMasterForm,

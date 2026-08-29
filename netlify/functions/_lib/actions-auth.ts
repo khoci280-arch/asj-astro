@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { env } from './env';
-import { normalizeWa, isValidWaFormat } from '../../shared/wa-rules';
+import { normalizeWa, isValidWaFormat } from '../../../shared/wa-rules';
 import { hasBackend, pick, supabaseJson, toText } from './db/client';
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 import { findAdmins } from './db/misc';

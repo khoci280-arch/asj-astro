@@ -1,5 +1,5 @@
 import { env } from '../env.ts';
-import { normalizeWa } from '../../../shared/wa-rules';
+import { normalizeWa } from '../../../../shared/wa-rules';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
