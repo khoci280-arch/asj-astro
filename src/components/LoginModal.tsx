@@ -13,6 +13,7 @@ import { authStore, loginAsAdmin, logout } from '../store/authReactive';
 import { loginKandidatSupabase, registerKandidatSupabase, logoutSupabase } from '../store/userStore';
 import { showToast } from './Toast';
 import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
+import { t } from '../store/i18n';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 1 | 2 | 3;
@@ -97,7 +98,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const t = Date.now().toString(36) + Math.random().toString(36).substr(2);
       const r = await api("checkAdminMaster", [masterPin, t]);
       if (r.success) setAdminStep(2);
-      else showToast(r.error || "PIN salah", "error");
+      else showToast(r.error || t('login.pin_salah'), "error");
     } catch (e: any) {
       showToast(e.message, "error");
     } finally {
@@ -121,11 +122,11 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const r = await api("checkAdminPersonal", [selectedAdmin, personalPin, t]);
       if (r.success) {
         loginAsAdmin(selectedAdmin, r.sessionToken || t, r.refreshToken || "");
-        showToast("Selamat datang, " + selectedAdmin + "!", "success");
+        showToast(t('login.selamat_datang') + selectedAdmin + "!", "success");
         onClose();
         window.location.reload();
       } else {
-        showToast(r.error || "PIN salah", "error");
+        showToast(r.error || t('login.pin_salah'), "error");
       }
     } catch (e: any) {
       showToast(e.message, "error");
@@ -153,14 +154,14 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
                 type="text"
                 value={regNama}
                 onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
-                placeholder="Nama Lengkap"
+                placeholder={t("login.nama_ph")}
                 class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500"
               />
               <input
                 type="tel"
                 value={regWa}
                 onInput={(e) => setRegWa((e.target as HTMLInputElement).value)}
-                placeholder="No WA (628xxxxxxxxxx)"
+                placeholder={t("login.wa_ph")}
                 class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500"
               />
               <div class="px-4 py-3 rounded-2xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-6 text-center">
@@ -171,7 +172,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
                 disabled={loading}
                 class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50"
               >
-                {loading ? "Mendaftar..." : "Daftar Akun"}
+                {loading ? t("login.btn_daftar_loading") : t("login.btn_daftar")}
               </button>
               <p class="text-sm text-center mt-5 text-slate-400">
                 Sudah punya akun?{" "}
@@ -188,20 +189,20 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
               <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
                 <i class="fas fa-sign-in-alt mr-2"></i> Login Pelamar
               </h3>
-              <label class="block text-sm font-bold text-slate-400 mb-1.5">No WhatsApp</label>
+              <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
               <input
                 type="tel"
                 value={logWa}
                 onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}
-                placeholder="628xxxxxxxxxx"
+                placeholder={t("login.wa_ph")}
                 class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-sky-500"
               />
-              <label class="block text-sm font-bold text-slate-400 mb-1.5">Password</label>
+              <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.pass_label')}</label>
               <input
                 type="password"
                 value={logPass}
                 onInput={(e) => setLogPass((e.target as HTMLInputElement).value)}
-                placeholder="Password"
+                placeholder={t("login.pass_ph")}
                 class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-6 outline-none focus:border-sky-500"
               />
               <button
@@ -209,7 +210,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
                 disabled={loading}
                 class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50"
               >
-                {loading ? "Masuk..." : "Masuk Dashboard"}
+                {loading ? t("login.btn_masuk_loading") : t("login.btn_masuk")}
               </button>
               <p class="text-sm text-center mt-5 text-slate-400">
                 Belum punya akun?{" "}
