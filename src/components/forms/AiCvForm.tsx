@@ -139,7 +139,7 @@ export default function AiCvForm() {
   const updateCv = (field: string, value: string) => setCv(prev => ({ ...prev, [field]: value }));
 
   return (
-    <div class="flex flex-col md:flex-row h-screen w-full relative" style={{ height: '100vh', height: '100dvh' }}>
+    <div class="flex flex-col md:flex-row h-screen w-full relative" style={{ height: '100dvh' }}>
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
         <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
