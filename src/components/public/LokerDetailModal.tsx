@@ -1,109 +1,113 @@
 /**
- * LokerDetailModal.tsx - Job detail modal with rincian biaya
+ * LokerDetailModal.tsx — Job detail popup with rincian biaya
+ * Migrated from legacy/js/01_public.ts bukaDetailLoker() 100%
+ * Modern Preact: TypeScript, i18n, theme-aware CSS vars
  */
-interface Job {
-  code: string; pekerjaan: string; status: string;
-  keterangan: string; kategori: string; kuota: string;
-  gender: string; lokasi: string; syarat: string;
-  rincianBiaya?: string; totalBiaya?: string; pamflet?: string;
-}
+import { t } from '../../store/i18n';
+
+interface Job { code: string; pekerjaan: string; status: string; tahapan: string; keterangan: string; kategori: string; kuota: string; gender: string; lokasi: string; syarat: string; rincianBiaya?: string; totalBiaya?: string; pamflet?: string; templateCv?: string; dokumenShare?: string; }
 interface Props { job: Job; onClose: () => void; }
+interface Step { nomor: string; nama: string; nominal: string; }
+interface RSection { type: string; items: (Step | string)[]; }
+interface Parsed { total: string; sections: RSection[]; }
 
-function parseRincianBiaya(text: string) {
-  if (!text || text === '-') return { total: '', sections: [] as {title:string;items:{label:string;value:string}[]}[] };
-  const sections: {title:string;items:{label:string;value:string}[]}[] = [];
-  let total = '';
-  let cur: {title:string;items:{label:string;value:string}[]} | null = null;
-  for (const line of text.split(String.fromCharCode(10)).map((l:string)=>l.trim()).filter(Boolean)) {
-    if (/^total[:\s]/i.test(line)) { total = line.replace(/^total[:\s]*/i,'').trim(); continue; }
-    if (/^[A-Z\s]+:$/.test(line)) {
-      if (cur) sections.push(cur);
-      cur = { title: line.replace(/[:\s]+$/,'').trim(), items: [] };
-    } else if (cur) {
-      const p = line.split(/[:|]/);
-      if (p.length >= 2) cur.items.push({ label: p[0].trim(), value: p.slice(1).join(':').trim() });
-    }
+function parseRincianBiaya(text: string): Parsed {
+  const out: Parsed = { total: '', sections: [] };
+  if (!text) return out;
+  let cur: RSection | null = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    const mt = line.match(/^TOTAL\s*BIAYA\s*[:=]?\s*(.+)$/i);
+    if (mt) { out.total = mt[1].trim(); continue; }
+    const mh = line.match(/^(TAHAPAN\s*PEMBAYARAN|INCLUDE|EXCLUDE|BENEFIT|PERSYARATAN|CATATAN)\b/i);
+    if (mh) { let key = mh[1].toUpperCase().replace(/\s+/g, '_'); if (key === 'TAHAPAN_PEMBAYARAN') key = 'TAHAPAN'; cur = { type: key, items: [] }; out.sections.push(cur); continue; }
+    const ms = line.match(/^\s*(\d+)[.)]\s*(.+?)\s*[:=]\s*(.+)$/);
+    if (ms) { if (!cur || cur.type !== 'TAHAPAN') { cur = { type: 'TAHAPAN', items: [] }; out.sections.push(cur); } cur.items.push({ nomor: ms[1], nama: ms[2].trim(), nominal: ms[3].trim() }); continue; }
+    const content = line.replace(/^[•▪\-*]\s*/, '').trim();
+    if (!cur) { cur = { type: 'INFO', items: [] }; out.sections.push(cur); } cur.items.push(content);
   }
-  if (cur) sections.push(cur);
-  return { total, sections };
+  return out;
 }
 
-function genderBadge(g: string) {
-  const v = (g||'').toUpperCase();
-  if (v.includes('LAKI') || v==='L') return <span class="px-2 py-0.5 bg-sky-900/40 text-sky-300 border border-sky-500/30 rounded text-[10px] font-bold"><i class="fas fa-mars mr-1"></i>Laki-laki</span>;
-  if (v.includes('PEREMPUAN') || v==='P') return <span class="px-2 py-0.5 bg-pink-900/40 text-pink-300 border border-pink-500/30 rounded text-[10px] font-bold"><i class="fas fa-venus mr-1"></i>Perempuan</span>;
-  return <span class="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-600 rounded text-[10px] font-bold">{g||'Semua'}</span>;
+function jobTutupUntukLamar(j: Job): boolean {
+  if (!j) return true;
+  if ((j.status || '').toUpperCase().includes('CLOSE')) return true;
+  const th = (j.tahapan || '').toUpperCase().trim();
+  if (!th || th === '-' || th === 'LIST' || th === 'OPEN' || th === 'MENUNGGU' || th === 'REVIEW') return false;
+  return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|PASPORT|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL|MEDIKAL/i.test(th);
 }
 
+function StepTimeline({ sections }: { sections: RSection[] }) {
+  const byType: Record<string, RSection[]> = {};
+  for (const s of sections) { const k = s.type === 'TAHAPAN_PEMBAYARAN' ? 'TAHAPAN' : s.type; (byType[k] ??= []).push(s); }
+  const itemsOf = (arr?: RSection[]): (Step | string)[] => { if (!arr) return []; const o: (Step | string)[] = []; for (const s of arr) if (s.items) o.push(...s.items.filter(Boolean)); return o; };
+  const stepAll = itemsOf(byType.TAHAPAN as any);
+  const incItems = itemsOf(byType.INCLUDE); const excItems = itemsOf(byType.EXCLUDE);
+  const benItems = itemsOf(byType.BENEFIT); const perItems = itemsOf(byType.PERSYARATAN);
+  const catItems = itemsOf(byType.CATATAN); const infoItems = itemsOf(byType.INFO);
+  return (<>
+    {stepAll.length > 0 && (<div class="mb-6"><h4 class="text-xs font-black text-white uppercase tracking-widest mb-4"><i class="fas fa-stairs mr-1.5 text-amber-400"></i>{t('ui.payment_stage')}</h4><div class="space-y-0">{(stepAll as Step[]).map((st, i) => { const last = i === stepAll.length - 1; return (<div key={i} class={'flex gap-3 relative pb-5' + (last ? ' last:pb-0' : '')}><div class="flex flex-col items-center"><div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/20 border border-emerald-400/60 text-emerald-400 text-xs font-black">{i + 1}</div>{!last && <div class="w-px flex-1 bg-emerald-500/25 my-1"></div>}</div><div class="flex-1 pt-1.5"><div class="flex flex-wrap items-center justify-between gap-2"><p class="font-black text-white text-[13px] tracking-wide">{st.nama || String(st)}</p>{st.nominal && <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-black shadow">{st.nominal}</span>}</div></div></div>); })}</div></div>)}
+    {(incItems.length > 0 || excItems.length > 0) && (<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">{incItems.length > 0 && <div class="bg-emerald-900/15 border border-emerald-500/30 rounded-2xl p-4"><h5 class="text-emerald-400 font-black text-[11px] uppercase tracking-widest mb-3"><i class="fas fa-check-circle mr-1"></i>{t('ui.include')}</h5><div class="flex flex-wrap gap-2">{incItems.map((x, i) => <span key={i} class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 text-emerald-300 border border-emerald-500/40 rounded-full text-[10px] font-bold">{String(x)}</span>)}</div></div>}{excItems.length > 0 && <div class="bg-rose-900/15 border border-rose-500/30 rounded-2xl p-4"><h5 class="text-rose-400 font-black text-[11px] uppercase tracking-widest mb-3"><i class="fas fa-times-circle mr-1"></i>{t('ui.exclude')}</h5><div class="flex flex-wrap gap-2">{excItems.map((x, i) => <span key={i} class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-900/40 text-rose-300 border border-rose-500/40 rounded-full text-[10px] font-bold">{String(x)}</span>)}</div></div>}</div>)}
+    {(benItems.length > 0 || perItems.length > 0) && (<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">{benItems.length > 0 && <div class="bg-amber-900/15 border border-amber-500/30 rounded-2xl p-4"><h4 class="text-xs font-black text-amber-400 uppercase tracking-widest mb-3"><i class="fas fa-star mr-1.5"></i>{t('ui.benefit')}</h4><ul class="space-y-2">{benItems.map((x, i) => <li key={i} class="flex items-start text-xs text-slate-300"><i class="fas fa-circle-check text-amber-500 mt-0.5 mr-2 text-[10px]"></i>{String(x)}</li>)}</ul></div>}{perItems.length > 0 && <div class="bg-slate-900/60 border border-slate-700 rounded-2xl p-4"><h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-3"><i class="fas fa-clipboard-check mr-1.5"></i>{t('ui.requirements')}</h4><ul class="space-y-2">{perItems.map((x, i) => <li key={i} class="flex items-start text-xs text-slate-300"><i class="fas fa-check text-emerald-500 mt-0.5 mr-2 text-[10px]"></i>{String(x)}</li>)}</ul></div>}</div>)}
+    {catItems.length > 0 && <div class="bg-sky-900/15 border border-sky-500/30 rounded-2xl p-4 mb-6"><h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-2"><i class="fas fa-info-circle mr-1.5"></i>{t('ui.note')}</h4><p class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">{catItems.map(String).join('\n')}</p></div>}
+    {infoItems.length > 0 && <div class="bg-slate-900/60 border border-slate-700 rounded-2xl p-4 mb-6"><h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-2"><i class="fas fa-info mr-1.5"></i>{t('ui.info_lain')}</h4><p class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">{infoItems.map(String).join('\n')}</p></div>}
+  </>);
+}
+
+function GenderBadge({ gender }: { gender: string }) {
+  const v = (gender || '').toUpperCase();
+  if (v.includes('LAKI') || v.includes('PRIA') || v === 'L') return <span class="px-2.5 py-1 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded font-bold"><i class="fas fa-mars mr-1"></i>{t('candidate.gender_l')}</span>;
+  if (v.includes('WANITA') || v.includes('PEREMPUAN') || v === 'P') return <span class="px-2.5 py-1 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded font-bold"><i class="fas fa-venus mr-1"></i>{t('candidate.gender_p')}</span>;
+  return <span class="px-2.5 py-1 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded font-bold"><i class="fas fa-venus-mars mr-1"></i>{gender || '-'}</span>;
+}
 export default function LokerDetailModal({ job, onClose }: Props) {
-  const st = (job.status||'').toUpperCase();
+  const st = (job.status || '').toUpperCase();
   const isOpen = st.includes('OPEN') || st.includes('URGENT');
-  const { total, sections } = parseRincianBiaya(job.rincianBiaya||'');
-  const displayTotal = total || job.totalBiaya || '';
-  const syaratList = job.syarat && job.syarat !== '-' ? job.syarat.split(',').map((s:string)=>s.trim()).filter(Boolean) : [];
-  const waMsg = encodeURIComponent('Halo Admin ASJ, saya tertarik lowongan '+job.code+' ('+job.pekerjaan+'). Mohon info lebih lanjut.');
+  const isUrgent = st.includes('URGENT');
+  const parsed = parseRincianBiaya(job.rincianBiaya || '');
+  const total = job.totalBiaya || parsed.total || '';
+  const tutupLamar = jobTutupUntukLamar(job);
+  const waMsg = 'Halo Admin ASJ, saya tertarik lowongan ' + job.code + ' (' + job.pekerjaan + '). Mohon info lebih lanjut.';
+  const waNum = '6287889502004';
+  const syaratList = job.syarat && job.syarat !== '-'
+    ? String(job.syarat).split(',').map(s => s.trim()).filter(Boolean) : [];
+  const pamfletUrl = job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 ? job.pamflet : '';
 
   return (
     <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" onClick={onClose}>
-      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e: any)=>e.stopPropagation()}>
+      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e: any) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
-          <div class="flex items-center gap-2">
-            <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
-            <span class={'px-2 py-0.5 rounded-full text-[10px] font-black '+(st.includes('URGENT')?'bg-amber-500 text-white animate-pulse':isOpen?'bg-emerald-600 text-white':'bg-red-700/80 text-white')}>
-              {st.includes('URGENT')?'Urgent':isOpen?'Buka':'Tutup'}
-            </span>
-          </div>
+          <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
           <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><i class="fas fa-times text-xl"></i></button>
         </div>
         <div class="p-5">
-          {job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 && (
-            <div class="mb-4"><img src={job.pamflet} loading="lazy" class="w-full h-40 object-cover rounded-xl border border-slate-700" alt={job.pekerjaan} /></div>
-          )}
-          <h3 class="text-xl font-black text-white mb-2">{job.pekerjaan}</h3>
-          <div class="flex flex-wrap items-center gap-2 mb-4">
-            {genderBadge(job.gender)}
-            {job.lokasi && <span class="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-600 rounded text-[10px] font-bold"><i class="fas fa-map-marker-alt mr-1 text-red-400"></i>{job.lokasi}</span>}
-            {job.kuota && job.kuota !== '-' && <span class="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-600 rounded text-[10px] font-bold"><i class="fas fa-users mr-1"></i>Kuota: {job.kuota}</span>}
-            {job.kategori && <span class="text-[10px] text-slate-500"><i class="fas fa-tag mr-1 text-sky-500/70"></i>{job.kategori}</span>}
-          </div>
-          {displayTotal && (
-            <div class="bg-gradient-to-r from-emerald-900/40 to-sky-900/30 border border-emerald-500/40 rounded-2xl p-5 mb-5 text-center">
-              <p class="text-[10px] font-bold uppercase tracking-[4px] text-emerald-400 mb-1"><i class="fas fa-wallet mr-1"></i> Total Biaya</p>
-              <p class="text-3xl font-black text-white tracking-wide">{displayTotal}</p>
-            </div>
-          )}
-          {sections.map((sec:any,i:number)=>(
-            <div key={i} class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4">
-              <h4 class="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">{sec.title}</h4>
-              <div class="space-y-1.5">
-                {sec.items.map((item:any,j:number)=>(
-                  <div key={j} class="flex justify-between text-xs">
-                    <span class="text-slate-400">{item.label}</span>
-                    <span class="text-white font-bold">{item.value}</span>
-                  </div>
-                ))}
+          <div class="flex items-start gap-4 mb-6">
+            {pamfletUrl && <img src={pamfletUrl} loading="lazy" class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg flex-shrink-0" alt="Pamflet" />}
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
+                {isUrgent ? <span class="px-2.5 py-1 bg-amber-500 text-white rounded-full text-[10px] font-black animate-pulse"><i class="fas fa-bolt mr-1"></i>{t('status.urgent')}</span>
+                : isOpen ? <span class="px-2.5 py-1 bg-emerald-600 text-white rounded-full text-[10px] font-black"><i class="fas fa-door-open mr-1"></i>{t('status.open')}</span>
+                : <span class="px-2.5 py-1 bg-red-700/80 text-white rounded-full text-[10px] font-black"><i class="fas fa-door-closed mr-1"></i>{t('status.close')}</span>}
+                {job.kuota && job.kuota !== '-' && <span class="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-600 rounded-full text-[9px] font-bold"><i class="fas fa-users mr-1"></i>{t('ui.quota')}: {job.kuota}</span>}
               </div>
+              <h3 class="text-xl md:text-2xl font-black text-white mt-1.5 leading-tight">{job.pekerjaan}</h3>
+              <div class="flex flex-wrap items-center gap-2 mt-3 text-[11px]">
+                <GenderBadge gender={job.gender} />
+                {job.lokasi && <span class="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-600 rounded font-bold"><i class="fas fa-map-marker-alt mr-1 text-red-400"></i>{job.lokasi}</span>}
+              </div>
+              {job.kategori && <div class="text-[10px] text-slate-500 mt-2"><i class="fas fa-tag mr-1 text-sky-500/70"></i>{job.kategori}</div>}
             </div>
-          ))}
-          {syaratList.length > 0 && (
-            <div class="bg-slate-900/60 border border-slate-700 rounded-xl p-4 mb-4">
-              <h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-3"><i class="fas fa-clipboard-check mr-1.5"></i> Persyaratan</h4>
-              <ul class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5">
-                {syaratList.map((s:string,i:number)=>(
-                  <li key={i} class="flex items-start text-xs text-slate-300"><i class="fas fa-check text-emerald-500 mt-0.5 mr-2 text-[10px]"></i>{s}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {job.keterangan && job.keterangan !== '-' && (
-            <div class="bg-sky-900/15 border border-sky-500/30 rounded-xl p-4 mb-5">
-              <h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-2"><i class="fas fa-info-circle mr-1.5"></i> Keterangan</h4>
-              <p class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">{job.keterangan}</p>
-            </div>
-          )}
+          </div>
+          {total && <div class="bg-gradient-to-r from-emerald-900/40 to-sky-900/30 border border-emerald-500/40 rounded-2xl p-5 mb-6 text-center"><p class="text-[10px] font-bold uppercase tracking-[4px] text-emerald-400 mb-1"><i class="fas fa-wallet mr-1"></i>{t('ui.detail_total_title')}</p><p class="text-4xl font-black text-white tracking-wide">{total}</p><p class="text-[10px] text-slate-400 mt-1">{t('ui.detail_total_sub')}</p></div>}
+          <StepTimeline sections={parsed.sections} />
+          {syaratList.length > 0 && <div class="bg-slate-900/60 border border-slate-700 rounded-2xl p-5 mb-6"><h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-4"><i class="fas fa-clipboard-check mr-1.5"></i>{t('ui.detail_syarat')}</h4><ul class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2.5">{syaratList.map((s, i) => <li key={i} class="flex items-start text-xs text-slate-300"><i class="fas fa-check text-emerald-500 mt-0.5 mr-2 text-[10px]"></i>{s}</li>)}</ul></div>}
+          {job.keterangan && job.keterangan !== '-' && <div class="bg-sky-900/15 border border-sky-500/30 rounded-2xl p-5 mb-6"><h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-2"><i class="fas fa-info-circle mr-1.5"></i>{t('ui.detail_keterangan')}</h4><p class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">{job.keterangan}</p></div>}
           <div class="flex flex-col sm:flex-row gap-3">
-            <a href={'https://wa.me/6287889502004?text='+waMsg} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fab fa-whatsapp mr-1.5"></i> Chat WA</a>
-            <a href="/apply" class={'flex-1 px-5 py-3.5 text-white text-sm font-bold text-center rounded-xl shadow transition '+(isOpen?'bg-emerald-600 hover:bg-emerald-500':'bg-slate-600 opacity-60 cursor-not-allowed')}><i class="fas fa-paper-plane mr-1.5"></i> {isOpen?'Lamar Sekarang':'Ditutup'}</a>
+            {job.templateCv && <a href={job.templateCv} target="_blank" download class="flex-1 px-5 py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fas fa-download mr-1.5"></i>{t('button.format')}</a>}
+            {tutupLamar ? <button disabled class="flex-1 px-5 py-3.5 bg-slate-600 text-white text-sm font-black text-center rounded-xl shadow-inner opacity-60 cursor-not-allowed"><i class="fas fa-door-closed mr-1.5"></i>{t('button.closed')}</button>
+            : <a href="/apply" class="flex-1 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black text-center rounded-xl shadow transition"><i class="fas fa-paper-plane mr-1.5"></i>{t('button.apply_now')}</a>}
+            <a href={'https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg)} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fab fa-whatsapp mr-1.5"></i>{t('button.chat_wa')}</a>
           </div>
         </div>
       </div>
