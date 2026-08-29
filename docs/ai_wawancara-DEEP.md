@@ -1,7 +1,10 @@
-# AI Wawancara
+# AI Wawancara - Deep Analysis
 
-> Simulator Wawancara VIP + Generate Model + Hasil.
+## Candidate: Start (VIP guard) -> processAiInterview -> Gemini 14 questions
+## Candidate: Chat -> processAiInterview (20 msg trim) -> follow-up
+## Candidate: Finish -> selesaikanWawancara -> extract score/biodata -> simpanHasilWawancara
+## Admin: Generate Model -> generateWawancaraModel -> Gemini 14 questions
+## Admin: View Results -> getHasilWawancara -> read ai_form_submissions
 
-## Kandidat: processAiInterview -> selesaikanWawancara -> simpanHasilWawancara
-## Admin: generateWawancaraModel, getHasilWawancara, updateBiodata
-## Backend: resolveProfilKandidat -> buildInterviewSystem -> Gemini (14 pertanyaan)
+## Handlers: ai-chat.ts (processAiInterview, selesaikanWawancara, simpanHasilWawancara, getHasilWawancara)
+##           admin-ai-context.ts (generateWawancaraModel)

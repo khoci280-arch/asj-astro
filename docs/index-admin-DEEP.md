@@ -1,18 +1,20 @@
-# index + admin - Deep Analysis (Astro + Preact)
+# index.astro + admin.astro + public.astro - Deep Analysis
 
-> Halaman utama: App.tsx (header) + AdminPanel.tsx (multi-tab).
+> Halaman utama yang memakai App.tsx (header + nav + login).
 
-## Component Map
+## 1. Component Tree
 
-| Legacy | Astro Component | Lines |
-|--------|----------------|-------|
-| header.html | App.tsx | 114 |
-| page-public | LokerTable.tsx | 168 |
-| page-public (layanan) | LayananSection.astro | 150 |
-| page-admin | AdminPanel.tsx | 150 |
-| admin tabs (8) | Tab*.tsx | 180-300 each |
-| page-kandidat | CandidateDash.tsx | 338 |
+```
+index.astro / public.astro:
+  BaseLayout.astro -> App.tsx + LokerTable.tsx + LayananSection.astro + Toast + Footer
 
-## State: Nanostores (authStore, langStore, adminStore)
-## Backend: get-app-data, candidates, jobs, config, whatsapp, ai-chat, run-migration, auth
-## i18n: t() from store/i18n.ts, ~600+ keys
+admin.astro:
+  BaseLayout.astro -> App.tsx + AdminPanel.tsx (8 tabs) + Toast + Footer
+  TabKelola, TabDbJob, TabTambah, TabPelamar, TabJadwal, TabMail, TabWA, TabConfig
+```
+
+## 2. State: Nanostores (authReactive, i18n, adminStore, userStore)
+
+## 3. Backend: get-app-data, bridge-links (50+ actions), candidates, jobs, config, whatsapp, schedule-reminders, ai-chat
+
+## 4. i18n: 600+ keys (ui.*, admin.*, form.mf_*, apply.*, siswa.*, login.*, toast.*, share.*, public.*)

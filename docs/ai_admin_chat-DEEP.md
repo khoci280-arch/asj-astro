@@ -1,7 +1,7 @@
 # AI Admin Chat - Deep Analysis
 
-> AI HR Copilot untuk admin panel.
+> AI HR Copilot untuk admin panel. Chat only, no persist.
 
-## Location: AdminPanel.tsx (AI Copilot modal)
-## Backend: processAdminAIChat (ai-chat), guard: requireRole(admin)
-## No persistence (chat only)
+## Flow: Admin -> bridge-links/processAdminAIChat -> Gemini -> reply
+## Guard: requireRole('admin')
+## No DB writes, no auto-translate

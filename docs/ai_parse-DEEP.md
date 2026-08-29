@@ -1,6 +1,6 @@
-# AI Parse Dokumen
+# AI Parse Dokumen - Deep Analysis
 
-> Admin upload file -> Gemini parse -> update biodata.
-
-## Flow: FileReader -> base64 -> parseDokumenBiodata -> geminiParseFile -> submitMasterForm
-## Limits: 12 MIME types, 8MB max
+## Flow: Admin upload -> base64 -> bridge-links/parseDokumenBiodata (admin-ai-context)
+  -> Gemini parse (MIME validate + 8MB limit + admin guard)
+  -> Return { wa, data, fieldCount }
+  -> bridge-links/submitMasterForm -> save to master_database_candidate

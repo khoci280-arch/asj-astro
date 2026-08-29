@@ -1,8 +1,8 @@
-# siswa-baru - Deep Analysis (Astro + Preact)
+# siswa-baru.astro - Deep Analysis
 
-> Pendaftaran siswa baru via chat AI + form.
+> Pendaftaran siswa baru via chat AI + form + upload.
 
-## Component: SiswaBaruForm.tsx (split view)
-## Backend: processSiswaAIChat (ai-chat), submitDaftarSiswa (ai-form-submit)
-## DB: respon_siswa_baru
-## Features: AI chat, draft auto-save, parallel uploads, 12 field validation, i18n
+## Component: SiswaBaruForm.tsx (split: chat 40% + form 60%)
+## Actions: processSiswaAIChat (bridge-links), submitDaftarSiswa (ai-form-submit)
+## DB: INSERT respon_siswa_baru (12 fields + 3 file URLs)
+## State: messages, biodata (9 flat fields), docs (3 uploads), input, sending, activeTab

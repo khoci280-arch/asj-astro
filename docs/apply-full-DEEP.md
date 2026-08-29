@@ -1,8 +1,9 @@
-# apply-full - Deep Analysis (Astro + Preact)
+# apply.astro - Deep Analysis
 
 > Form lamaran loker 3 langkah.
 
 ## Component: ApplyFullForm.tsx (3-step wizard)
-## Backend: cekDataPelamar (candidates), submitApply (apply)
-## DB: database_asj_form, database_candidate, master_database_candidate
-## Validation: applySchema (Zod)
+## Actions: cekDataPelamar (bridge-links), submitApply (apply)
+## DB: database_asj_form (INSERT/UPDATE), database_candidate (PATCH), master_database_candidate (PATCH)
+## Validation: waSchema, emailSchema (Zod)
+## State: step, form, uploads, loading, success

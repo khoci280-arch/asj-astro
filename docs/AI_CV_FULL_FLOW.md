@@ -1,6 +1,9 @@
-# AI CV Full Flow
+# AI CV Full Flow - End-to-End
 
-> Alur lengkap: Kandidat chat -> AI return -> form fill -> upload -> save DB -> admin review.
+## Flow:
+Kandidat (AiCvForm) -> chat AI -> upload Cloudinary -> submitDataAsj
+  -> Backend: upsert ai_form_submissions + master_database_candidate + sync database_candidate
+  -> Mail sync -> FCM push -> Admin review (TabMail)
 
-## Flow: AiCvForm.tsx -> ai-form-submit -> ai_form_submissions + master_database_candidate + database_candidate
-## Key: AI_MANAGED_KEYS, AI_ID_JP_PAIRS (24 pairs)
+## Storage: Pas Photo, JFT, SSW, KTP, KK, Ijazah SD/SMP/SMA, Univ (all Cloudinary)
+## submitted_via: ai_form, interview, esign, ttd

@@ -1,8 +1,10 @@
-# ai_form - Deep Analysis (Astro + Preact)
+# ai-cv.astro - Deep Analysis
 
-> AI CV: Chat AI + Form CV Bilingual.
+> AI CV (Qween Jeklin) - Chat AI + Form CV Bilingual.
 
-## Component: AiCvForm.tsx (split view)
-## Backend: processAIChat (ai-chat), getDrafCvMaster (master-data), getAppData (get-app-data), submitDataAsj (ai-form-submit)
-## DB: master_database_candidate, database_candidate, ai_form_submissions
-## Features: 70+ field mappings, auto-translate 24 pairs, VIP guard, smart welcome, suggestion pills
+## Component: AiCvForm.tsx (split: chat 35% + form 65%)
+## Actions: processAIChat (bridge-links/ai-chat), submitDataAsj (ai-form-submit)
+## DB: master_database_candidate (READ/WRITE), database_candidate (SYNC), ai_form_submissions (UPSERT)
+## Chat: message -> Gemini -> reply + data -> merge -> form auto-fill
+## Save: validate -> upload Cloudinary -> upsert 3 tables
+## Auto-translate: 24 ID->JP pairs
