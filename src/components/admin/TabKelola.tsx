@@ -1,18 +1,17 @@
 /**
  * TabKelola.tsx — Admin loker management tab
  * Source: legacy/index.html page-admin → admin-kelola
+ * Integrated: AdminJobEditModal, AdminShareModal
  */
 import { useState, useEffect } from 'preact/hooks';
+import { t } from '../../store/i18n';
+import AdminJobEditModal from './AdminJobEditModal';
+import AdminShareModal from './AdminShareModal';
 
 type Loker = {
-  code: string;
-  pekerjaan: string;
-  status: string;
-  kategori: string;
-  gender: string;
-  lokasi: string;
-  kuota: string;
-  keterangan: string;
+  code: string; pekerjaan: string; status: string; kategori: string;
+  gender: string; lokasi: string; kuota: string; keterangan: string;
+  syarat?: string; templateCv?: string; pamflet?: string;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -25,70 +24,79 @@ export default function TabKelola() {
   const [loker, setLoker] = useState<Loker[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editJob, setEditJob] = useState<Loker | null>(null);
+  const [shareJob, setShareJob] = useState<Loker | null>(null);
 
   useEffect(() => { fetchLoker(); }, []);
 
   async function fetchLoker() {
     try {
-      const res = await fetch('/.netlify/functions/getAppData', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
       });
       const data = await res.json();
-      if (data.success && data.jobs) {
-        setLoker(data.jobs);
-      }
-    } catch (err) {
-      console.error('[TabKelola] Failed:', err);
-    } finally {
-      setLoading(false);
-    }
+      if (data.success && data.jobs) setLoker(data.jobs);
+    } catch (err) { console.error('[TabKelola]', err); }
+    finally { setLoading(false); }
   }
 
-  const filtered = loker.filter((j) =>
+  const filtered = loker.filter(j =>
     !search || (j.code || '').toLowerCase().includes(search.toLowerCase()) ||
     (j.pekerjaan || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  function getBadge(status: string) {
-    return STATUS_BADGE[(status || '').toUpperCase()] || STATUS_BADGE.CLOSE;
-  }
+  const getBadge = (s: string) => STATUS_BADGE[(s || '').toUpperCase()] || STATUS_BADGE.CLOSE;
+
+  const toggleStatus = async (code: string, newStatus: string) => {
+    try {
+      await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus] }),
+      });
+      setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteJob = async (code: string) => {
+    if (!confirm('Yakin hapus loker ' + code + '?')) return;
+    try {
+      await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'hapusJobData', args: [code] }),
+      });
+      setLoker(prev => prev.filter(j => j.code !== code));
+    } catch (e) { console.error(e); }
+  };
 
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-red-400 font-bold text-lg"><i class="fas fa-globe mr-2"></i> Loker Publik</h2>
+        <h2 class="text-red-400 font-bold text-lg"><i class="fas fa-globe mr-2"></i> {t('admin.tab_public_job')}</h2>
         <div class="relative w-72">
           <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-          <input
-            type="text"
-            value={search}
-            onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
-            placeholder="Cari Kode / Pekerjaan..."
-            class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition"
-          />
+          <input type="text" value={search} onInput={e => setSearch((e.target as HTMLInputElement).value)} placeholder={t('admin.search_placeholder')} class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
         </div>
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-red-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat data loker...</p></div>
+        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-red-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat...</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
-                <th scope="col" class="p-4">ID Code</th>
-                <th scope="col" class="p-4">Pekerjaan</th>
-                <th scope="col" class="p-4 text-center">Status</th>
-                <th scope="col" class="p-4 text-center">Aksi</th>
-                <th scope="col" class="p-4 text-center">Hapus</th>
+                <th class="p-4">ID Code</th>
+                <th class="p-4">Pekerjaan</th>
+                <th class="p-4 text-center">Status</th>
+                <th class="p-4 text-center">Aksi</th>
+                <th class="p-4 text-center">Hapus</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} class="p-6 text-center text-slate-500">Tidak ada loker ditemukan.</td></tr>
-              ) : filtered.map((j) => (
+                <tr><td colSpan={5} class="p-6 text-center text-slate-500">Tidak ada loker.</td></tr>
+              ) : filtered.map(j => (
                 <tr key={j.code} class="hover:bg-white/5 transition-all">
                   <td class="p-4 font-mono text-red-300 font-bold">{j.code}</td>
                   <td class="p-4 font-bold text-white">{j.pekerjaan}</td>
@@ -97,13 +105,14 @@ export default function TabKelola() {
                   </td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-2">
-                      <button class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[10px] text-white font-bold shadow transition">OPEN</button>
-                      <button class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[10px] text-white font-bold shadow transition">CLOSE</button>
-                      <button class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[10px] font-bold shadow transition"><i class="fas fa-edit"></i> Edit</button>
+                      <button onClick={() => toggleStatus(j.code, 'OPEN')} class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[10px] text-white font-bold shadow transition">OPEN</button>
+                      <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[10px] text-white font-bold shadow transition">CLOSE</button>
+                      <button onClick={() => setEditJob(j)} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[10px] font-bold shadow transition"><i class="fas fa-edit"></i> Edit</button>
+                      <button onClick={() => setShareJob(j)} class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[10px] font-bold shadow transition"><i class="fas fa-share-alt"></i> Share</button>
                     </div>
                   </td>
                   <td class="p-4 text-center">
-                    <button class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-all mx-auto"><i class="fas fa-trash"></i></button>
+                    <button onClick={() => deleteJob(j.code)} class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-all mx-auto"><i class="fas fa-trash"></i></button>
                   </td>
                 </tr>
               ))}
@@ -112,6 +121,9 @@ export default function TabKelola() {
         </div>
       )}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} loker</p>
+
+      {editJob && <AdminJobEditModal job={editJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
+      {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
     </div>
   );
 }
