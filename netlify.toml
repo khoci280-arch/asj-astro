@@ -1,17 +1,17 @@
 # ─── Netlify Configuration ───
-# Astro static site + legacy Netlify Functions backend
+# Astro static site + Netlify Functions backend
 # Site: https://incredible-starship-054a78.netlify.app
 
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Backend functions — point to the working legacy directory
+# Backend functions — migrated from legacy/ to project root
 [functions]
-  directory = "legacy/netlify/functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = [
-    "legacy/netlify/functions/_lib/**",
+    "netlify/functions/_lib/**",
     "shared/**"
   ]
 
