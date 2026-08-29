@@ -46,7 +46,7 @@ export default function CandidateDash() {
     try {
       const session = JSON.parse(localStorage.getItem('asj_kandidat_session') || '{}');
       if (!session.wa) { window.location.href = '/'; return; }
-      const res = await fetch('/.netlify/functions/getAppData', {
+      const res = await fetch('/.netlify/functions/bridge-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['kandidat'] }),
