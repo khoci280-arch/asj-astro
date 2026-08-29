@@ -4,8 +4,10 @@
  * Split panel: Chat AI Jeklin (left 35%) + CV Preview Form (right 65%)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
+import { validate, waSchema } from '../../lib/schemas';
 
 interface ChatMessage { role: 'assistant' | 'user'; text: string; time: string }
 
@@ -119,6 +121,7 @@ export default function AiCvForm() {
   };
 
   const saveToDatabase = async () => {
+    if (cv.wa) { var vw = validate(waSchema, cv.wa); if (!vw.success) { showToast(vw.errors[0], "error"); return; } }
     try {
       const token = authStore.get().token;
       const fd = new FormData();

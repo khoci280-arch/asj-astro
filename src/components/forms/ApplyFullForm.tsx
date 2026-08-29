@@ -3,8 +3,10 @@
  * Source: legacy/apply-full.html (1:1 match)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
+import { validate, registerSchema, waSchema, emailSchema } from '../../lib/schemas';
 
 interface FormData {
   job: string; bidang: string; wa: string; nama: string; email: string;
@@ -126,8 +128,9 @@ export default function ApplyFullForm() {
   };
 
   const submitApply = async () => {
-    if (!agree) return alert('Centang pernyataan terlebih dahulu.');
-    if (!form.nama || !form.wa) return alert('Nama dan WhatsApp wajib diisi.');
+    if (!agree) { showToast('Centang pernyataan terlebih dahulu.', 'error'); return; }
+    var vr = validate(registerSchema, { nama: form.nama, wa: form.wa }); if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
+    if (form.email) { var ve = validate(emailSchema, form.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     setLoading(true);
     try {
       const token = authStore.get().token;

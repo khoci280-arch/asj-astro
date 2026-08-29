@@ -4,8 +4,10 @@
  * Steps: Identitas → Medis & Wawancara → Riwayat → Keluarga → Dokumen
  */
 import { useState, useEffect } from 'preact/hooks';
+import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
+import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
 
 /* ── Types ── */
 interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; alamat: string; }
@@ -85,7 +87,7 @@ export default function MasterFullForm() {
   }, []);
 
   const gateLogin = async () => {
-    if (!gatePass || !gateWa) { setGateMsg('Masukkan password.'); return; }
+    var vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
       const res = await apiClient.post('/.netlify/functions/master-login', { wa: gateWa, password: gatePass });
       if (res.ok) {
@@ -107,6 +109,10 @@ export default function MasterFullForm() {
   };
 
   const submitMaster = async (isDraft: boolean) => {
+    if (!isDraft) {
+      if (data.nama) { var vn = validate(waSchema, data.wa || ""); if (!vn.success) { showToast(vn.errors[0], "error"); return; } }
+      if (data.email) { var ve = validate(emailSchema, data.email); if (!ve.success) { showToast(ve.errors[0], "error"); return; } }
+    }
     setSaving(true);
     try {
       const fd = new FormData();

@@ -4,8 +4,10 @@
  * Split panel: Chat AI (left) + Form Biodata Preview (right)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { showToast } from '../../components/Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
+import { validate, waSchema, emailSchema } from '../../lib/schemas';
 
 interface ChatMessage {
   role: 'assistant' | 'user';
@@ -85,7 +87,9 @@ export default function SiswaBaruForm() {
   };
 
   const handleSubmit = async () => {
-    if (!biodata.nama) return alert('Biodata kosong. Jawab pertanyaan Jeklin dulu.');
+    if (!biodata.nama) { showToast('Biodata kosong. Jawab pertanyaan Jeklin dulu.', 'error'); return; }
+    if (biodata.waSiswa) { var vw = validate(waSchema, biodata.waSiswa); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
+    if (biodata.email) { var ve = validate(emailSchema, biodata.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     const formData = new FormData();
     formData.append('biodata', JSON.stringify(biodata));
     Object.entries(docs).forEach(([k, f]) => { if (f) formData.append(k, f); });

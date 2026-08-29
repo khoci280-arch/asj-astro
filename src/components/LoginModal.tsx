@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive';
 import { showToast } from './Toast';
+import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 1 | 2 | 3;
@@ -32,13 +33,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     return r.json();
   }
   async function handleReg() {
-    if (!regNama || !regWa) { showToast("Isi semua field", "error"); return; }
+    var vr = validate(registerSchema, { nama: regNama, wa: regWa }); if (!vr.success) { showToast(vr.errors[0], "error"); return; }
     setLoading(true);
     try { const r = await api("daftarKandidat", [regNama, regWa]); if (r.success) { showToast("Berhasil!", "success"); onSwitchMode("login"); } else showToast(r.error || "Gagal", "error"); }
     catch (e: any) { showToast(e.message, "error"); } finally { setLoading(false); }
   }
   async function handleLogin() {
-    if (!logWa || !logPass) { showToast("Isi semua field", "error"); return; }
+    var vl = validate(kandidatLoginSchema, { wa: logWa, password: logPass }); if (!vl.success) { showToast(vl.errors[0], "error"); return; }
     setLoading(true);
     try { const r = await api("loginKandidat", [logWa, logPass]);
       if (r.success && r.nama) { loginAsKandidat(r.nama, r.wa, r.sessionToken||"", r.refreshToken||""); showToast("Selamat datang, "+r.nama+"!", "success"); onClose(); window.location.reload(); }
@@ -46,14 +47,14 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     } catch (e: any) { showToast(e.message, "error"); } finally { setLoading(false); }
   }
   async function handleMaster() {
-    if (!masterPin) { showToast("Masukkan PIN", "error"); return; }
+    var vm = validate(adminMasterPinSchema, { pin: masterPin }); if (!vm.success) { showToast(vm.errors[0], "error"); return; }
     setLoading(true);
     try { const t = Date.now().toString(36)+Math.random().toString(36).substr(2); const r = await api("checkAdminMaster", [masterPin, t]); if (r.success) setAdminStep(2); else showToast(r.error || "PIN salah", "error"); }
     catch (e: any) { showToast(e.message, "error"); } finally { setLoading(false); }
   }
   function selectAdmin(n: string) { setSelectedAdmin(n); setAdminStep(3); }
   async function handlePersonal() {
-    if (!personalPin) { showToast("Masukkan PIN", "error"); return; }
+    var vp = validate(adminPersonalPinSchema, { name: selectedAdmin, pin: personalPin }); if (!vp.success) { showToast(vp.errors[0], "error"); return; }
     setLoading(true);
     try { const t = Date.now().toString(36)+Math.random().toString(36).substr(2); const r = await api("checkAdminPersonal", [selectedAdmin, personalPin, t]);
       if (r.success) { loginAsAdmin(selectedAdmin, r.sessionToken||t, r.refreshToken||""); showToast("Selamat datang, "+selectedAdmin+"!", "success"); onClose(); window.location.reload(); }
