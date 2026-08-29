@@ -8,6 +8,7 @@ import { showToast } from '../../components/Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
+import { t } from '../../store/i18n';
 
 interface ChatMessage {
   role: 'assistant' | 'user';
@@ -39,7 +40,7 @@ export default function SiswaBaruForm() {
 
   useEffect(() => {
     const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    setMessages([{ role: 'assistant', text: 'Halo! Saya Qween Jeklin, asisten pendaftaran ASJ. Silakan jawab pertanyaan saya untuk mengisi form pendaftaran.', time: now }]);
+    setMessages([{ role: 'assistant', text: t('siswa.greeting'), time: now }]);
   }, []);
 
   useEffect(() => {
@@ -100,26 +101,26 @@ export default function SiswaBaruForm() {
         headers: { Authorization: 'Bearer ' + token },
         body: formData
       });
-      alert(res.ok ? 'Data berhasil disimpan!' : 'Gagal menyimpan. Coba lagi.');
-    } catch (e) { alert('Error: ' + (e as Error).message); }
+      showToast(res.ok ? t('siswa.success') : t('siswa.failed'), res.ok ? 'success' : 'error');
+    } catch (e) { showToast(t('siswa.network_error') + ' ' + (e as Error).message, 'error'); }
   };
 
   const BIODATA_FIELDS = [
-    { id: 'nama' as const, label: 'NAMA LENGKAP', span: true },
-    { id: 'ttl' as const, label: 'TEMPAT, TANGGAL LAHIR' },
-    { id: 'gender' as const, label: 'GENDER' },
-    { id: 'agama' as const, label: 'AGAMA' },
-    { id: 'email' as const, label: 'EMAIL' },
-    { id: 'alamat' as const, label: 'ALAMAT LENGKAP', span: true },
-    { id: 'pendidikan' as const, label: 'PENDIDIKAN TERAKHIR', span: true },
-    { id: 'waSiswa' as const, label: 'NO. WA SISWA' },
-    { id: 'waOrtu' as const, label: 'NO. WA ORTU / WALI' }
+    { id: 'nama' as const, label: t('siswa.field_nama'), span: true },
+    { id: 'ttl' as const, label: t('siswa.field_ttl') },
+    { id: 'gender' as const, label: t('siswa.field_gender') },
+    { id: 'agama' as const, label: t('siswa.field_agama') },
+    { id: 'email' as const, label: t('siswa.field_email') },
+    { id: 'alamat' as const, label: t('siswa.field_alamat'), span: true },
+    { id: 'pendidikan' as const, label: t('siswa.field_pendidikan'), span: true },
+    { id: 'waSiswa' as const, label: t('siswa.field_wa_siswa') },
+    { id: 'waOrtu' as const, label: t('siswa.field_wa_ortu') }
   ];
 
   const DOC_FIELDS = [
-    { type: 'ktp', label: 'SCAN KTP', icon: 'fa-id-card', bg: 'bg-sky-600' },
-    { type: 'kk', label: 'SCAN KK', icon: 'fa-users', bg: 'bg-amber-600' },
-    { type: 'ijazah', label: 'SCAN IJAZAH', icon: 'fa-graduation-cap', bg: 'bg-emerald-600' }
+    { type: 'ktp', label: t('siswa.field_ktp'), icon: 'fa-id-card', bg: 'bg-sky-600' },
+    { type: 'kk', label: t('siswa.field_kk'), icon: 'fa-users', bg: 'bg-amber-600' },
+    { type: 'ijazah', label: t('siswa.field_ijazah'), icon: 'fa-graduation-cap', bg: 'bg-emerald-600' }
   ];
 
   return (
@@ -158,7 +159,7 @@ export default function SiswaBaruForm() {
           {sending && (
             <div class="flex justify-start">
               <div class="bg-slate-800 rounded-xl px-4 py-2.5 shadow-lg">
-                <span class="text-xs text-slate-400 animate-pulse">Jeklin mengetik...</span>
+                <div class="flex gap-1.5 items-center h-8"><div class="w-2 h-2 bg-amber-500/80 rounded-full animate-bounce"></div><div class="w-2 h-2 bg-amber-500/80 rounded-full animate-bounce" style="animation-delay:0.15s"></div><div class="w-2 h-2 bg-amber-500/80 rounded-full animate-bounce" style="animation-delay:0.3s"></div></div>
               </div>
             </div>
           )}
@@ -168,7 +169,7 @@ export default function SiswaBaruForm() {
             onInput={(e) => setInput((e.target as HTMLInputElement).value)}
             onKeyDown={handleKeyDown}
             class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
-            placeholder="Ketik balasanmu di sini..." />
+            placeholder={t("siswa.greeting")} />
           <button onClick={handleSend} disabled={sending}
             class="bg-amber-600 hover:bg-amber-500 text-wh
 ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
@@ -221,7 +222,7 @@ ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)]
                   <label class="block text-[10px] font-bold text-sky-400 mb-1">{d.label}</label>
                   <input type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
                     class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
-                  {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate">{docStatus[d.type]}</div>}
+                  {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><i class="fas fa-check mr-0.5"></i>{docStatus[d.type]}</div>}
                 </div>
               </div>
             ))}
