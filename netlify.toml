@@ -1,21 +1,20 @@
 # ─── Netlify Configuration ───
 # Astro static site + Netlify Functions backend
-# Site: https://incredible-starship-054a78.netlify.app
 
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Backend functions — migrated from legacy/ to project root
+# Backend functions
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = [
     "netlify/functions/_lib/**",
-    "shared/**"
+    "netlify/functions/shared/**"
   ]
 
-# Cache headers for static assets
+# Cache headers
 [[headers]]
   for = "/_astro/*"
   [headers.values]
@@ -26,7 +25,6 @@
   [headers.values]
     Cache-Control = "no-cache"
 
-# SPA fallback for client-side routes
 [[redirects]]
   from = "/admin"
   to = "/index.html"
