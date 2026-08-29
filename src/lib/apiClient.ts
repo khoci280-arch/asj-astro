@@ -1,17 +1,18 @@
 /**
- * apiClient.ts — Centralized API wrapper with auto-inject HMAC token
- * Per PDF Fase 7: "Create reusable apiClient.ts wrapper using native fetch"
+ * apiClient.ts — Centralized API wrapper with auto-inject session token
  *
- * All backend requests MUST go through this client.
+ * All backend requests go through bridge-links (single dispatcher).
  * Token is auto-read from nanostores and injected into Authorization header.
  *
- * Updated: now checks Supabase session as fallback if local token is stale.
+ * Updated: routes ALL actions through /.netlify/functions/bridge-links
+ * instead of per-action function URLs (which don't exist as separate functions).
  */
 import { authStore, logout } from '../store/authReactive';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
 
-const API_BASE = '/.netlify/functions';
+/** Single backend endpoint — all actions dispatched through bridge-links */
+const API_ENDPOINT = '/.netlify/functions/bridge-links';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -44,7 +45,7 @@ async function getFreshToken(): Promise<string> {
 }
 
 /**
- * Core fetch wrapper — injects HMAC token automatically
+ * Core fetch wrapper — sends all actions to bridge-links dispatcher
  */
 export async function apiClient<T = ApiResponse>(
   action: string,
@@ -65,21 +66,21 @@ export async function apiClient<T = ApiResponse>(
     throw new Error('No valid session');
   }
 
-  // Build request
+  // Build request — all actions go through bridge-links with action in body
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  // Auto-inject HMAC token
+  // Auto-inject session token
   if (sessionToken) {
     headers['Authorization'] = 'Bearer ' + sessionToken;
   }
 
   try {
-    const res = await fetch(API_BASE + '/' + action, {
+    const res = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ action, args }),
+      body: JSON.stringify({ action, args, sessionToken }),
     });
 
     if (!res.ok) {
