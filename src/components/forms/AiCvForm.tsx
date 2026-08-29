@@ -381,17 +381,17 @@ export default function AiCvForm() {
           </Section>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <UploadRow type="foto" label="Pas Foto" icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} />
-            <UploadRow type="jft" label="Sertifikat JFT" icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} />
-            <UploadRow type="ssw" label="Sertifikat SSW" icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} />
+            <UploadRow type="foto" label="Pas Foto" icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} onUpload={handleDocUpload} />
+            <UploadRow type="jft" label="Sertifikat JFT" icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
+            <UploadRow type="ssw" label="Sertifikat SSW" icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <UploadRow type="ktp" label="KTP" icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} />
-            <UploadRow type="kk" label="KK" icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} />
-            <UploadRow type="ijazahSd" label="IJAZAH SD" icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} />
-            <UploadRow type="ijazahSmp" label="IJAZAH SMP" icon="fa-graduation-cap" bg="bg-sky-600" accept=".pdf" status={docStatus['ijazahSmp']} />
-            <UploadRow type="ijazahSma" label="IJAZAH SMA" icon="fa-graduation-cap" bg="bg-teal-600" accept=".pdf" status={docStatus['ijazahSma']} />
-            <UploadRow type="univ" label="IJAZAH UNIV" icon="fa-university" bg="bg-indigo-600" accept=".pdf" status={docStatus['univ']} />
+            <UploadRow type="ktp" label="KTP" icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
+            <UploadRow type="kk" label="KK" icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSd" label="IJAZAH SD" icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSmp" label="IJAZAH SMP" icon="fa-graduation-cap" bg="bg-sky-600" accept=".pdf" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSma" label="IJAZAH SMA" icon="fa-graduation-cap" bg="bg-teal-600" accept=".pdf" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
+            <UploadRow type="univ" label="IJAZAH UNIV" icon="fa-university" bg="bg-indigo-600" accept=".pdf" status={docStatus['univ']} onUpload={handleDocUpload} />
           </div>
         </div>
       </main>
@@ -449,8 +449,9 @@ function TextAreaPair({ label, idId, idJp, valueId, valueJp, onChange }: {
   );
 }
 
-function UploadRow({ type, label, icon, bg, accept, status }: {
+function UploadRow({ type, label, icon, bg, accept, status, onUpload }: {
   type: string; label: string; icon: string; bg: string; accept: string; status?: string;
+  onUpload?: (type: string, file: File | null) => void;
 }) {
   return (
     <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
@@ -463,6 +464,7 @@ function UploadRow({ type, label, icon, bg, accept, status }: {
           {status && <span class="text-[9px] text-emerald-400 font-medium"><i class="fas fa-check mr-0.5"></i>{status}</span>}
         </div>
         <input type="file" accept={accept}
+          onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}
           class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
       </div>
     </div>
