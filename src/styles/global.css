@@ -144,3 +144,59 @@ html.light .border-slate-800 { border-color: var(--border-color) !important; }
 
 html.light .responsive-table td { border-color: var(--border-subtle) !important; }
 html.light .responsive-table tr { border-color: var(--border-color) !important; }
+
+
+/* ─── Extended Light Theme Overrides ─── */
+html.light .bg-slate-700 { background-color: #d1d5db !important; }
+html.light .bg-slate-600 { background-color: #cbd5e1 !important; }
+html.light .bg-zinc-900 { background-color: var(--bg-card) !important; }
+html.light .bg-zinc-800 { background-color: var(--bg-card) !important; }
+
+/* Gradient overlays that stay dark in header/footer are fine (branded areas) */
+/* But chat panels, cards, modals should switch */
+html.light .bg-black/60,
+html.light .bg-black/80 { background-color: rgba(0,0,0,0.08) !important; }
+
+/* Hover states */
+html.light .hover:bg-white/5 { background-color: transparent !important; }
+html.light .hover:bg-white/10 { background-color: rgba(0,0,0,0.04) !important; }
+html.light .hover:bg-slate-700 { background-color: #d1d5db !important; }
+html.light .hover:bg-slate-800 { background-color: #d1d5db !important; }
+
+/* More text overrides */
+html.light .text-white/40 { color: rgba(0,0,0,0.4) !important; }
+html.light .text-white/60 { color: rgba(0,0,0,0.5) !important; }
+html.light .text-pink-300 { color: #be185d !important; }
+html.light .text-emerald-400 { color: #059669 !important; }
+html.light .text-sky-400 { color: #0284c7 !important; }
+html.light .text-red-400 { color: #dc2626 !important; }
+
+/* Responsive table mobile borders */
+html.light .responsive-table tr { border-color: #e2e8f0 !important; background-color: white !important; }
+html.light .responsive-table td { border-color: #f1f5f9 !important; color: #334155 !important; }
+html.light .responsive-table td::before { color: #64748b !important; }
+
+/* Footer */
+html.light footer { background-color: transparent !important; }
+html.light #asj-footer { background-color: var(--bg-surface) !important; }
+html.light #asj-footer-overlay { background-color: rgba(255,255,255,0.9) !important; }
+html.light #asj-footer h2 { color: #0f172a !important; }
+html.light #asj-footer .text-white/40 { color: rgba(0,0,0,0.5) !important; }
+html.light #asj-footer .border-white/10 { border-color: #e2e8f0 !important; }
+
+/* Skip link visible only on focus */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 0.5rem 1rem;
+  background: #0ea5e9;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 0 0 0.5rem 0;
+}
+.skip-link:focus {
+  left: 0;
+  top: 0;
+}
