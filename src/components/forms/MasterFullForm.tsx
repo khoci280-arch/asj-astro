@@ -8,6 +8,7 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
+import { t } from '../../store/i18n';
 
 /* ── Types ── */
 interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; alamat: string; }
@@ -179,7 +180,7 @@ export default function MasterFullForm() {
             <div class="text-slate-500 text-[11px] mt-1">Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.</div>
           </div>
           <label class="label">Password kandidat</label>
-          <input type="password" class="input" value={gatePass} placeholder="Password kandidat"
+          <input type="password" class="input" value={gatePass} placeholder={t("form.mf_password")}
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
           <button onClick={gateLogin} class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">Masuk</button>
@@ -234,48 +235,48 @@ export default function MasterFullForm() {
                 <i class="fas fa-info-circle mr-1"></i> Form terhubung ke WA: <span>{data.wa || gateWa}</span>
               </div>
               <div class="section-title">Identitas Dasar</div>
-              <F label="Nama Lengkap (KTP)" k="nama" />
+              <F label={t("form.mf_nama")} k="nama" />
               <div class="grid grid-cols-2 gap-3">
-                <F label="Furigana (Katakana)" k="furigana" ph="Teks Jepang" twoCol />
-                <F label="Nama Panggilan" k="panggilan" twoCol />
+                <F label={t("form.mf_furigana")} k="furigana" ph={t("form.mf_ph_teks_jepang")} twoCol />
+                <F label={t("form.mf_panggilan")} k="panggilan" twoCol />
               </div>
-              <F label="Panggilan (Katakana)" k="panggilanKatakana" ph="Teks Jepang" />
-              <F label="Tempat Lahir" k="tempatLahir" ph="Otomatis diterjemahkan ke Jepang saat disimpan" />
+              <F label={t("form.mf_panggilan_ktk")} k="panggilanKatakana" ph={t("form.mf_ph_teks_jepang")} />
+              <F label={t("form.mf_tempat_lahir")} k="tempatLahir" ph={t("form.mf_ph_auto_jp")} />
               <div class="grid grid-cols-2 gap-3">
                 <F label="Tgl Lahir" k="tglLahir" type="date" twoCol />
-                <F label="Gender" k="gender" opts={['LAKI-LAKI','PEREMPUAN']} twoCol />
+                <F label={t("form.mf_gender")} k="gender" opts={['LAKI-LAKI','PEREMPUAN']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Usia" k="usia" type="number" twoCol />
-                <F label="Agama" k="agama" opts={['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']} twoCol />
+                <F label={t("form.mf_usia")} k="usia" type="number" twoCol />
+                <F label={t("form.mf_agama")} k="agama" opts={['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Status Nikah" k="statusNikah" opts={['BELUM MENIKAH','MENIKAH','CERAI']} twoCol />
-                <F label="Jumlah Anak" k="anak" type="number" ph="0 jika tidak ada" twoCol />
+                <F label={t("form.mf_status_nikah")} k="statusNikah" opts={['BELUM MENIKAH','MENIKAH','CERAI']} twoCol />
+                <F label={t("form.mf_anak")} k="anak" type="number" ph="0 jika tidak ada" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="KTP (NIK)" k="ktp" type="number" twoCol />
-                <F label="SIM" k="sim" ph="A / C / A & C" twoCol />
+                <F label={t("form.mf_ktp")} k="ktp" type="number" twoCol />
+                <F label={t("form.mf_sim")} k="sim" ph={t("form.mf_ph_sim")} twoCol />
               </div>
 
               <div class="section-title mt-6">Kontak & Fisik</div>
-              <F label="Alamat Lengkap" k="alamat" ph="Otomatis diterjemahkan ke Jepang saat disimpan" />
-              <F label="Email Aktif" k="email" type="email" />
+              <F label={t("form.mf_alamat")} k="alamat" ph={t("form.mf_ph_auto_jp")} />
+              <F label={t("form.mf_email")} k="email" type="email" />
               <div class="grid grid-cols-2 gap-3">
-                <F label="Tinggi (CM)" k="tb" type="number" twoCol />
-                <F label="Berat (KG)" k="bb" type="number" twoCol />
+                <F label={t("form.mf_tb")} k="tb" type="number" twoCol />
+                <F label={t("form.mf_bb")} k="bb" type="number" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Gol. Darah" k="goldar" opts={['-','A','B','AB','O']} twoCol />
-                <F label="Tangan Dominan" k="tangan" opts={['KANAN','KIRI']} twoCol />
+                <F label={t("form.mf_goldar")} k="goldar" opts={['-','A','B','AB','O']} twoCol />
+                <F label={t("form.mf_tangan")} k="tangan" opts={['KANAN','KIRI']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Ukuran Baju" k="baju" ph="S/M/L/XL" twoCol />
-                <F label="Ukuran Sepatu (CM)" k="sepatu" type="number" twoCol />
+                <F label={t("form.mf_baju")} k="baju" ph={t("form.mf_ph_baju")} twoCol />
+                <F label={t("form.mf_sepatu")} k="sepatu" type="number" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Ukuran Topi (S/M/L)" k="topi" twoCol />
-                <F label="Tahan Kerja Tanpa AC?" k="tahanAc" opts={['YA','TIDAK']} twoCol />
+                <F label={t("form.mf_topi")} k="topi" twoCol />
+                <F label={t("form.mf_tahan_ac")} k="tahanAc" opts={['YA','TIDAK']} twoCol />
               </div>
             </div>
           )}
@@ -285,41 +286,41 @@ export default function MasterFullForm() {
             <div class="animate-[fadeIn_.4s_ease]">
               <div class="section-title">Catatan Medis</div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Mata Kiri (Visus)" k="mataKiri" ph="Normal / Minus 1" twoCol />
-                <F label="Mata Kanan (Visus)" k="mataKanan" ph="Normal / Minus 1" twoCol />
+                <F label={t("form.mf_mata_kiri")} k="mataKiri" ph={t("form.mf_ph_visus")} twoCol />
+                <F label={t("form.mf_mata_kanan")} k="mataKanan" ph={t("form.mf_ph_visus")} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Berkacamata?" k="kacamata" opts={['TIDAK','YA']} twoCol />
-                <F label="Buta Warna?" k="butaWarna" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_kacamata")} k="kacamata" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_buta_warna")} k="butaWarna" opts={['TIDAK','YA']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Bertato?" k="tato" opts={['TIDAK','YA']} twoCol />
-                <F label="Bertindik?" k="tindik" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_tato")} k="tato" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_tindik")} k="tindik" opts={['TIDAK','YA']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Merokok?" k="merokok" opts={['TIDAK','YA']} twoCol />
-                <F label="Minum Alkohol?" k="alkohol" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_merokok")} k="merokok" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_alkohol")} k="alkohol" opts={['TIDAK','YA']} twoCol />
               </div>
-              <F label="Riwayat Penyakit Berat (Jujur)" k="penyakit" ph="Deskripsikan jika ada..." />
-              <F label="Riwayat Alergi" k="alergi" ph="Deskripsikan alergi obat/makanan jika ada..." />
-              <F label="Riwayat Kecelakaan / Operasi" k="laka" ph="Deskripsikan jika ada..." />
+              <F label={t("form.mf_penyakit")} k="penyakit" ph={t("form.mf_ph_deskripsi")} />
+              <F label={t("form.mf_alergi")} k="alergi" ph={t("form.mf_ph_alergi")} />
+              <F label={t("form.mf_laka")} k="laka" ph={t("form.mf_ph_deskripsi")} />
 
               <div class="section-title mt-6">Wawancara & Jiko PR (CV)</div>
-              <F label="Jiko PR (Promosi Diri)" k="promosi" ph="Tuliskan kelebihan dan dedikasi Anda agar perusahaan Jepang tertarik." />
-              <F label="Kelebihan Sifat" k="kelebihan" ph="Disiplin, Pekerja Keras, dll" />
-              <F label="Kekurangan Sifat (Beserta Solusi)" k="kekurangan" ph="Pelupa (Tapi saya selalu mencatat), dll" />
-              <F label="Keahlian Khusus / Lisensi" k="keahlianKhusus" ph="Mengelas, Alat Berat, dll (Kosongkan jika tidak ada)" />
-              <F label="Hobi & Minat" k="hobi" ph="Memancing, Olahraga, dll (Otomatis diterjemahkan ke Jepang)" />
-              <F label="Alasan Memilih Bidang Kerja Ini" k="alasanBidang" />
-              <F label="Motivasi Ke Jepang" k="motivasiJepang" />
-              <F label="Keinginan Pribadi (Target)" k="keinginan" />
-              <F label="Rencana Setelah Pulang" k="rencanaPulang" />
-              <F label="Tujuan Kerja di Jepang" k="tujuanJepang" />
+              <F label={t("form.mf_promosi")} k="promosi" ph={t("form.mf_ph_promosi")} />
+              <F label={t("form.mf_kelebihan")} k="kelebihan" ph={t("form.mf_ph_kelebihan")} />
+              <F label={t("form.mf_kekurangan")} k="kekurangan" ph={t("form.mf_ph_kekurangan")} />
+              <F label={t("form.mf_keahlian")} k="keahlianKhusus" ph={t("form.mf_ph_keahlian")} />
+              <F label={t("form.mf_hobi")} k="hobi" ph={t("form.mf_ph_hobi")} />
+              <F label={t("form.mf_alasan_bidang")} k="alasanBidang" />
+              <F label={t("form.mf_motivasi")} k="motivasiJepang" />
+              <F label={t("form.mf_keinginan")} k="keinginan" />
+              <F label={t("form.mf_rencana_pulang")} k="rencanaPulang" />
+              <F label={t("form.mf_tujuan_jepang")} k="tujuanJepang" />
               <div class="grid grid-cols-2 gap-3">
-                <F label="Rencana Lama di Jepang (Thn)" k="lamaJepang" type="number" ph="Misal: 3" twoCol />
-                <F label="Harapan Gaji (Yen)" k="gajiYen" type="number" ph="Misal: 200000" twoCol />
+                <F label={t("form.mf_lama_jepang")} k="lamaJepang" type="number" ph="Misal: 3" twoCol />
+                <F label={t("form.mf_gaji_yen")} k="gajiYen" type="number" ph="Misal: 200000" twoCol />
               </div>
-              <F label="Target Tabungan (Rp/Yen)" k="tabungan" ph="Misal: 300 Juta" />
+              <F label={t("form.mf_tabungan")} k="tabungan" ph={t("form.mf_ph_misal_tabungan")} />
             </div>
           )}
 
@@ -451,24 +452,24 @@ export default function MasterFullForm() {
           {step === 5 && (
             <div class="animate-[fadeIn_.4s_ease]">
               <div class="section-title">Status & Paspor</div>
-              <F label="Status Eks Jepang" k="eksJepang" opts={['BELUM PERNAH','EKS MAGANG','EKS TOKUTEI GINO']} />
-              <F label="No. COE (Bagi Eks Jepang)" k="noCoe" ph="Kosongkan jika tidak ada" />
+              <F label={t("form.mf_eks_jepang")} k="eksJepang" opts={['BELUM PERNAH','EKS MAGANG','EKS TOKUTEI GINO']} />
+              <F label={t("form.mf_no_coe")} k="noCoe" ph="Kosongkan jika tidak ada" />
               <div class="mt-4"></div>
-              <F label="No. Paspor" k="noPaspor" ph="Kosongkan jika belum punya" />
+              <F label={t("form.mf_no_paspor")} k="noPaspor" ph="Kosongkan jika belum punya" />
               <div class="grid grid-cols-2 gap-3">
-                <F label="Tgl Terbit" k="tglTerbitPaspor" type="date" twoCol />
-                <F label="Tgl Expired" k="expPaspor" type="date" twoCol />
+                <F label={t("form.mf_tgl_terbit")} k="tglTerbitPaspor" type="date" twoCol />
+                <F label={t("form.mf_exp")} k="expPaspor" type="date" twoCol />
               </div>
-              <F label="Kota Penerbitan" k="kotaPaspor" ph="Misal: SURABAYA" />
+              <F label={t("form.mf_kota_paspor")} k="kotaPaspor" ph="Misal: SURABAYA" />
 
               <div class="section-title mt-6">Sertifikasi & Bahasa (Japanese Qualifications)</div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Sertifikat Bahasa Jepang" k="bhsJepang" opts={['-','N1','N2','N3','N4','N5','JFT BASIC A2','BELUM LULUS','BELUM TES']} twoCol />
-                <F label="Nilai / Skor Ujian" k="nilai" ph="Misal: 120/180" twoCol />
+                <F label={t("form.mf_bhs_jepang")} k="bhsJepang" opts={['-','N1','N2','N3','N4','N5','JFT BASIC A2','BELUM LULUS','BELUM TES']} twoCol />
+                <F label={t("form.mf_nilai")} k="nilai" ph="Misal: 120/180" twoCol />
               </div>
-              <F label="Sertifikat Lisensi / SSW 1" k="lisensi" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
+              <F label={t("form.mf_lisensi")} k="lisensi" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
               {data.lisensi === 'Lainnya' && <F label="Ketik bidang SSW lain" k="lisensiManual" ph="その他の職種を入力" />}
-              <F label="SSW 2 — Opsional" k="lisensi2" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
+              <F label={t("form.mf_ssw2")} k="lisensi2" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
               {data.lisensi2 === 'Lainnya' && <F label="Ketik bidang SSW 2 lain" k="lisensi2Manual" ph="その他の職種を入力" />}
 
               <div class="section-title mt-6">Upload Dokumen (MAX 2MB)</div>
