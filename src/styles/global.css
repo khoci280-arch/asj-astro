@@ -126,10 +126,6 @@ html.light .bg-slate-950,
 html.light .bg-slate-900 { background-color: var(--bg-surface) !important; }
 html.light .bg-slate-800 { background-color: var(--bg-card) !important; }
 html.light .bg-black { background-color: var(--bg-input) !important; }
-html.light .bg-black/40,
-html.light .bg-black/60,
-html.light .bg-black/80,
-html.light .bg-black/85 { background-color: rgba(0,0,0,0.05) !important; }
 
 html.light .text-white,
 html.light .text-slate-100,
@@ -138,7 +134,6 @@ html.light .text-slate-300 { color: var(--text-primary) !important; }
 html.light .text-slate-400,
 html.light .text-slate-500 { color: var(--text-secondary) !important; }
 
-html.light .border-white/10,
 html.light .border-slate-700,
 html.light .border-slate-800 { border-color: var(--border-color) !important; }
 
@@ -154,18 +149,10 @@ html.light .bg-zinc-800 { background-color: var(--bg-card) !important; }
 
 /* Gradient overlays that stay dark in header/footer are fine (branded areas) */
 /* But chat panels, cards, modals should switch */
-html.light .bg-black/60,
-html.light .bg-black/80 { background-color: rgba(0,0,0,0.08) !important; }
 
 /* Hover states */
-html.light .hover:bg-white/5 { background-color: transparent !important; }
-html.light .hover:bg-white/10 { background-color: rgba(0,0,0,0.04) !important; }
-html.light .hover:bg-slate-700 { background-color: #d1d5db !important; }
-html.light .hover:bg-slate-800 { background-color: #d1d5db !important; }
 
 /* More text overrides */
-html.light .text-white/40 { color: rgba(0,0,0,0.4) !important; }
-html.light .text-white/60 { color: rgba(0,0,0,0.5) !important; }
 html.light .text-pink-300 { color: #be185d !important; }
 html.light .text-emerald-400 { color: #059669 !important; }
 html.light .text-sky-400 { color: #0284c7 !important; }
@@ -181,8 +168,6 @@ html.light footer { background-color: transparent !important; }
 html.light #asj-footer { background-color: var(--bg-surface) !important; }
 html.light #asj-footer-overlay { background-color: rgba(255,255,255,0.9) !important; }
 html.light #asj-footer h2 { color: #0f172a !important; }
-html.light #asj-footer .text-white/40 { color: rgba(0,0,0,0.5) !important; }
-html.light #asj-footer .border-white/10 { border-color: #e2e8f0 !important; }
 
 /* Skip link visible only on focus */
 .skip-link {

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { langStore, t } from '../../store/i18n';
 import { SkeletonTable } from '../Skeleton';
+import LokerDetailModal from './LokerDetailModal';
 
 type Job = {
   code: string;
@@ -35,6 +36,7 @@ export default function LokerTable() {
   const [showCekModal, setShowCekModal] = useState(false);
   const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
   const [cekQuery, setCekQuery] = useState('');
+  const [selectedJob, setSelectedJob] = useState<any>(null);
   const lang = useStore(langStore);
 
   useEffect(() => {
@@ -160,6 +162,8 @@ export default function LokerTable() {
           </div>
         </div>
       )}
+      {selectedJob && <LokerDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
     </div>
+
   );
 }
