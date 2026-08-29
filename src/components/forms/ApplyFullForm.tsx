@@ -7,6 +7,7 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, waSchema, emailSchema } from '../../lib/schemas';
+import { t } from '../../store/i18n';
 
 interface FormData {
   job: string; bidang: string; wa: string; nama: string; email: string;
@@ -55,7 +56,7 @@ export default function ApplyFullForm() {
       config.required.forEach(doc => {
         setUploads(prev => ({
           ...prev,
-          [doc]: prev[doc] || { file: null, preview: null, name: 'Belum ada file dipilih', warn: false }
+          [doc]: prev[doc] || { file: null, preview: null, name: t('apply.file_none'), warn: false }
         }));
       });
     }
@@ -84,22 +85,22 @@ export default function ApplyFullForm() {
         const data = await res.json();
         if (data.found) {
           setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email }));
-          setWaMsg('Data riwayat ditemukan! Form & Dokumen otomatis disesuaikan.');
+          setWaMsg(t('apply.wa_found'));
           // Show dynamic docs based on requirements
           if (data.requiredDocs) {
             data.requiredDocs.forEach((doc: string) => {
               setUploads(prev => ({
                 ...prev,
-                [doc]: prev[doc] || { file: null, preview: null, name: 'Belum ada file dipilih', warn: false }
+                [doc]: prev[doc] || { file: null, preview: null, name: t('apply.file_none'), warn: false }
               }));
             });
           }
         } else {
-          setWaWarn('Nomor ini belum terdaftar di sistem ASJ.');
+          setWaWarn(t('apply.wa_not_found'));
         }
       }
     } catch {
-      setWaWarn('Gagal mengecek riwayat. Coba lagi.');
+      setWaWarn(t('apply.wa_error'));
     } finally {
       setWaLoading(false);
     }
@@ -128,7 +129,7 @@ export default function ApplyFullForm() {
   };
 
   const submitApply = async () => {
-    if (!agree) { showToast('Centang pernyataan terlebih dahulu.', 'error'); return; }
+    if (!agree) { showToast(t('apply.error_agree'), 'error'); return; }
     var vr = validate(registerSchema, { nama: form.nama, wa: form.wa }); if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
     if (form.email) { var ve = validate(emailSchema, form.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     setLoading(true);
@@ -147,10 +148,10 @@ export default function ApplyFullForm() {
       if (res.ok) {
         setSuccess(true);
       } else {
-        alert('Gagal mengirim lamaran. Coba lagi.');
+        alert(t('apply.error_submit'));
       }
     } catch (e) {
-      alert('Error: ' + (e as Error).message);
+      showToast(t('apply.error_submit') + ' ' + (e as Error).message, 'error');
     } finally {
       setLoading(false);
     }
@@ -181,7 +182,7 @@ export default function ApplyFullForm() {
           <div class="flex justify-between items-center mb-[30px] relative">
             <div class="absolute top-[18px] left-[15%] right-[15%] h-[3px] bg-slate-700 z-1"></div>
             <div class="absolute top-[18px] left-[15%] h-[3px] bg-pink-500 z-2 transition-all duration-400" style={{ width: progressPct }}></div>
-            {['Data Diri', 'Dokumen', 'Kirim'].map((label, i) => (
+            {[t('apply.step_data'), t('apply.step_docs'), t('apply.step_kirim')].map((label, i) => (
               <div key={i} class={`relative z-[3] flex flex-col items-center gap-2 w-1/3 ${i + 1 === step ? 'active' : i + 1 < step ? 'completed' : ''}`}>
                 <div class={`w-[38px] h-[38px] rounded-full flex items-center justify-center font-extrabold transition-all
                   ${i + 1 === step ? 'bg-pink-500 border-2 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,.4)]'
@@ -196,8 +197,8 @@ export default function ApplyFullForm() {
 
           {/* STEP 1: DATA DIRI */}
           <div class={`${step === 1 ? 'block' : 'hidden'} animate-[fadeIn_0.4s_ease-in-out]`}>
-            <InputField icon="fa-briefcase" label="Nomer Job ASJ" value={form.job} readonly />
-            <InputField icon="fa-layer-group" label="Bidang Pekerjaan" value={form.bidang} readonly />
+            <InputField icon="fa-briefcase" label={t("apply.job_label")} value={form.job} readonly />
+            <InputField icon="fa-layer-group" label={t("apply.bidang_label")} value={form.bidang} readonly />
 
             {/* WA with radar */}
             <div class="mb-5">
@@ -207,7 +208,7 @@ export default function ApplyFullForm() {
                 <input type="tel" value={form.wa}
                   onInput={(e) => updateForm('wa', (e.target as HTMLInputElement).value)}
                   onBlur={cekRiwayat}
-                  placeholder="Contoh: 08123456789"
+                  placeholder={t("apply.wa_ph")}
                   class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] transition-all placeholder:text-slate-500" />
                 {waLoading && <span class="absolute right-4 top-1/2 -translate-y-1/2"><i class="fas fa-spinner fa-spin text-emerald-500 text-lg"></i></span>}
               </div>
@@ -215,43 +216,43 @@ export default function ApplyFullForm() {
               {waWarn && <div class="text-xs text-amber-300 font-bold mt-3 bg-amber-900/40 p-2.5 rounded-lg border border-amber-500/40">{waWarn}</div>}
             </div>
 
-            <InputField icon="fa-user" label="Nama Lengkap" value={form.nama} placeholder="Sesuai KTP / Paspor"
-              onInput={(v) => updateForm('nama', v.toUpperCase())} tip="Akan otomatis menjadi HURUF KAPITAL" />
-            <InputField icon="fa-envelope" label="Alamat Email Aktif" value={form.email} type="email" placeholder="Contoh: nama@gmail.com"
+            <InputField icon="fa-user" label={t("apply.nama_label")} value={form.nama} placeholder={t("apply.nama_ph")}
+              onInput={(v) => updateForm('nama', v.toUpperCase())} tip={t("apply.nama_tip")} />
+            <InputField icon="fa-envelope" label={t("apply.email_label")} value={form.email} type="email" placeholder={t("apply.email_ph")}
               onInput={(v) => updateForm('email', v)} />
 
             <div class="grid grid-cols-2 gap-4">
-              <SelectField icon="fa-venus-mars" label="Gender" value={form.gender}
+              <SelectField icon="fa-venus-mars" label={t("apply.gender_label")} value={form.gender}
                 options={[{ v: '', l: 'Pilih' }, { v: 'LAKI-LAKI', l: 'LAKI-LAKI' }, { v: 'PEREMPUAN', l: 'PEREMPUAN' }]}
                 onChange={(v) => updateForm('gender', v)} />
-              <InputField icon="fa-cake-candles" label="Usia" value={form.usia} type="number" placeholder="Misal: 22"
+              <InputField icon="fa-cake-candles" label={t("apply.usia_label")} value={form.usia} type="number" placeholder={t("apply.usia_ph")}
                 onInput={(v) => updateForm('usia', v)} />
             </div>
             <div class="grid grid-cols-2 gap-4">
-              <InputField icon="fa-ruler-vertical" label="Tinggi Badan" value={form.tb} type="number" placeholder="cm"
+              <InputField icon="fa-ruler-vertical" label={t("apply.tb_label")} value={form.tb} type="number" placeholder="cm"
                 onInput={(v) => updateForm('tb', v)} />
-              <InputField icon="fa-weight-scale" label="Berat Badan" value={form.bb} type="number" placeholder="kg"
+              <InputField icon="fa-weight-scale" label={t("apply.bb_label")} value={form.bb} type="number" placeholder="kg"
                 onInput={(v) => updateForm('bb', v)} />
             </div>
           </div>
 
           {/* STEP 2: DOKUMEN */}
           <div class={`${step === 2 ? 'block' : 'hidden'} animate-[fadeIn_0.4s_ease-in-out]`}>
-            <UploadCard type="photo" label="PAS PHOTO" sub="Format: JPG / PNG" icon="fa-image"
+            <UploadCard type="photo" label={t("apply.photo_label")} sub={t("apply.photo_sub")} icon="fa-image"
               bgClass="bg-gradient-to-br from-pink-500 to-pink-700" btnClass="bg-pink-500"
               accept=".jpg,.jpeg,.png" onChange={(f) => handleUpload('photo', f)} state={uploads.photo} />
             {(uploads.cv || form.job) && (
-              <UploadCard type="cv" label="FORMAT CV ASJ" sub="Format: Excel/PDF" icon="fa-file-excel"
+              <UploadCard type="cv" label={t("apply.cv_label")} sub={t("apply.cv_sub")} icon="fa-file-excel"
                 bgClass="bg-gradient-to-br from-amber-500 to-amber-700" btnClass="bg-amber-600"
                 accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(f) => handleUpload('cv', f)} state={uploads.cv} />
             )}
             {(uploads.jft || form.job) && (
-              <UploadCard type="jft" label="JFT CERTIFICATE" sub="Format: PDF" icon="fa-file-pdf"
+              <UploadCard type="jft" label={t("apply.jft_label")} sub={t("apply.jft_sub")} icon="fa-file-pdf"
                 bgClass="bg-gradient-to-br from-sky-500 to-blue-600" btnClass="bg-sky-600"
                 accept=".pdf" onChange={(f) => handleUpload('jft', f)} state={uploads.jft} />
             )}
             {(uploads.ssw || form.job) && (
-              <UploadCard type="ssw" label="SSW CERTIFICATE" sub="Format: PDF" icon="fa-file-pdf"
+              <UploadCard type="ssw" label={t("apply.ssw_label")} sub={t("apply.ssw_sub")} icon="fa-file-pdf"
                 bgClass="bg-gradient-to-br from-emerald-500 to-emerald-700" btnClass="bg-emerald-600"
                 accept=".pdf" onChange={(f) => handleUpload('ssw', f)} state={uploads.ssw} />
             )}
@@ -263,15 +264,14 @@ export default function ApplyFullForm() {
               <input type="checkbox" checked={agree} onChange={(e) => setAgree((e.target as HTMLInputElement).checked)}
                 class="mt-1 w-[22px] h-[22px] accent-pink-500" />
               <p class="text-[13px] leading-6 text-slate-300">
-                Saya menyatakan dengan sesungguhnya bahwa seluruh data dan dokumen yang saya unggah adalah <b>benar dan asli</b>.
-                Apabila dikemudian hari ditemukan pemalsuan, saya bersedia menerima sanksi pembatalan dari ASJ.
+                {t('apply.agree_text')}
               </p>
             </div>
             <div class="grid grid-cols-3 gap-3">
               {[
-                { icon: 'fa-bolt', label: 'PROSES CEPAT' },
-                { icon: 'fa-shield-halved', label: 'DATA AMAN' },
-                { icon: 'fa-torii-gate', label: 'ASJ JAPAN' }
+                { icon: 'fa-bolt', label: t('apply.fast') },
+                { icon: 'fa-shield-halved', label: t('apply.safe') },
+                { icon: 'fa-torii-gate', label: t('apply.asj') }
               ].map((c, i) => (
                 <div key={i} class="bg-slate-900 border border-slate-700 rounded-2xl p-[15px_10px] text-center">
                   <i class={`fa-solid ${c.icon} text-[20px] text-pink-500 mb-2 block`}></i>
@@ -308,8 +308,8 @@ export default function ApplyFullForm() {
         <div class="fixed inset-0 flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
           <div class="text-center">
             <div class="w-[70px] h-[70px] rounded-full border-4 border-slate-700 border-t-pink-500 mx-auto animate-spin"></div>
-            <h2 class="mt-5 text-white text-xl font-extrabold">Mengirim Lamaran...</h2>
-            <p class="mt-2 text-xs text-slate-400">Mohon tunggu dan jangan tutup halaman ini.</p>
+            <h2 class="mt-5 text-white text-xl font-extrabold">{t('apply.loading')}</h2>
+            <p class="mt-2 text-xs text-slate-400">{t('apply.loading_hint')}</p>
           </div>
         </div>
       )}
@@ -319,9 +319,9 @@ export default function ApplyFullForm() {
         <div class="fixed inset-0 flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
           <div class="w-[90%] max-w-[340px] bg-slate-900 border border-emerald-500 rounded-[24px] p-[30px] text-center">
             <div class="text-[60px] mb-2">✅</div>
-            <h2 class="mt-4 text-2xl font-black">Berhasil!</h2>
-            <p class="mt-2.5 text-sm text-slate-400 leading-[22px]">Data & Dokumen lamaran Anda telah masuk ke Sistem ASJ.</p>
-            <button onClick={() => window.location.href = '/'} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">KEMBALI KE PORTAL</button>
+            <h2 class="mt-4 text-2xl font-black">{t('apply.success_title')}</h2>
+            <p class="mt-2.5 text-sm text-slate-400 leading-[22px]">{t('apply.success_desc')}</p>
+            <button onClick={() => window.location.href = '/'} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">{t('apply.btn_portal')}</button>
           </div>
         </div>
       )}
@@ -383,12 +383,12 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
           </div>
         </div>
         <button type="button" onClick={() => inputRef.current?.click()}
-          class={`px-[18px] py-2.5 ${btnClass} text-white text-xs font-extrabold rounded-xl cursor-pointer hover:brightness-110 transition-all border-none`}>PILIH</button>
+          class={`px-[18px] py-2.5 ${btnClass} text-white text-xs font-extrabold rounded-xl cursor-pointer hover:brightness-110 transition-all border-none`}>{t('apply.btn_pilih')}</button>
       </div>
       <input ref={inputRef} type="file" accept={accept} class="hidden"
         onChange={(e) => onChange((e.target as HTMLInputElement).files?.[0] || null)} />
       {state?.preview && <img src={state.preview} class="w-full h-[160px] object-contain bg-[#020617] rounded-xl mt-[15px] border border-slate-700" alt="" />}
-      <div class="mt-[15px] p-3 bg-[#020617] rounded-xl text-xs text-slate-400 break-all">{state?.name || 'Belum ada file dipilih'}</div>
+      <div class="mt-[15px] p-3 bg-[#020617] rounded-xl text-xs text-slate-400 break-all">{state?.name || t('apply.file_none')}</div>
       {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Gagal! Ukuran file melebihi 2 MB.</div>}
     </div>
   );
