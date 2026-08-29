@@ -53,6 +53,30 @@ Headers applied per netlify.toml rules
 - [x] Cache-Control headers for HTML/SW/assets
 - [x] SW with skipWaiting + force reload
 - [x] PWA manifest for installability
-- [ ] Connect Netlify site to GitHub repo
-- [ ] Set environment variables (Supabase, Gemini, etc.)
-- [ ] Test deploy on Netlify
+- [x] Connect Netlify site to GitHub repo → `khoci280-arch/asj-astro`
+- [x] Set environment variables (Supabase, Netlify)
+- [x] Test deploy on Netlify
+
+## Live Deployment
+
+| Resource | URL |
+|----------|-----|
+| **GitHub** | https://github.com/khoci280-arch/asj-astro |
+| **Netlify** | https://incredible-starship-054a78.netlify.app |
+| **Admin** | https://app.netlify.com/projects/incredible-starship-054a78 |
+
+## Deploy Commands
+
+```bash
+# Build
+npm run build
+
+# Zip dist folder (Windows)
+powershell -Command "Compress-Archive -Path 'dist\*' -DestinationPath 'deploy.zip'"
+
+# Upload to Netlify
+curl -X POST "https://api.netlify.com/api/v1/sites/d2ba3305-6397-434e-bdba-71e71ce0b4f2/deploys" \
+  -H "Authorization: Bearer nfp_DRuo5g3bfU1b6C4SMFf78WKeH34paBM4f5fb" \
+  -H "Content-Type: application/zip" \
+  --data-binary @deploy.zip
+```

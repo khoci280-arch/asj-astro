@@ -7,11 +7,12 @@
 | Framework | Astro | SSG/SSR routing, BaseLayout, build engine |
 | Islands | Preact + `client:load` | Interactive UI (forms, modals, toast) |
 | State | Nanostores + persistent | Reactive global state + localStorage sync |
+| Auth | Supabase Auth | Phone + password authentication |
 | Validation | Zod | TypeScript schema validation |
 | API | apiClient.ts (HMAC) | Centralized fetch wrapper with auth injection |
 | PWA | sw.js + manifest | Anti-cache service worker |
 | Build | Vite (Astro built-in) | ESM/TS compilation |
-| Deploy | netlify.toml | Cache-Control headers |
+| Deploy | Netlify | CDN + static hosting |
 
 ## Directory Structure
 
@@ -20,43 +21,84 @@ asj-astro/
 ├── src/
 │   ├── components/
 │   │   ├── App.tsx              # Preact root (Header + LoginModal + Toast)
-│   │   ├── LoginModal.tsx       # Auth forms (login/register/admin)
+│   │   ├── LoginModal.tsx       # Auth forms (Supabase phone auth)
 │   │   ├── AuthGuard.tsx        # Route protection (not yet used)
 │   │   ├── Toast.tsx            # Notification system
 │   │   ├── Header.tsx           # Responsive header (nav + auth buttons)
 │   │   ├── BottomNav.astro      # Mobile bottom nav (admin + kandidat)
 │   │   ├── Footer.astro         # Social links + copyright
+│   │   ├── ChangePasswordModal.tsx # Password change dialog
+│   │   ├── CvMiniModal.tsx      # Compact CV preview/edit
+│   │   ├── Skeleton.tsx         # Loading skeletons
 │   │   ├── admin/
 │   │   │   ├── AdminPanel.tsx   # Admin root (sidebar + tabs)
 │   │   │   ├── TabKelola.tsx    # Loker management table
 │   │   │   ├── TabPelamar.tsx   # Candidate database + modals
+│   │   │   ├── TabTambah.tsx    # Form input loker baru
+│   │   │   ├── TabDbJob.tsx     # Histori job internal
+│   │   │   ├── TabJadwal.tsx    # Jadwal agenda
+│   │   │   ├── TabMail.tsx      # Mail inbox
+│   │   │   ├── TabWA.tsx        # WA pintar + templates
+│   │   │   ├── TabConfig.tsx    # Pengaturan sistem
 │   │   │   ├── InputManualModal.tsx    # Manual candidate input
 │   │   │   └── LaporanBulananModal.tsx # Monthly report
 │   │   ├── candidate/
 │   │   │   └── CandidateDash.tsx # Candidate dashboard
+│   │   ├── forms/
+│   │   │   ├── ApplyFullForm.tsx    # 3-step lamaran wizard
+│   │   │   ├── AiCvForm.tsx         # AI CV chat + 50-field preview
+│   │   │   ├── SiswaBaruForm.tsx    # AI chat + biodata preview
+│   │   │   ├── MasterFullForm.tsx   # Master form
+│   │   │   ├── ShareView.tsx        # Candidate viewer + doc preview
+│   │   │   └── FormToolbar.tsx      # Theme/lang toggle + back
 │   │   └── public/
 │   │       ├── LokerTable.tsx    # Public jobs table + filters
+│   │       ├── LokerDetailModal.tsx # Loker detail popup
 │   │       └── LayananSection.astro # Static layanan cards
 │   ├── store/
 │   │   ├── authReactive.ts      # Persistent auth (nanostores)
-│   │   └── adminStore.ts        # Admin reactive state
+│   │   ├── userStore.ts         # Supabase auth integration
+│   │   ├── adminStore.ts        # Admin reactive state
+│   │   └── i18n.ts              # Internationalization (ID + JP)
 │   ├── lib/
+│   │   ├── supabase.ts          # Supabase client singleton
 │   │   ├── apiClient.ts         # HMAC fetch wrapper
-│   │   ├── auth.ts              # Login/logout API calls
-│   │   └── schemas.ts           # Zod validation schemas
+│   │   ├── schemas.ts           # Zod validation schemas
+│   │   ├── fileUtils.ts         # File validation + compression
+│   │   └── useDraft.ts          # Auto-save hook
 │   ├── layouts/
 │   │   └── BaseLayout.astro     # HTML shell + SW registration
-│   ├── pages/
+│   ├── pages/                   # 9 routes
 │   │   ├── index.astro          # Landing page
 │   │   ├── admin.astro          # Admin panel
 │   │   ├── candidate.astro      # Candidate dashboard
-│   │   └── public.astro         # Public loker + layanan
+│   │   ├── public.astro         # Public loker + layanan
+│   │   ├── apply.astro          # Apply form
+│   │   ├── ai-cv.astro          # AI CV form
+│   │   ├── siswa-baru.astro     # Siswa baru form
+│   │   ├── master.astro         # Master form
+│   │   └── share.astro          # Share view
 │   └── styles/
 │       └── global.css           # Tailwind + custom styles
+├── e2e/                         # E2E tests
+│   ├── test-admin.mjs
+│   ├── test-public.mjs
+│   └── test-supabase-auth.mjs
+├── legacy/                      # Full legacy codebase (reference only)
+├── docs/                        # Documentation
+│   ├── ARCHITECTURE.md          # This file
+│   ├── FASE1-SETUP.md          # Phase 1: Foundation
+│   ├── FASE2-LAYOUT.md         # Phase 2: Layout migration
+│   ├── FASE3-AUTH.md           # Phase 3: Auth state
+│   ├── FASE4-ISLANDS.md        # Phase 4: Preact islands
+│   ├── FASE5-PWA.md            # Phase 5: Service worker
+│   └── FASE6-NETLIFY.md        # Phase 6: Deployment
 ├── public/
 │   ├── sw.js                    # Anti-cache service worker
 │   └── manifest.webmanifest     # PWA manifest
-├── legacy/                      # Full legacy codebase (untouched)
+├── .env                         # Environment variables (gitignored)
+├── .env.example                 # Template for .env
+├── .env.server                  # Server-side vars (gitignored)
 ├── netlify.toml                 # Cache-Control headers
 ├── tsconfig.json                # TypeScript config
 └── package.json                 # Dependencies
@@ -66,7 +108,7 @@ asj-astro/
 
 ### 1. Index (`/`)
 - **Component**: `App.tsx` (Header + LoginModal + Toast)
-- **Content**: Landing page with hero, features, CTA
+- **Content**: Landing page with hero, loker tabs, layanan tabs
 - **Auth**: Guest only (redirects to admin/candidate if logged in)
 - **Mobile**: BottomNav hidden (guest mode)
 
@@ -79,15 +121,20 @@ asj-astro/
 
 ### 3. Candidate (`/candidate`)
 - **Component**: `CandidateDash.tsx`
-- **Content**: CV progress, status, action buttons
+- **Content**: CV progress, status, action buttons, ChangePasswordModal, CvMiniModal
 - **Auth**: Kandidat only (redirects to `/` if not kandidat)
 - **Mobile**: BottomNav visible (kandidat mode)
 
 ### 4. Public (`/public`)
-- **Component**: `LokerTable.tsx` + `LayananSection.astro`
+- **Component**: `LokerTable.tsx` + `LokerDetailModal.tsx` + `LayananSection.astro`
 - **Content**: Job listings + layanan cards
 - **Auth**: Guest (no auth required)
 - **Mobile**: BottomNav hidden (guest mode)
+
+### 5. Forms (`/apply`, `/ai-cv`, `/siswa-baru`, `/master`)
+- **Components**: ApplyFullForm, AiCvForm, SiswaBaruForm, MasterFullForm
+- **Content**: Multi-step form wizards with AI chat
+- **Auth**: Kandidat (for apply), Guest (for siswa-baru)
 
 ## State Management
 
@@ -103,13 +150,28 @@ logout()                     // → authStore.set(DEFAULT_STATE)
 refreshSession()             // → checks expiry, auto-logout
 ```
 
+### User Store (`userStore.ts`)
+```typescript
+// Computed atoms (derived from authStore)
+isAdmin = computed(authStore, (s) => s.role === 'admin');
+isKandidat = computed(authStore, (s) => s.role === 'kandidat');
+displayName = computed(authStore, (s) => s.name || 'Guest');
+
+// Supabase auth functions
+loginKandidatSupabase(phone, password)  // → supabase.auth.signInWithPassword
+registerKandidatSupabase(nama, phone, pass) // → supabase.auth.signUp
+logoutSupabase()                        // → supabase.auth.signOut + authLogout
+
+// Auth listener (call once at boot)
+initializeAuthListener()  // → supabase.auth.onAuthStateChange → sync to authStore
+```
+
 ### Admin Store (`adminStore.ts`)
 ```typescript
 // Reactive state for admin panel
 inputModalOpen = atom(false)
 kandidatList = atom<Kandidat[]>([])
 adminSearch = atom('')
-// ... etc
 
 // Functions
 openInputModal()    // → inputModalOpen.set(true)
@@ -117,31 +179,14 @@ addKandidat(k)      // → kandidatList.set([k, ...])
 fetchKandidatFromAPI() // → fetches from backend
 ```
 
-## Responsive Design
-
-### Breakpoints
-- `sm:` — 640px (small phones)
-- `md:` — 768px (tablets)
-- `lg:` — 1024px (desktop)
-
-### Mobile (default)
-- BottomNav visible (admin/kandidat mode)
-- Sidebar hidden (toggle with Menu button)
-- Tables scroll horizontally
-- Modals full-width with max-h-[90vh]
-
-### Desktop (`md:` and above)
-- BottomNav hidden
-- Sidebar visible (admin mode)
-- Tables full-width
-- Modals centered with max-w-lg
-
 ## API Flow
 
 ```
 Component → apiClient.ts → Backend (Netlify Functions)
               ↓
-         Injects HMAC token from authStore
+         getFreshToken() → Supabase session first, fallback to authStore
+              ↓
+         Injects Authorization: Bearer token
               ↓
          Handles sessionInvalid → logout()
               ↓
@@ -161,7 +206,10 @@ npm run build
 npx serve dist
 ```
 
-### netlify.toml Cache Strategy
-- HTML: no-cache (always fresh)
-- SW: no-cache (always fresh)
-- Assets: immutable (1 year cache)
+## Deployment
+
+| Resource | URL |
+|----------|-----|
+| **GitHub** | https://github.com/khoci280-arch/asj-astro |
+| **Netlify** | https://incredible-starship-054a78.netlify.app |
+| **Supabase** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
