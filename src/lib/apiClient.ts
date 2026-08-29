@@ -4,8 +4,11 @@
  *
  * All backend requests MUST go through this client.
  * Token is auto-read from nanostores and injected into Authorization header.
+ *
+ * Updated: now checks Supabase session as fallback if local token is stale.
  */
 import { authStore, logout } from '../store/authReactive';
+import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
 
 const API_BASE = '/.netlify/functions';
@@ -20,6 +23,27 @@ interface ApiResponse<T = any> {
 }
 
 /**
+ * Get the freshest session token — checks Supabase first if configured.
+ * This ensures token is always up-to-date even if local storage is stale.
+ */
+async function getFreshToken(): Promise<string> {
+  // Try Supabase session first (most up-to-date)
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        return session.access_token;
+      }
+    } catch {
+      // Fall through to local store
+    }
+  }
+
+  // Fallback to local store
+  return authStore.get().sessionToken;
+}
+
+/**
  * Core fetch wrapper — injects HMAC token automatically
  */
 export async function apiClient<T = ApiResponse>(
@@ -30,7 +54,8 @@ export async function apiClient<T = ApiResponse>(
   const { requireAuth = true } = options;
 
   // Read token from nanostores (reactive, always fresh)
-  const { sessionToken, isLoggedIn } = authStore.get();
+  const { isLoggedIn } = authStore.get();
+  const sessionToken = await getFreshToken();
 
   // Guard: require auth but no token
   if (requireAuth && (!isLoggedIn || !sessionToken)) {

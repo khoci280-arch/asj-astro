@@ -1,9 +1,13 @@
 /**
  * App.tsx - Header + Mobile Nav with i18n (Preact island)
+ *
+ * Initializes Supabase auth listener at boot (useEffect).
+ * All 11 consumers continue to import authStore from authReactive.ts — no breakage.
  */
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
+import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { langStore, t } from '../store/i18n';
 import LoginModal from './LoginModal';
 import { showToast } from './Toast';
@@ -16,10 +20,16 @@ export default function App() {
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Initialize Supabase auth listener once at boot
+  useEffect(() => {
+    const cleanup = initializeAuthListener();
+    return cleanup;
+  }, []);
+
   function openLogin() { setModalMode("login"); setMenuOpen(false); }
   function openRegister() { setModalMode("daftar"); setMenuOpen(false); }
   function closeModal() { setModalMode("closed"); }
-  function handleLogout() { logout(); window.location.reload(); }
+  async function handleLogout() { await logoutSupabase(); window.location.reload(); }
   function toggleMenu() { setMenuOpen(!menuOpen); }
   function toggleLang() { langStore.set(lang === "id" ? "jp" : "id"); }
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
@@ -93,7 +103,7 @@ export default function App() {
           {u.isLoggedIn && u.role === "kandidat" && (<div class="space-y-3">
             <a href="/candidate" class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-id-card mr-2"></i> {t("header.dashboard")}</a>
             <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><i class="fas fa-globe mr-2"></i> {t("header.public")}</a>
-            <button onClick={handleLogout} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-sign-out-alt mr-2"></i> {t("header.logout")}</button>
+            <button onClick={handleLogout} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><i class="fas fa-sign-out-alt mr-2"></i> {t("header.logout")}</button>
           </div>)}
         </div>
       </nav>
