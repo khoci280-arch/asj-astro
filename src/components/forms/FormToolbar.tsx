@@ -12,11 +12,11 @@ interface Props {
 
 export default function FormToolbar({ title }: Props) {
   const lang = useStore(langStore);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
 
   function toggleTheme() {
-    document.documentElement.classList.toggle("dark");
-    setIsDark(!isDark);
+    document.documentElement.classList.toggle("light"); localStorage.setItem("asjTheme", document.documentElement.classList.contains("light") ? "light" : "dark");
+    setIsDark(prev => !prev);
   }
   function toggleLang() {
     langStore.set(lang === "id" ? "jp" : "id");

@@ -79,3 +79,68 @@ body {
     margin-right: 1rem;
   }
 }
+
+
+/* ─── Theme: Dark/Light toggle ─── */
+/* Default is dark. When .light class on <html>, switch to light palette */
+:root {
+  --bg-base: #020617;
+  --bg-surface: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #000000;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  --border-subtle: #1e293b;
+}
+
+html.light {
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-card: #f1f5f9;
+  --bg-input: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #cbd5e1;
+  --border-subtle: #e2e8f0;
+}
+
+html.light body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+html.light #asj-header,
+html.light header {
+  background-color: var(--bg-surface);
+  border-color: var(--border-color);
+}
+
+html.light footer,
+html.light footer > div {
+  background-color: var(--bg-surface);
+  border-color: var(--border-color);
+}
+
+html.light .bg-slate-950,
+html.light .bg-slate-900 { background-color: var(--bg-surface) !important; }
+html.light .bg-slate-800 { background-color: var(--bg-card) !important; }
+html.light .bg-black { background-color: var(--bg-input) !important; }
+html.light .bg-black/40,
+html.light .bg-black/60,
+html.light .bg-black/80,
+html.light .bg-black/85 { background-color: rgba(0,0,0,0.05) !important; }
+
+html.light .text-white,
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300 { color: var(--text-primary) !important; }
+html.light .text-slate-400,
+html.light .text-slate-500 { color: var(--text-secondary) !important; }
+
+html.light .border-white/10,
+html.light .border-slate-700,
+html.light .border-slate-800 { border-color: var(--border-color) !important; }
+
+html.light .responsive-table td { border-color: var(--border-subtle) !important; }
+html.light .responsive-table tr { border-color: var(--border-color) !important; }

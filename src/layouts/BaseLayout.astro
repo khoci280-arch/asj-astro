@@ -37,8 +37,15 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <style is:global>
     @import '../styles/global.css';
   </style>
+<script>
+    // Restore theme from localStorage
+    (function(){
+      var t = localStorage.getItem("asjTheme");
+      if (t === "light") document.documentElement.classList.add("light");
+    })();
+  </script>
 </head>
-<body id="asj-body" class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-500 flow-root">
+<body id="asj-body" class="min-h-screen transition-colors duration-500 flow-root">
   <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
   
   <slot />
