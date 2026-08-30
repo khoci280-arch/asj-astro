@@ -33,9 +33,9 @@ interface Job {
 
 const LIMIT_INITIAL = 10;
 // ─── Named Constants ───
-const TABLE_MIN_WIDTH = "900px";
-const COL_WIDTH = { CODE: "w-32", ACTION: "w-48" } as const;
-const COL_MIN_WIDTH = { JOB: "250px", REQ: "250px" } as const;
+const TABLE_MIN_WIDTH = "700px";
+const COL_WIDTH = { CODE: "w-24", ACTION: "w-28" } as const;
+const COL_MIN_WIDTH = { JOB: "180px", REQ: "140px" } as const;
 
 
 
@@ -162,7 +162,7 @@ export default function LokerTable() {
               <th scope="col" class="p-2 min-w-[180px]">{t("table.job")}</th>
               <th scope="col" class="p-2 text-center">{t("table.status")}</th>
               <th scope="col" class="p-2 min-w-[140px] max-w-[200px]">{t("table.req")}</th>
-              <th scope="col" class="p-2 text-center w-28">{t("table.action")}</th>
+              <th scope="col" class="p-1.5 text-center w-20">{t("table.action")}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
@@ -194,16 +194,16 @@ export default function LokerTable() {
                     <div class="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-amber-300/90 leading-relaxed"><i class="fas fa-info-circle mr-1"></i> {job.keterangan}</div>
                   )}
                 </td>
-                <td data-label={t("table.action")} class="rt-full p-1.5 align-top w-28">
-                  <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
-                    <button onClick={() => setSelectedJob(job)} class="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><i class="fas fa-eye mr-1"></i> {t("button.detail")}</button>
+                <td data-label={t("table.action")} class="rt-full p-1 align-top w-20">
+                  <div class="flex flex-row gap-1 items-center justify-center">
+                    <button onClick={() => setSelectedJob(job)} class="px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><i class="fas fa-eye"></i> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
-                      <a href={job.templateCv} target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><i class="fas fa-download mr-1"></i> {t("button.format")}</a>
+                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><i class="fas fa-download"></i> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}
                     {jobTutupUntukLamar(job) ? (
-                      <button disabled class="w-full sm:w-auto px-4 py-2.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
+                      <button disabled class="px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
                     ) : (
-                      <button onClick={() => openForm(job)} class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><i class="fas fa-paper-plane mr-1"></i> {t("button.apply")}</button>
+                      <button onClick={() => openForm(job)} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><i class="fas fa-paper-plane"></i> <span class="hidden sm:inline">{t("button.apply")}</span></button>
                     )}
                   </div>
                 </td>

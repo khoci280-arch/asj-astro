@@ -124,8 +124,8 @@ export default function AdminPanel() {
           ============================================ */}
       <aside
         role="navigation"
-        aria-label="Admin sidebar"
-        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl transition-transform duration-300 ease-in-out
+        id="admin-sidebar" aria-label="Admin sidebar"
+        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl overflow-y-auto transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         style={{ zIndex: String(Z_INDEX.SIDEBAR) }}
@@ -150,6 +150,9 @@ export default function AdminPanel() {
           </button>
         ))}
         <div class="flex-1"></div>
+        <button onClick={() => {}} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30">
+          <i class="fas fa-robot w-5 text-center"></i> <span>AI HR</span>
+        </button>
         <button onClick={() => setActiveTab('config')} class={`w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${
           activeTab === 'config' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
         }`} aria-label={t('ui.settings')}>
