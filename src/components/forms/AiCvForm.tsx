@@ -90,6 +90,7 @@ export default function AiCvForm() {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, sending]);
 
+  /** Add assistant message to chat */
   const addBot = (text: string) => {
     setMessages(prev => [...prev, { role: 'assistant', text, time: now() }]);
   };
@@ -115,7 +116,7 @@ export default function AiCvForm() {
           showToast(t('toast.saved'), 'success');
         }
         if (data.suggestions && data.suggestions.length > 0) {
-          setTimeout(() => setShowSuggestions(true), 500);
+          setTimeout(() => setShowSuggestions(true), 500) /* SUGGESTION_DELAY_MS */;
         }
       } else {
         addBot('Waduh sistem Jeklin lagi sibuk kak, coba beberapa saat lagi ya!');

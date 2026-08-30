@@ -108,7 +108,7 @@ export default function ApplyFullForm() {
 
   const handleUpload = (docType: string, file: File | null) => {
     if (!file) return;
-    const maxSize = 2 * 1024 * 1024;
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; /* 2MB */
     const isImage = file.type.startsWith('image/');
     const preview = isImage ? URL.createObjectURL(file) : null;
     setUploads(prev => ({
@@ -117,7 +117,7 @@ export default function ApplyFullForm() {
         file,
         preview,
         name: `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`,
-        warn: file.size > maxSize
+        warn: file.size > MAX_FILE_SIZE
       }
     }));
   };
@@ -148,7 +148,7 @@ export default function ApplyFullForm() {
       if (res.ok) {
         setSuccess(true);
       } else {
-        alert(t('apply.error_submit'));
+        showToast(t('apply.error_submit'), 'error');
       }
     } catch (e) {
       showToast(t('apply.error_submit') + ' ' + (e as Error).message, 'error');

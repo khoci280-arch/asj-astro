@@ -47,6 +47,7 @@ export default function SiswaBaruForm() {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
 
+  /** Current time string for chat messages */
   const now = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
   const handleSend = async () => {
@@ -88,8 +89,8 @@ export default function SiswaBaruForm() {
 
   const handleSubmit = async () => {
     if (!biodata.nama) { showToast('Biodata kosong. Jawab pertanyaan Jeklin dulu.', 'error'); return; }
-    if (biodata.waSiswa) { var vw = validate(waSchema, biodata.waSiswa); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
-    if (biodata.email) { var ve = validate(emailSchema, biodata.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
+    if (biodata.waSiswa) { const vw = validate(waSchema, biodata.waSiswa); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
+    if (biodata.email) { const ve = validate(emailSchema, biodata.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     const formData = new FormData();
     formData.append('biodata', JSON.stringify(biodata));
     Object.entries(docs).forEach(([k, f]) => { if (f) formData.append(k, f); });

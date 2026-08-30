@@ -88,7 +88,7 @@ export default function MasterFullForm() {
   }, []);
 
   const gateLogin = async () => {
-    var vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
+    const vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
       const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
       if (res.ok) {
@@ -102,6 +102,7 @@ export default function MasterFullForm() {
     } catch { setGateMsg('Error koneksi.'); }
   };
 
+  /** Update single field in master data */
   const upd = (k: string, v: string) => setData(d => ({ ...d, [k]: v }));
 
   const changeStep = (dir: number) => {
@@ -111,8 +112,8 @@ export default function MasterFullForm() {
 
   const submitMaster = async (isDraft: boolean) => {
     if (!isDraft) {
-      if (data.nama) { var vn = validate(waSchema, data.wa || ""); if (!vn.success) { showToast(vn.errors[0], "error"); return; } }
-      if (data.email) { var ve = validate(emailSchema, data.email); if (!ve.success) { showToast(ve.errors[0], "error"); return; } }
+      if (data.nama) { const vn = validate(waSchema, data.wa || ""); if (!vn.success) { showToast(vn.errors[0], "error"); return; } }
+      if (data.email) { const ve = validate(emailSchema, data.email); if (!ve.success) { showToast(ve.errors[0], "error"); return; } }
     }
     setSaving(true);
     try {
@@ -133,9 +134,9 @@ export default function MasterFullForm() {
       });
       if (res.ok) {
         localStorage.setItem('asj_master_' + data.wa, JSON.stringify(data));
-        alert(isDraft ? 'Draft berhasil disimpan!' : 'Data final berhasil disimpan!');
-      } else { alert('Gagal menyimpan.'); }
-    } catch (e) { alert('Error: ' + (e as Error).message); }
+        showToast(isDraft ? t('toast.draft_saved') : t('toast.saved'), 'success');
+      } else { showToast(t('toast.failed'), 'error'); }
+    } catch (e) { showToast('Error: ' + (e as Error).message, 'error'); }
     finally { setSaving(false); }
   };
 
