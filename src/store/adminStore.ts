@@ -147,9 +147,7 @@ export function setMailSearchText(val: string) {
   mailSearchText.set(val);
 }
 
-export function setMailList(list: any[]) {
-  mailList.set(list);
-}
+
 
 export async function fetchMailFromAPI() {
   try {

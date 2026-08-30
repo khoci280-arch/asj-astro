@@ -83,10 +83,7 @@ export function refreshSession() {
   }
 }
 
-/** Get session token */
-export function getSessionToken(): string {
-  return authStore.get().sessionToken;
-}
+
 
 /** Listen for cross-tab changes */
 if (typeof window !== 'undefined') {

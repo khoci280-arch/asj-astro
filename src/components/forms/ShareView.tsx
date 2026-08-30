@@ -3,7 +3,7 @@
  * Source: legacy/share.html (1:1 match)
  * Features: grid cards, filters, doc preview, selection bar, lang toggle
  */
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { apiClient } from '../../lib/apiClient';
 
 interface Candidate {

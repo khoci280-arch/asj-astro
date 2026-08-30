@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
-import { validate, registerSchema, waSchema, emailSchema } from '../../lib/schemas';
+import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 
 interface FormData {

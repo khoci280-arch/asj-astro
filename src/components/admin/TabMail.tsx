@@ -3,7 +3,6 @@
  * Source: legacy/index.html page-admin → admin-mail
  * Filters: MENUNGGU, REVIEW, LULUS, GAGAL, SEMUA
  */
-import { SkeletonCard } from '../Skeleton';
 import { useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {
