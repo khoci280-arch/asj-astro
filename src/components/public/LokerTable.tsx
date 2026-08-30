@@ -94,7 +94,8 @@ export default function LokerTable() {
 
   function getGenderBadge(gender: string) {
     const g = (gender || "").toUpperCase();
-    const lbl = t("option." + gender) || gender;
+    // Use raw gender text — already contains emojis and readable text from API
+    const lbl = gender || "-";
     if (g.includes("PRIA") || g.includes("LAKI"))
       return <span class="px-2 py-0.5 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><i class="fas fa-mars mr-1"></i> {lbl}</span>;
     if (g.includes("WANITA") || g.includes("PEREMPUAN"))
