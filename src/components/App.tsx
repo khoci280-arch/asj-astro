@@ -61,13 +61,14 @@ export default function App() {
               <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
             </div>
           </div>
-          <div class="absolute top-4 right-4 z-30">
+          <div class="flex flex-col items-end gap-3">
+          <div class="flex absolute top-4 right-4 z-30">
             <button onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg" aria-label="Toggle Menu">
               <i class={menuOpen ? "fas fa-times text-lg" : "fas fa-bars text-lg"}></i>
             </button>
           </div>
           {/* ─── Desktop Nav ─── */}
-          <div class="hidden md:flex flex-col items-end gap-2 mt-2">
+          <div class="flex flex-col items-end gap-3">
             <div class="flex items-center gap-3">
               <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
               <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "ID" : "JP"}</button>
@@ -94,6 +95,7 @@ export default function App() {
             </div>
           </div>
         </div>
+          </div>
       </header>
 
       {menuOpen && <div class="fixed inset-0 bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
