@@ -39,7 +39,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
         showToast(data.error || t('error.wrong_password'), 'error');
       }
     } catch (e: unknown) {
-      showToast('Error: ' + (e.message || 'Unknown'), 'error');
+      showToast('Error: ' + ((e as Error).message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };
 

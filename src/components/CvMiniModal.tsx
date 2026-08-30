@@ -50,13 +50,13 @@ export default function CvMiniModal({ onClose }: Props) {
       });
       const data = await res.json();
       if (data.success) {
-        showToast(t('toast.cv_updated'), 'success');
+        showToast(t('toast.saved'), 'success');
         onClose();
       } else {
         showToast(data.error || t('toast.failed'), 'error');
       }
     } catch (e: unknown) {
-      showToast('Error: ' + (e.message || 'Unknown'), 'error');
+      showToast('Error: ' + ((e as Error).message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };
 
@@ -69,10 +69,10 @@ export default function CvMiniModal({ onClose }: Props) {
         </div>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">Gender</label>
+            <label class="block text-xs font-bold text-slate-400 mb-1">{t("form.gender")}</label>
             <select value={gender} onChange={e => setGender((e.target as HTMLSelectElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none">
-              <option value="LAKI-LAKI">Laki-laki</option>
-              <option value="PEREMPUAN">Perempuan</option>
+              <option value="LAKI-LAKI">{t("form.gender_m")}</option>
+              <option value="PEREMPUAN">{t("form.gender_f")}</option>
             </select>
           </div>
           <div class="grid grid-cols-3 gap-2">
@@ -83,10 +83,10 @@ export default function CvMiniModal({ onClose }: Props) {
           <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("cvmini.pendidikan")}</label><input type="text" value={pendidikan} onInput={e => setPendidikan((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none" placeholder="SMA/SMK" /></div>
           <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("cvmini.jft")}</label><input type="text" value={jftText} onInput={e => setJftText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none" placeholder="A2/B1" /></div>
           <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("cvmini.ssw")}</label><input type="text" value={sswText} onInput={e => setSswText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none" placeholder="1/2 level" /></div>
-          <div><label class="block text-xs font-bold text-slate-400 mb-1">Pas Photo</label><input type="file" accept="image/*" onChange={handlePhoto} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:text-xs file:font-bold" />{photoName && <p class="text-[10px] text-slate-500 mt-1">{photoName}</p>}</div>
+          <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("cv.upload_foto")}</label><input type="file" accept="image/*" onChange={handlePhoto} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:text-xs file:font-bold" />{photoName && <p class="text-[10px] text-slate-500 mt-1">{photoName}</p>}</div>
         </div>
         <button onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 transition">
-          {loading ? 'Menyimpan...' : 'Simpan CV'}
+          {loading ? t('form.mf_save_final') : t('button.save')}
         </button>
       </div>
     </div>

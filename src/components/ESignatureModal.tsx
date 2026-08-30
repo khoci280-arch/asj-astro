@@ -17,6 +17,8 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
+  const STROKE_COLOR = '#ffffff';
+  const STROKE_WIDTH = 2.5;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,8 +30,6 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
     ctx.scale(2, 2);
-    const STROKE_COLOR = "#ffffff";
-    const STROKE_WIDTH = 2.5;
     ctx.strokeStyle = STROKE_COLOR;
     ctx.lineWidth = STROKE_WIDTH;
     ctx.lineCap = 'round';
