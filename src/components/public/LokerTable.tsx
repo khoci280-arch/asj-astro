@@ -6,7 +6,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { langStore, t } from '../../store/i18n';
+import { t } from '../../store/i18n';
 import LokerDetailModal from './LokerDetailModal';
 
 interface Job {
@@ -29,6 +29,12 @@ interface Job {
 }
 
 const LIMIT_INITIAL = 10;
+// ─── Named Constants ───
+const TABLE_MIN_WIDTH = "900px";
+const COL_WIDTH = { CODE: "w-32", ACTION: "w-48" } as const;
+const COL_MIN_WIDTH = { JOB: "250px", REQ: "250px" } as const;
+
+
 
 export default function LokerTable() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -36,7 +42,6 @@ export default function LokerTable() {
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(LIMIT_INITIAL);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const lang = useStore(langStore);
 
   useEffect(() => { fetchJobs(); }, []);
 
@@ -100,6 +105,7 @@ export default function LokerTable() {
     return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL/i.test(tp);
   }
 
+  /** Open application form via bridge, fallback to WhatsApp */
   async function openForm(job: Job) {
     try { const res = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generateFormBridge", args: [job.code, job.kategori || "", "", "", job.dokumenShare || ""] }) }); const data = await res.json(); if (data.formUrl) { window.location.href = data.formUrl; } else { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); } } catch { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); }
     
