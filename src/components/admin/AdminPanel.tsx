@@ -8,7 +8,7 @@
  *   - Sidebar: fixed left (w-64) on desktop, slide-in drawer on mobile
  *   - Content area: pl-64 on desktop to offset sidebar
  */
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
@@ -50,7 +50,20 @@ const TABS: TabDef[] = [
 ];
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<Tab>('kelola');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    var h = window.location.hash.replace('#', '');
+    return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
+  });
+  useEffect(() => {
+    function onHash() {
+      var h = window.location.hash.replace('#', '');
+      if (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h)) {
+        setActiveTab(h as Tab);
+      }
+    }
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUndanganKelas, setShowUndanganKelas] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);

@@ -1,6 +1,6 @@
 ---
 import Footer from '../components/Footer.astro';
-import BottomNav from '../components/BottomNav.astro';
+import BottomNav from '../components/BottomNav.tsx';
 
 export interface Props {
   title: string;
@@ -58,7 +58,7 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     <slot />
   
   <Footer />
-  <BottomNav />
+  <BottomNav client:load />
   
   <script>
     // ─── Fase 3 (Reactive): Auth restore via authReactive.ts ───
