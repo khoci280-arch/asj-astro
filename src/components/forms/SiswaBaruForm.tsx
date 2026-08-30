@@ -22,6 +22,8 @@ interface Biodata {
   waSiswa: string; waOrtu: string;
 }
 
+const DRAFT_KEY = "asj_siswa_draft_v1";
+
 const INIT: Biodata = {
   nama: '', ttl: '', gender: '', agama: '', email: '',
   alamat: '', pendidikan: '', waSiswa: '', waOrtu: ''
@@ -39,13 +41,56 @@ export default function SiswaBaruForm() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Load draft from localStorage
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft.savedAt && Date.now() - draft.savedAt > 86400000) {
+          showToast('Draf lebih dari 24 jam. Data mungkin sudah tidak relevan.', 'warning');
+        }
+        if (draft.biodata) setBiodata(draft.biodata);
+        if (draft.docs) {
+          setDocStatus(draft.docStatus || {});
+        }
+        if (draft.messages && draft.messages.length > 0) {
+          setMessages(draft.messages);
+          return;
+        }
+      }
+    } catch {}
     const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    setMessages([{ role: 'assistant', text: t('siswa.greeting'), time: now }]);
+    setMessages([{ role: 'assistant', text: t('siswa.greeting') + ' 👑', time: now }]);
   }, []);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
+  // Auto-save to localStorage every 30s + on change
+  useEffect(() => {
+    const timer = setInterval(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          biodata, messages, docStatus, savedAt: Date.now()
+        }));
+      } catch {}
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [biodata, messages, docStatus]);
+
+  // Save before unload
+  useEffect(() => {
+    const save = () => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          biodata, messages, docStatus, savedAt: Date.now()
+        }));
+      } catch {}
+    };
+    window.addEventListener('beforeunload', save);
+    return () => window.removeEventListener('beforeunload', save);
+  }, [biodata, messages, docStatus]);
+
 
   /** Current time string for chat messages */
   const now = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -101,6 +146,7 @@ export default function SiswaBaruForm() {
         headers: { Authorization: 'Bearer ' + token },
         body: formData
       });
+      if (res.ok) { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
       showToast(res.ok ? t('siswa.success') : t('siswa.failed'), res.ok ? 'success' : 'error');
     } catch (e) { showToast(t('siswa.network_error') + ' ' + (e as Error).message, 'error'); }
   };
@@ -169,7 +215,7 @@ export default function SiswaBaruForm() {
             onInput={(e) => setInput((e.target as HTMLInputElement).value)}
             onKeyDown={handleKeyDown}
             class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
-            placeholder={t("siswa.greeting")} />
+            placeholder="Ketik balasanmu di sini…" />
           <button onClick={handleSend} disabled={sending}
             class="bg-amber-600 hover:bg-amber-500 text-wh
 ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
@@ -206,7 +252,7 @@ ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)]
               {BIODATA_FIELDS.map(f => (
                 <div key={f.id} class={f.span ? 'col-span-1 md:col-span-2' : ''}>
                   <label class="block text-[10px] font-bold text-slate-400 mb-1">{f.label}</label>
-                  <input type="text" readonly value={biodata[f.id]}
+                  <input type="text" value={biodata[f.id]} onInput={(e) => setBiodata(prev => ({ ...prev, [f.id]: (e.target as HTMLInputElement).value }))}
                     class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none" />
                 </div>
               ))}
