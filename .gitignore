@@ -10,3 +10,5 @@ dist/
 
 .netlify/
 deploy.zip
+*.env
+superbase.env
