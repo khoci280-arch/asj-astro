@@ -8,6 +8,7 @@
  * No manual localStorage.getItem/setItem needed.
  */
 import { persistentAtom } from '@nanostores/persistent';
+import { requestNotificationPermission } from '../lib/fcm';
 
 export type UserRole = 'guest' | 'admin' | 'kandidat';
 
@@ -51,6 +52,8 @@ export function loginAsAdmin(name: string, sessionToken: string, refreshToken?: 
     isLoggedIn: true,
     lastChecked: now,
   });
+  // Activate FCM push notifications (non-blocking)
+  requestNotificationPermission(sessionToken).catch(() => {});
 }
 
 /** Login as kandidat */
@@ -65,6 +68,8 @@ export function loginAsKandidat(name: string, wa: string, sessionToken: string, 
     isLoggedIn: true,
     lastChecked: now,
   });
+  // Activate FCM push notifications (non-blocking)
+  requestNotificationPermission(wa).catch(() => {});
 }
 
 /** Logout — clears everything */
