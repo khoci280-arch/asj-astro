@@ -90,9 +90,10 @@ export default function CandidateDash() {
     try {
       const wa = user.wa || JSON.parse(localStorage.getItem('asj_kandidat_session') || '{}').wa;
       if (!wa) { window.location.href = '/'; return; }
+      const token = user.sessionToken || '';
       const res = await fetch('/.netlify/functions/bridge-links', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['kandidat'] }),
+        body: JSON.stringify({ action: 'getAppData', args: ['kandidat'], sessionToken: token }),
       });
       const result = await res.json();
       if (result.success) {
@@ -283,11 +284,12 @@ export default function CandidateDash() {
             </div>
             {/* Action buttons grid */}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
-              <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-user-edit mr-1.5"></i> {t('ui.update_cv_mini')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-microphone-alt mr-1.5"></i> {t('ui.interview_practice')}</a>
-              <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-signature mr-1.5"></i> {t('ui.esign_naitei')}</button>
-
-              <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
+              <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><i class="fas fa-user-edit mr-1.5"></i> {t('ui.update_cv_mini')}</button>
+              <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition text-center"><i class="fas fa-microphone-alt mr-1.5"></i> {t('ui.interview_practice')}</a>
+              <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><i class="fas fa-signature mr-1.5"></i> {t('ui.esign_naitei')}</button>
+              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-robot mr-1.5"></i> AI CV Master Assistant</a>
+              <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
+              <button class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> Preview Desain CV</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-key mr-1.5"></i> {t('ui.change_password')}</button>
             </div>
           </div>
