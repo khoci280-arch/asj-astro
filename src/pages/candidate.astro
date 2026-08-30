@@ -3,16 +3,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import CandidateDash from '../components/candidate/CandidateDash.tsx';
 import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
 ---
 
 <BaseLayout title="Dashboard Kandidat — ASJ Portal" description="Dashboard kandidat: CV, lamaran, status tahapan" showBottomNav={true}>
   <App showHeader={false} client:only="preact" />
+  <FormToolbar title="Dashboard Kandidat" client:only="preact" />
   <Toast client:only="preact" />
 
-  <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
-    <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-      <i class="fas fa-arrow-left"></i> Kembali ke Portal
-    </a>
+  <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pt-[42px]">
+    
     <CandidateDash client:only="preact" />
   </main>
 </BaseLayout>

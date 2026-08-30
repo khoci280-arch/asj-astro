@@ -3,13 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import AdminPanel from '../components/admin/AdminPanel.tsx';
 import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
 ---
 
 <BaseLayout title="Panel Admin — ASJ Portal" description="Admin panel: kelola kandidat, loker, mail, jadwal" showBottomNav={true}>
   <App showHeader={false} client:only="preact" />
   <Toast client:only="preact" />
 
-  <main id="main-content" class="w-full min-h-[50vh] pb-24">
+  <FormToolbar title="Panel Admin" client:only="preact" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-24 pt-[42px]">
     <AdminPanel client:only="preact" />
   </main>
 </BaseLayout>
