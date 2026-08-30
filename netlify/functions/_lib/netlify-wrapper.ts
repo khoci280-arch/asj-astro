@@ -27,12 +27,12 @@ function makeHandler() {
       const q = (event && event.queryStringParameters) || {};
       body.action = body.action || q.action || undefined;
       if (body.action) {
-        body.payload = body.payload || q.payload || undefined;
+        body.payload = body.payload || body.args || q.payload || undefined;
       }
     }
     let out;
     try {
-      out = await handleAction(body.action, body.payload, body.sessionToken, {
+      out = await handleAction(body.action, body.payload || body.args, body.sessionToken, {
         ip: clientIp(event),
       });
     } catch (e) {
