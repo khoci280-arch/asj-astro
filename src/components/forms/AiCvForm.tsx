@@ -162,7 +162,7 @@ export default function AiCvForm() {
   const updateCv = (field: string, value: string) => setCv(prev => ({ ...prev, [field]: value }));
 
   return (
-    <div class="flex flex-col md:flex-row h-screen w-full relative" style={{ height: '100dvh' }}>
+    <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]" style={{ height: '100dvh' }}>
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
         <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
@@ -174,7 +174,7 @@ export default function AiCvForm() {
       </div>
 
       {/* Chat Panel */}
-      <div class={`${tab === 'chat' ? 'flex' : 'hidden'} md:flex w-full md:w-[35%] h-[calc(100vh-42px)] md:h-full bg-slate-900 border-r border-slate-800 flex-col z-20`}>
+      <div class={`${tab === 'chat' ? 'flex' : 'hidden'} md:flex w-full md:w-[35%] h-full md:h-full bg-slate-900 border-r border-slate-800 flex-col z-20`}>
         <div class="p-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3 relative overflow-hidden">
           <div class="absolute -top-4 -right-4 w-16 h-16 bg-amber-500 rounded-full blur-2xl opacity-20"></div>
           <div class="w-10 h-10 rounded-full bg-amber-500 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex-shrink-0">

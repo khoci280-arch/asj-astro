@@ -98,7 +98,7 @@ export default function ShareView() {
   const t = (idKey: string, jpKey: string) => lang === 'jp' ? jpKey : idKey;
 
   return (
-    <div class="min-h-screen bg-slate-950 overflow-x-hidden text-slate-100 relative selection:bg-pink-500/30">
+    <div class="min-h-screen bg-slate-950 pt-[42px] overflow-x-hidden text-slate-100 relative selection:bg-pink-500/30">
       {/* Ambient BG */}
       <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div class="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-pink-600/20 rounded-full blur-[120px]"></div>

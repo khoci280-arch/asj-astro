@@ -192,7 +192,7 @@ export default function MasterFullForm() {
   }
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: '#020617', color: '#fff', paddingBottom: 90 }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: '#020617', color: '#fff', paddingBottom: 90, paddingTop: 42 }}>
       {/* Hero */}
       <div class="relative h-[220px] overflow-hidden">
         <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80" class="absolute inset-0 w-full h-full object-cover brightness-[.35]" alt="" />

@@ -9,6 +9,10 @@ export default defineConfig({
   // adapter: netlify(),  // Enable for SSR deploy
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ["preact", "preact/hooks", "@nanostores/preact", "nanostores"],
+      exclude: ["@astrojs/preact"],
+    },
     server: {
       proxy: {
         "/.netlify/functions": {

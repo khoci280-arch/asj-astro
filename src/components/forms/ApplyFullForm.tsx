@@ -160,7 +160,7 @@ export default function ApplyFullForm() {
   const progressPct = step === 1 ? '0%' : step === 2 ? '50%' : '100%';
 
   return (
-    <div class="min-h-screen bg-[#020617] text-white pb-[100px]">
+    <div class="min-h-screen bg-[#020617] text-white pb-[100px] pt-[42px]">
       {/* Hero */}
       <div class="relative h-[260px] overflow-hidden">
         <img class="absolute inset-0 w-full h-full object-cover brightness-[.35]"
