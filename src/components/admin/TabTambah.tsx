@@ -1,16 +1,41 @@
 /**
  * TabTambah.tsx - Form Input Loker Baru
  */
-import { useState } from 'preact/hooks';
-import { useApi } from '../../lib/useApi';
+import { useState, useEffect } from 'preact/hooks';
 
 // DropdownData type imported from shared types
 // Note: DD alias used for backward compatibility
 const RF = ['CV', 'JFT', 'SSW'];
 
 export default function TabTambah() {
-  const { data, isLoading } = useApi("getAppData", ["admin"]);
-const dd = data?.dropdowns || { tsk: [], tahapan: [], kategori: [], gender: [], lokasi: [], syarat: [] };
+  const [dd, setDd] = useState<DD>({ tsk: [], tahapan: [], kategori: [], gender: [], lokasi: [], syarat: [] });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [tsk, setTsk] = useState('');
+  const [tahapan, setTahapan] = useState('');
+  const [kuota, setKuota] = useState('');
+  const [kategori, setKategori] = useState('');
+  const [pekerjaan, setPekerjaan] = useState('');
+  const [gender, setGender] = useState('');
+  const [lokasi, setLokasi] = useState<string[]>([]);
+  const [customLokasi, setCustomLokasi] = useState('');
+  const [syarat, setSyarat] = useState<string[]>([]);
+  const [customSyarat, setCustomSyarat] = useState('');
+  const [reqFiles, setReqFiles] = useState<string[]>(RF);
+  const [customReqFile, setCustomReqFile] = useState('');
+  const [keterangan, setKeterangan] = useState('');
+  const [totalBiaya, setTotalBiaya] = useState('');
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [pamfletFile, setPamfletFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const d = await r.json();
+        if (d.success && d.dropdowns) setDd(d.dropdowns);
+      } catch (e) { console.error(e); } finally { setLoading(false); }
+    } load(); }, []);
 
   function tog(a: string[], s: (v: string[]) => void, v: string) { s(a.includes(v) ? a.filter(x => x !== v) : [...a, v]); }
 
@@ -27,7 +52,7 @@ const dd = data?.dropdowns || { tsk: [], tahapan: [], kategori: [], gender: [], 
     } catch (e) { alert('Error: ' + e); } finally { setSubmitting(false); }
   }
 
-  if (isLoading) return <div class='text-center py-8'><i class='fas fa-spinner fa-spin text-2xl text-red-400'></i><p class='text-slate-500 mt-2 text-sm'>Memuat form...</p></div>;
+  if (loading) return <div class='text-center py-8'><i class='fas fa-spinner fa-spin text-2xl text-red-400'></i><p class='text-slate-500 mt-2 text-sm'>Memuat form...</p></div>;
 
   const ic = 'w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition';
   const lc = 'block text-sm font-bold text-slate-300 mb-1.5';

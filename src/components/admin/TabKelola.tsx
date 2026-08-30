@@ -2,13 +2,9 @@
  * TabKelola.tsx — Admin loker management tab
  * Source: legacy/index.html page-admin → admin-kelola
  * Integrated: AdminJobEditModal, AdminShareModal
- *
- * Uses SWR hook for automatic caching and revalidation
  */
-import { useState } from 'preact/hooks';
-import useSWR from 'swr';
+import { useState, useEffect } from 'preact/hooks';
 import { t } from '../../store/i18n';
-import { apiClient } from '../../lib/apiClient';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 
@@ -24,26 +20,26 @@ const STATUS_BADGE: Record<string, string> = {
   CLOSE: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
 };
 
-const SWR_KEY = 'admin-loker-list';
-
-async function fetchLoker(): Promise<Loker[]> {
-  const data = await apiClient<any>('getAppData', ['admin'], { requireAuth: false });
-  return data?.success ? (data.jobs || []) : [];
-}
-
 export default function TabKelola() {
+  const [loker, setLoker] = useState<Loker[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [editJob, setEditJob] = useState<Loker | null>(null);
   const [shareJob, setShareJob] = useState<Loker | null>(null);
 
-  const { data: loker = [], isLoading, mutate } = useSWR<Loker[]>(
-    SWR_KEY,
-    fetchLoker,
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 10000,
-    }
-  );
+  useEffect(() => { fetchLoker(); }, []);
+
+  async function fetchLoker() {
+    try {
+      const res = await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+      });
+      const data = await res.json();
+      if (data.success && data.jobs) setLoker(data.jobs);
+    } catch (err) { console.error('[TabKelola]', err); }
+    finally { setLoading(false); }
+  }
 
   const filtered = loker.filter(j =>
     !search || (j.code || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -54,18 +50,22 @@ export default function TabKelola() {
 
   const toggleStatus = async (code: string, newStatus: string) => {
     try {
-      await apiClient('ubahStatusJob', [code, newStatus]);
-      // Optimistic update + revalidate
-      mutate(prev => (prev || []).map(j => j.code === code ? { ...j, status: newStatus } : j), false);
+      await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus] }),
+      });
+      setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
     } catch (e) { console.error(e); }
   };
 
   const deleteJob = async (code: string) => {
     if (!confirm('Yakin hapus loker ' + code + '?')) return;
     try {
-      await apiClient('hapusJobData', [code]);
-      // Optimistic delete + revalidate
-      mutate(prev => (prev || []).filter(j => j.code !== code), false);
+      await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'hapusJobData', args: [code] }),
+      });
+      setLoker(prev => prev.filter(j => j.code !== code));
     } catch (e) { console.error(e); }
   };
 
@@ -79,7 +79,7 @@ export default function TabKelola() {
         </div>
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-red-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat...</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">
@@ -122,7 +122,7 @@ export default function TabKelola() {
       )}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} loker</p>
 
-      {editJob && <AdminJobEditModal job={editJob} onClose={() => setEditJob(null)} onSave={() => mutate()} />}
+      {editJob && <AdminJobEditModal job={editJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
     </div>
   );
