@@ -33,6 +33,26 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
+  // Theme backgrounds
+  const HEADER_BGS: Record<string, string> = {
+    SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp',
+    TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_banner.jpg',
+    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_banner.jpg'
+  };
+  const FOOTER_BGS: Record<string, string> = {
+    SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakura_footer.webp',
+    TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg',
+    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg'
+  };
+  const getTheme = () => { try { return localStorage.getItem('asj_theme') || 'TOKYO'; } catch { return 'TOKYO'; } };
+  const [headerBg, setHeaderBg] = useState(() => HEADER_BGS[getTheme()] || HEADER_BGS.TOKYO);
+  const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? !document.documentElement.classList.contains('light') : true);
+
+  useEffect(() => {
+    const onThemeChange = () => { const t = getTheme(); setHeaderBg(HEADER_BGS[t] || HEADER_BGS.TOKYO); };
+    window.addEventListener('asj-theme-change', onThemeChange);
+    return () => window.removeEventListener('asj-theme-change', onThemeChange);
+  }, []);
 
   // Initialize Supabase auth listener once at boot
   useEffect(() => { translateDataLang();
@@ -47,6 +67,14 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   async function handleLogout() { await logoutSupabase(); window.location.reload(); }
   function toggleMenu() { setMenuOpen(!menuOpen); }
   function toggleLang() { langStore.set(lang === "id" ? "jp" : "id"); window.dispatchEvent(new Event("asj-lang-change")); translateDataLang(); }
+  function toggleTheme() {
+    document.documentElement.classList.toggle('light');
+    localStorage.setItem('asjTheme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+    const theme = document.documentElement.classList.contains('light') ? 'SAKURA' : 'TOKYO';
+    localStorage.setItem('asj_theme', theme);
+    setIsDark(prev => !prev);
+    window.dispatchEvent(new Event('asj-theme-change'));
+  }
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
   return (
