@@ -51,6 +51,7 @@ const TABS: TabDef[] = [
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === 'undefined') return 'kelola' as Tab;
     var h = window.location.hash.replace('#', '');
     return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
   });
