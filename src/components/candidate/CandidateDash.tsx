@@ -129,7 +129,7 @@ export default function CandidateDash() {
   const uniqueLokers = [...new Set(data.riwayat.map(r => r.jobCode).filter(Boolean))];
 
   return (
-    <>
+    <div class="pb-24">
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         <i class="fas fa-id-card text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl"></i>
         <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama}! <CrownBadge progress={overallProgress} /></h2>
@@ -339,6 +339,6 @@ export default function CandidateDash() {
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
       {showESign && <ESignatureModal onSave={(d) => { console.log('TD saved', d.length); setShowESign(false); }} onClose={() => setShowESign(false)} />}
-    </>
+    </div>
   );
 }

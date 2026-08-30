@@ -231,3 +231,6 @@ html.light .glass-panel,html.light .glass{background:rgba(255,255,255,0.95)!impo
 html.light .skeleton{background:linear-gradient(90deg,#e8e0e1 25%,#f5f0f1 50%,#e8e0e1 75%)!important;background-size:200% 100%!important}
 html.light ::-webkit-scrollbar-thumb{background:#c4b5b7!important}
 html.light ::-webkit-scrollbar-track{background:#f1e4e5!important}
+
+/* Bottom safe area for fixed bottom nav */
+.pb-safe { padding-bottom: 5rem; }
