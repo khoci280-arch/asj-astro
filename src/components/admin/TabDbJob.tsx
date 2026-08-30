@@ -2,50 +2,24 @@
  * TabDbJob.tsx — Admin DB Job Internal tab
  * Source: legacy/index.html page-admin → admin-dbjob
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useState } from 'preact/hooks';
+import { useApi } from '../../lib/useApi';
 
 interface DbJob {
   code: string; tsk: string; pekerjaan: string; kategori: string;
   lokasi: string; tahapan: string; statusInt: string; createdAt: string;
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  OPEN: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-  URGENT: 'bg-red-500/20 text-purple-400 border-red-500/40',
-  CLOSE: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
-};
-
 export default function TabDbJob() {
-  const [jobs, setJobs] = useState<DbJob[]>([]);
   const [sortType, setSortType] = useState('TERBARU');
   const [fBidang, setFBidang] = useState('ALL');
   const [fTahapan, setFTahapan] = useState('ALL');
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchLoker(); }, []);
+  const { data, isLoading } = useApi('getAppData', ['admin']);
+  const jobs: DbJob[] = data?.dbJobs || [];
 
-  async function fetchLoker() {
-    try {
-      const res = await fetch('/.netlify/functions/get-app-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setJobs(data.dbJobs || []);
-      }
-    } catch (err) {
-      console.error('[TabDbJob] Failed:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const bList = [...new Set(jobs.map(j => j.kategori).filter(Boolean))];
-  const tList = [...new Set(jobs.map(j => j.tahapan).filter(Boolean))];
   const filtered = jobs
     .filter(j => {
       const ms = !search || [j.code, j.tsk, j.pekerjaan, j.lokasi].some(f => (f || '').toLowerCase().includes(search));
@@ -71,22 +45,15 @@ export default function TabDbJob() {
         <h2 class="text-purple-400 font-bold text-lg"><i class="fas fa-server mr-2"></i> Histori Job Internal</h2>
         <div class="relative w-72">
           <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-          <input
-            type="text"
-            value={search}
-            onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+          <input type="text" value={search} onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
             placeholder="Cari ID, TSK, Pekerjaan..."
-            class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition"
-          />
+            class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition" />
         </div>
       </div>
-
       <div class="flex flex-col gap-3 mb-5 bg-black/30 p-4 rounded-lg border border-purple-900/30 text-sm">
         <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
           <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><i class="fas fa-sort-amount-down mr-1"></i> Urutkan:</span>
-          {[
-            {id: 'TERBARU', l: 'Terbaru'}, {id: 'TERLAMA', l: 'Terlama'}, {id: 'TERBANYAK', l: 'Terbanyak'}
-          ].map(o => (
+          {[{id: 'TERBARU', l: 'Terbaru'}, {id: 'TERLAMA', l: 'Terlama'}, {id: 'TERBANYAK', l: 'Terbanyak'}].map(o => (
             <button key={o.id} onClick={() => setSortType(o.id)}
               class={'px-4 py-1.5 rounded-full font-bold transition ' + (sortType === o.id ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')}>
               {o.l}
@@ -94,8 +61,7 @@ export default function TabDbJob() {
           ))}
         </div>
       </div>
-
-      {loading ? (
+      {isLoading ? (
         <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat data DB Job...</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">

@@ -1,16 +1,14 @@
 /**
  * TabJadwal.tsx - Jadwal Agenda tab
  * Source: legacy admin.html admin-jadwal (lines 668-697)
+ * Refactored: SWR for data loading
  */
-import { useState, useEffect } from 'preact/hooks';
-
-// Jadwal type imported from shared types
+import { useState } from 'preact/hooks';
+import { useApi } from '../../lib/useApi';
+import { apiClient } from '../../lib/apiClient';
 
 export default function TabJadwal() {
-  const [jadwal, setJadwal] = useState<Jadwal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [tskList, setTskList] = useState<string[]>([]);
   const [nama, setNama] = useState('');
   const [loker, setLoker] = useState('');
   const [waktu, setWaktu] = useState('');
@@ -18,26 +16,22 @@ export default function TabJadwal() {
   const [tsk, setTsk] = useState('');
   const [link, setLink] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
-        const d = await r.json();
-        if (d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
-      } catch (e) { console.error(e); } finally { setLoading(false); }
-    } load(); }, []);
+  const { data, isLoading, mutate } = useApi('getAppData', ['admin']);
+  const jadwal = data?.schedules || [];
+  const tskList: string[] = data?.dropdowns?.tsk || [];
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
     try {
-      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama, loker, waktu, lokasi, tsk, link }) });
-      const d = await r.json(); if (d.success) { alert('Jadwal tersimpan!'); location.reload(); } else alert('Gagal: ' + (d.error || 'Unknown'));
+      const d = await apiClient('saveSchedule', { nama, loker, waktu, lokasi, tsk, link });
+      if (d.success) { alert('Jadwal tersimpan!'); mutate(); setShowForm(false); setNama(''); setLoker(''); setWaktu(''); setLokasi(''); setTsk(''); setLink(''); }
+      else alert('Gagal: ' + (d.error || 'Unknown'));
     } catch (e) { alert('Error: ' + e); }
   }
 
   const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
 
-  if (loading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-amber-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat jadwal...</p></div>;
+  if (isLoading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-amber-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat jadwal...</p></div>;
 
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>

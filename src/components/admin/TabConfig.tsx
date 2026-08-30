@@ -1,13 +1,14 @@
 /**
  * TabConfig.tsx - Pengaturan Sistem tab
  * Source: legacy admin.html admin-config (lines 802-861)
+ * Refactored: SWR for data loading
  */
-import { useState, useEffect } from 'preact/hooks';
-
-// ConfigGroup type imported from shared types
+import { useState } from 'preact/hooks';
+import { useApi } from '../../lib/useApi';
 
 export default function TabConfig() {
-  const [configs, setConfigs] = useState<ConfigGroup[]>([
+  const { data, isLoading, mutate } = useApi('getAppData', ['admin']);
+  const configs: ConfigGroup[] = data?.sysConfig?.length ? data.sysConfig : [
     { id: 'tsk_list', label: 'TSK / Pengurus', options: ['TSK-001', 'TSK-002', 'TSK-003'] },
     { id: 'tahapan_db', label: 'Tahapan Internal DB', options: ['Persiapan', 'Dokumen', 'MCU', 'Wawancara', 'Keberangkatan'] },
     { id: 'bidang_kerja', label: 'Bidang Pekerjaan', options: ['Manufaktur', 'Pertanian', 'Perikanan', 'Konstruksi', 'Perawatan Lansia', 'Logistik', 'F&B', 'Perhotelan'] },
@@ -17,24 +18,14 @@ export default function TabConfig() {
     { id: 'tahapan_progres', label: 'Tahapan Progres', options: ['Pendaftaran', 'Seleksi', 'Dokumen', 'MCU', 'Wawancara', 'Keberangkatan'] },
     { id: 'gender', label: 'Gender', options: ['Laki-laki', 'Perempuan'] },
     { id: 'jenjang_pendidikan', label: 'Jenjang Pendidikan', options: ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2'] },
-  ]);
-  const [loading, setLoading] = useState(true);
+  ];
+  const [pengumuman, setPengumuman] = useState(data?.pengumuman || '');
   const [migrating, setMigrating] = useState(false);
   const [migStatus, setMigStatus] = useState('');
   const [migResults, setMigResults] = useState<string[]>([]);
   const [migPending, setMigPending] = useState('');
-  const [pengumuman, setPengumuman] = useState('');
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
-        const d = await r.json();
-        if (d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
-      } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }
-    } load(); }, []);
 
   async function handleMigrate() {
     setMigrating(true); setMigStatus('Running...'); setMigResults([]);
@@ -52,7 +43,7 @@ export default function TabConfig() {
     try {
       const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options }) });
       const d = await r.json();
-      if (d.success) { setEditingConfig(null); location.reload(); } else alert('Failed: ' + d.error);
+      if (d.success) { setEditingConfig(null); mutate(); } else alert('Failed: ' + d.error);
     } catch (e) { alert('Error: ' + e); }
   }
 
@@ -60,11 +51,11 @@ export default function TabConfig() {
     try {
       const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pengumuman }) });
       const d = await r.json();
-      if (d.success) alert('Pengumuman saved!'); else alert('Failed: ' + d.error);
+      if (d.success) { alert('Pengumuman saved!'); mutate(); } else alert('Failed: ' + d.error);
     } catch (e) { alert('Error: ' + e); }
   }
 
-  if (loading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-slate-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat pengaturan...</p></div>;
+  if (isLoading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-slate-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat pengaturan...</p></div>;
 
   return (<div>
     <h2 class="text-white font-bold mb-6 border-b border-slate-700 pb-3 text-lg"><i class="fas fa-cogs mr-2 text-slate-300"></i> Pengaturan Sistem (Dropdown)</h2>
@@ -97,7 +88,7 @@ export default function TabConfig() {
             <div>
               <div class="text-xs text-slate-500 mb-2">{c.options.length} options</div>
               <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[10px] text-slate-500">+{c.options.length - 5} more</span>}</div>
-              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('\n')); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><i class="fas fa-edit mr-1"></i> Edit</button>
+              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join(String.fromCharCode(10))); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><i class="fas fa-edit mr-1"></i> Edit</button>
             </div>
           )}
         </div>
