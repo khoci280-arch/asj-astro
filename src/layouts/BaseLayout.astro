@@ -45,21 +45,29 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     })();
   </script>
 </head>
-<body id="asj-body" class="min-h-screen transition-colors duration-500 flow-root">
+<body id="asj-body" class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-500 flow-root">
+  <div id="global-loader" style="display: none !important;">
+    <i class="fas fa-spinner fa-spin text-5xl text-pink-500 mb-4"></i>
+    <h2 class="text-xl font-bold tracking-widest text-slate-200">MEMUAT ASJ OS V7...</h2>
+    <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6">Mempersiapkan UI Modern</p>
+    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><i class="fas fa-times mr-1"></i> Tutup Paksa Loading</button>
+  </div>
+  <div id="sakura-particles" class="fixed inset-0 overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
   
-  <slot />
-<div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-6">
+  <div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-6">
   <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
     <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-red-600/60 shadow-md">
       <i class="fas fa-bullhorn text-white animate-bounce text-lg"></i>
     </div>
-    <div class="ml-12 mr-2 overflow-hidden"><div id="marquee-text" class="text-white text-sm font-bold tracking-wide whitespace-nowrap animate-[marquee-scroll_20s_linear_infinite]"></div></div>
+    <div class="marquee-track ml-12 mr-2"><div id="marquee-text" class="marquee-content text-white text-sm font-bold tracking-wide"></div></div>
   </div>
 </div>
 <script>
   fetch("/.netlify/functions/get-app-data", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["admin"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
 </script>
+
+  <slot />
   
   <Footer />
   <BottomNav />

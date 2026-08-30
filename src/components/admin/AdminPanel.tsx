@@ -29,7 +29,6 @@ const TABS: { id: Tab; icon: string; label: string; color: string }[] = [
   { id: 'jadwal',  icon: 'fa-calendar-alt',  label: t('admin.tab_schedule'),       color: 'text-amber-400' },
   { id: 'mail',    icon: 'fa-envelope',      label: t('admin.tab_mail'),           color: 'text-sky-400' },
   { id: 'wa',      icon: 'fa-whatsapp',      label: t('ui.wa_pintar'),             color: 'text-emerald-400' },
-  { id: 'config',  icon: 'fa-cog',           label: t('ui.settings'),              color: 'text-slate-300' },
 ];
 
 export default function AdminPanel() {

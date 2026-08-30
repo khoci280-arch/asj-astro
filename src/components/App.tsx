@@ -36,14 +36,14 @@ export default function App() {
 
   return (
     <>
-      <header class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700">
-        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
+      <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700">
+        <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
         <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
           <div class="flex items-center gap-5">
-            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-2xl" />
+            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
             <div>
-              <div class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">日本への挑戦</div>
-              <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg">PT AMANAH SAKURA JAPAN</h1>
+              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">日本への挑戦</div>
+              <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
             </div>
           </div>
           <div class="absolute top-4 right-4 z-30">
@@ -53,8 +53,8 @@ export default function App() {
           </div>
           <div class="hidden md:flex flex-col items-end gap-3">
             <div class="flex items-center gap-3">
-              <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 text-white border border-emerald-400/30 rounded-full text-xs font-bold shadow-lg animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
-              <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "JP" : "ID"}</button>
+              <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
+              <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "ID" : "JP"}</button>
             </div>
             <div class="flex flex-wrap gap-3 mt-1">
               {!u.isLoggedIn && (<>
@@ -86,9 +86,9 @@ export default function App() {
           <button onClick={toggleMenu} class="text-slate-400 hover:text-white p-1 transition" aria-label="Close"><i class="fas fa-times text-xl"></i></button>
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <div class="flex gap-2 pb-3 mb-3 border-b border-slate-700">
-            <button onClick={installApp} class="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-sky-600 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-mobile-alt mr-2"></i> {t("ui.install_app")}</button>
-            <button onClick={toggleLang} class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fas fa-language"></i> {lang === "id" ? "JP" : "ID"}</button>
+          <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
+            <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-mobile-alt mr-2"></i> {t("ui.install_app")}</button>
+            <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fas fa-language"></i> Bahasa <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {!u.isLoggedIn && (<div class="space-y-3">
             <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
