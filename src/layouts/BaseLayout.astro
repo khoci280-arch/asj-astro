@@ -64,7 +64,7 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   </div>
 </div>
 <script>
-  fetch("/.netlify/functions/get-app-data", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["admin"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
+  fetch("/.netlify/functions/get-app-data", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["public"]}) }).then(r=>r.json()).then(d=>{ if(d.success && d.pengumuman){ var el=document.getElementById("marquee-text"); if(el){el.textContent=d.pengumuman; document.getElementById("global-announcement").classList.remove("hidden");}} }).catch(()=>{});
 </script>
 
   <slot />
@@ -91,5 +91,17 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
       });
     }
   </script>
+<script>
+  // i18n: listen for language changes and translate [data-lang] elements
+  window.addEventListener("asj-lang-change", function() {
+    // translateDataLang() is called by App.tsx after Nanostores update
+  });
+  window.addEventListener("storage", function(e) {
+    if (e.key === "asj_lang") {
+      // Cross-tab: trigger translation on next tick after localStorage updates
+      setTimeout(function() { window.dispatchEvent(new Event("asj-lang-change")); }, 100);
+    }
+  });
+</script>
 </body>
 </html>

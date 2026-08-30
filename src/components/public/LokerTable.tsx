@@ -100,9 +100,9 @@ export default function LokerTable() {
     return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL/i.test(tp);
   }
 
-  function openWA(job: Job) {
-    const msg = encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + "). Mohon info lebih lanjut.");
-    window.open("https://wa.me/6287889502004?text=" + msg, "_blank");
+  async function openForm(job: Job) {
+    try { const res = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generateFormBridge", args: [job.code, job.kategori || "", "", "", job.dokumenShare || ""] }) }); const data = await res.json(); if (data.formUrl) { window.location.href = data.formUrl; } else { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); } } catch { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); }
+    
   }
 
   function filterCount(s: string) {
@@ -189,7 +189,7 @@ export default function LokerTable() {
                     {jobTutupUntukLamar(job) ? (
                       <button disabled class="w-full sm:w-auto px-4 py-2.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
                     ) : (
-                      <button onClick={() => openWA(job)} class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><i class="fas fa-paper-plane mr-1"></i> {t("button.apply")}</button>
+                      <button onClick={() => openForm(job)} class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><i class="fas fa-paper-plane mr-1"></i> {t("button.apply")}</button>
                     )}
                   </div>
                 </td>

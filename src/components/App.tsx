@@ -8,7 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
-import { langStore, t } from '../store/i18n';
+import { langStore, t, translateDataLang } from '../store/i18n';
 import LoginModal from './LoginModal';
 import { showToast } from './Toast';
 
@@ -21,7 +21,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Initialize Supabase auth listener once at boot
-  useEffect(() => {
+  useEffect(() => { translateDataLang();
     const cleanup = initializeAuthListener();
     return cleanup;
   }, []);
@@ -31,7 +31,7 @@ export default function App() {
   function closeModal() { setModalMode("closed"); }
   async function handleLogout() { await logoutSupabase(); window.location.reload(); }
   function toggleMenu() { setMenuOpen(!menuOpen); }
-  function toggleLang() { langStore.set(lang === "id" ? "jp" : "id"); }
+  function toggleLang() { langStore.set(lang === "id" ? "jp" : "id"); window.dispatchEvent(new Event("asj-lang-change")); translateDataLang(); }
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
   return (

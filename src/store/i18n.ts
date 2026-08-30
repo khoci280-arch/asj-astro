@@ -453,6 +453,29 @@ export const translations: Record<Lang, Record<string, string>> = {
     "table.admin_action": "Aksi Admin",
     "table.delete": "Hapus",
     "table.job_code": "Kode Job",
+    "ui.tab_loker": "Lowongan Loker",
+    "ui.tab_layanan": "Program & Layanan ASJ",
+    "landing.class_badge": "Dibuka Kelas Baru",
+    "landing.class_title": "Penerimaan Siswa Angkatan K",
+    "landing.class_subtitle": "Mulai Bulan Oktober 2026",
+    "landing.class_desc": "Wujudkan mimpimu berkarir di Jepang lewat jalur resmi. Tersedia program Tokutei Ginou (SSW) dan Magang (SO Swasta) dengan kuota eksklusif terbatas 25-30 anak per angkatan agar belajar lebih fokus.",
+    "landing.class_dana_title": "Tersedia Dana Talang",
+    "landing.class_dana_desc": "Biaya keberangkatan bisa ditalangi TANPA BUNGA / RIBA. Cukup jaminan sertifikat/dokumen yang aman & bisa dicek kapan saja di LPK. Uang kembali full jika ada pembatalan sepihak dari Kaisha Jepang (kecuali MCU).",
+    "landing.class_fee_title": "Rincian Biaya",
+    "landing.class_fac_title": "Fasilitas Asrama Gratis",
+    "landing.class_btn_wa": "Grup WA",
+    "landing.class_btn_cek": "Cek Data",
+    "landing.class_btn_form": "Form Daftar Siswa",
+    "landing.visa_title": "Pengurusan Visa",
+    "landing.visa_subtitle": "Tokutei Ginou & Magang",
+    "landing.visa_desc": "Menerima pembuatan dokumen dan Visa Jepang (TG & Magang). Melayani proses pemberkasan untuk kandidat di area/domisili Surabaya, Jakarta, dan Medan.",
+    "landing.visa_btn": "Konsultasi Visa",
+    "landing.exam_title": "Pendaftaran Ujian",
+    "landing.exam_subtitle": "JFT Basic & SSW Prometric",
+    "landing.exam_desc": "Solusi cepat dapat jadwal ujian! Kami bantu pendaftaran resmi akun Prometric Anda untuk seluruh titik lokasi di Indonesia (Bandung, Jakarta, Surabaya, Bali, dll).",
+    "landing.exam_btn": "Booking Jadwal Ujian",
+    "landing.maps_title": "Kunjungi LPK Amanah Sakura Japan",
+    "landing.maps_btn": "Buka Google Maps",
   },
   jp: {
     "header.login": "ログイン",
@@ -941,9 +964,46 @@ export const translations: Record<Lang, Record<string, string>> = {
     "table.admin_action": "管理操作",
     "table.delete": "削除",
     "table.job_code": "求人コード",
+    "ui.tab_loker": "求人一覧",
+    "ui.tab_layanan": "プログラム＆サービス",
+    "landing.class_badge": "新クラス募集",
+    "landing.class_title": "K期生募集中",
+    "landing.class_subtitle": "2026年10月開始",
+    "landing.class_desc": "正規ルートで日本のキャリアを実現しましょう。特定期間（SSW）と研修（SO私営）プログラムを提供。1回あたり25-30名の限定枠で集中学習が可能です。",
+    "landing.class_dana_title": "立替制度あり",
+    "landing.class_dana_desc": "出発費用を無利息/無担保で立替可能。証明書/書類を担保としてLPKでいつでも確認可能。会社都合でのキャンセル時は全額返金（MCU除く）。",
+    "landing.class_fee_title": "費用明細",
+    "landing.class_fac_title": "無料寮完備",
+    "landing.class_btn_wa": "WAグループ",
+    "landing.class_btn_cek": "データ確認",
+    "landing.class_btn_form": "生徒登録フォーム",
+    "landing.visa_title": "ビザ手続き",
+    "landing.visa_subtitle": "特定期間＆研修",
+    "landing.visa_desc": "日本の文書・ビザ（TG＆研修）の作成を承ります。スラバヤ・ジャカルタ・メダン在住の方の書類作成に対応しています。",
+    "landing.visa_btn": "ビザ相談",
+    "landing.exam_title": "試験申込",
+    "landing.exam_subtitle": "JFT基礎 & SSW Prometric",
+    "landing.exam_desc": "試験スケジュールを素早く取得！インドネシア全会場（バンドン・ジャカルタ・スラバヤ・バリ等）のPrometricアカウント登録をお手伝いします。",
+    "landing.exam_btn": "試験予約",
+    "landing.maps_title": "LPK アマナサクラジャパン訪問",
+    "landing.maps_btn": "Google Mapsを開く",
   },
 };
 
+
+
+/** Translate all [data-lang] elements in the DOM */
+export function translateDataLang() {
+  if (typeof document === "undefined") return;
+  const lang = langStore.get();
+  document.querySelectorAll("[data-lang]").forEach((el) => {
+    const key = el.getAttribute("data-lang");
+    if (key) {
+      const text = translations[lang]?.[key] || translations.id[key] || key;
+      if (text !== key) el.textContent = text;
+    }
+  });
+}
 export function t(key: string): string {
   const lang = langStore.get();
   return translations[lang]?.[key] || translations.id[key] || key;
