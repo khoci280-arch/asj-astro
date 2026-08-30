@@ -19,16 +19,32 @@ import TabJadwal from './TabJadwal.tsx';
 import TabWA from './TabWA.tsx';
 import TabConfig from './TabConfig.tsx';
 
+/**
+ * Named constants — replace magic numbers
+ */
+const Z_INDEX = {
+  MENU_BUTTON: 30,
+  SIDEBAR_BACKDROP: 95,
+  SIDEBAR: 96,
+} as const;
+
+const MAX_HEIGHT = {
+  AGENDA_LIST: "200px",
+  TODO_LIST: "190px",
+} as const;
+
+interface TabDef { id: Tab; icon: string; label: string; }
+
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
-const TABS: { id: Tab; icon: string; label: string; color: string }[] = [
-  { id: 'kelola',  icon: 'fa-globe',        label: t('admin.tab_public_job'),     color: 'text-red-400' },
-  { id: 'dbjob',   icon: 'fa-server',        label: t('admin.tab_internal_db'),    color: 'text-purple-400' },
-  { id: 'tambah',  icon: 'fa-plus',          label: t('admin.tab_add_job'),        color: 'text-red-400' },
-  { id: 'pelamar', icon: 'fa-users',         label: t('admin.tab_candidate'),      color: 'text-sky-400' },
-  { id: 'jadwal',  icon: 'fa-calendar-alt',  label: t('admin.tab_schedule'),       color: 'text-amber-400' },
-  { id: 'mail',    icon: 'fa-envelope',      label: t('admin.tab_mail'),           color: 'text-sky-400' },
-  { id: 'wa',      icon: 'fa-whatsapp',      label: t('ui.wa_pintar'),             color: 'text-emerald-400' },
+const TABS: TabDef[] = [
+  { id: 'kelola',  icon: 'fa-globe',        label: t('admin.tab_public_job'),     },
+  { id: 'dbjob',   icon: 'fa-server',        label: t('admin.tab_internal_db'),    },
+  { id: 'tambah',  icon: 'fa-plus',          label: t('admin.tab_add_job'),        },
+  { id: 'pelamar', icon: 'fa-users',         label: t('admin.tab_candidate'),      },
+  { id: 'jadwal',  icon: 'fa-calendar-alt',  label: t('admin.tab_schedule'),       },
+  { id: 'mail',    icon: 'fa-envelope',      label: t('admin.tab_mail'),           },
+  { id: 'wa',      icon: 'fa-whatsapp',      label: t('ui.wa_pintar'),             },
 ];
 
 export default function AdminPanel() {
@@ -47,7 +63,7 @@ export default function AdminPanel() {
             <h3 class="text-sm font-bold text-white"><i class="fas fa-calendar-check text-amber-400 mr-2"></i> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h3>
             <span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-1 rounded-md font-bold" id="dash-admin-name">Admin</span>
           </div>
-          <div id="dash-agenda-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 max-h-[200px]">
+          <div id="dash-agenda-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 style={{ maxHeight: MAX_HEIGHT.AGENDA_LIST }}">
             <p class="text-xs text-slate-500">{t('ui.schedule_empty')}</p>
           </div>
           <button onClick={() => setActiveTab('jadwal')} class="mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
@@ -61,14 +77,14 @@ export default function AdminPanel() {
             <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
             <button class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><i class="fas fa-plus"></i></button>
           </div>
-          <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 max-h-[190px]"></div>
+          <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 style={{ maxHeight: MAX_HEIGHT.TODO_LIST }}"></div>
         </div>
       </div>
 
             {/* ============================================
           3. SIDEBAR TOGGLE (visible on all sizes)
           ============================================ */}
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} class="sticky top-2 z-[30] ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} class="sticky top-2 style={{ zIndex: Z_INDEX.MENU_BUTTON }} ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
         <i class="fas fa-bars"></i> Menu
       </button>
 
@@ -76,7 +92,7 @@ export default function AdminPanel() {
           4. SIDEBAR BACKDROP (mobile only)
           ============================================ */}
       {sidebarOpen && (
-        <div class="fixed inset-0 bg-black/60 z-[95] transition-opacity duration-300 lg:hidden"
+        <div class="fixed inset-0 bg-black/60 style={{ zIndex: Z_INDEX.SIDEBAR_BACKDROP }} transition-opacity duration-300 lg:hidden"
           onClick={() => setSidebarOpen(false)}
           role="button"
           tabIndex={0}
@@ -90,7 +106,7 @@ export default function AdminPanel() {
       <aside
         role="navigation"
         aria-label="Admin sidebar"
-        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl z-[96] transition-transform duration-300 ease-in-out
+        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl style={{ zIndex: Z_INDEX.SIDEBAR }} transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         onClick={(e: Event) => e.stopPropagation()}
@@ -134,17 +150,15 @@ export default function AdminPanel() {
 }
 
 function TabContent({ tab }: { tab: Tab }) {
-  switch (tab) {
-    case 'kelola':  return <TabKelola />;
-    case 'pelamar': return <TabPelamar />;
-    case 'mail':    return <TabMail />;
-    case 'jadwal':  return <TabJadwal />;
-    case 'tambah':  return <TabTambah />;
-    case 'dbjob':   return <TabDbJob />;
-    case 'wa':      return <TabWA />;
-    case 'config':  return <TabConfig />;
-    default:        return <TabPlaceholder tab={tab} />;
-  }
+  if (tab === "kelola")  return <TabKelola />;
+  if (tab === "pelamar") return <TabPelamar />;
+  if (tab === "mail")    return <TabMail />;
+  if (tab === "jadwal")  return <TabJadwal />;
+  if (tab === "tambah")  return <TabTambah />;
+  if (tab === "dbjob")   return <TabDbJob />;
+  if (tab === "wa")      return <TabWA />;
+  if (tab === "config")  return <TabConfig />;
+  return <TabPlaceholder tab={tab} />;
 }
 
 function TabPlaceholder({ tab }: { tab: string }) {
