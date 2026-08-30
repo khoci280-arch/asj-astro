@@ -180,7 +180,7 @@ export default function MasterFullForm() {
             <div class="text-slate-500 text-[11px] mt-1">Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.</div>
           </div>
           <label class="label">{t("form.mf_password")}</label>
-          <input type="password" class="input" value={gatePass} placeholder={t("form.mf_password")}
+          <input type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
           <button onClick={gateLogin} class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">Masuk</button>

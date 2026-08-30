@@ -692,7 +692,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     "form.mf_no_paspor": "No. Paspor",
     "form.mf_panggilan": "Nama Panggilan",
     "form.mf_panggilan_ktk": "Panggilan (Katakana)",
-    "form.mf_password": "Password kandidat",
     "form.mf_pekerjaan": "Pekerjaan (\u8077\u696D)",
     "form.mf_pekerjaan_n": "Pekerjaan",
     "form.mf_pendidikan_n": "Pendidikan",
