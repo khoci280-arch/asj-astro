@@ -66,6 +66,13 @@ export default function AdminPanel() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Listen for bottom nav toggle
+  useEffect(() => {
+    const handler = () => setSidebarOpen(prev => !prev);
+    window.addEventListener("asj-toggle-sidebar", handler);
+    return () => window.removeEventListener("asj-toggle-sidebar", handler);
+  }, []);
   const [showUndanganKelas, setShowUndanganKelas] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [pemberkasanTarget, setPemberkasanTarget] = useState({ wa: "", nama: "" });

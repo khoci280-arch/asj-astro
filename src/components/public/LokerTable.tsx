@@ -159,8 +159,8 @@ export default function LokerTable() {
           <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-2 text-center w-24">{t("table.code")}</th>
-              <th scope="col" class="p-2 min-w-[180px]">{t("table.job")}</th>
-              <th scope="col" class="p-2 text-center">{t("table.status")}</th>
+              <th scope="col" class="p-2 min-w-[140px]">{t("table.job")}</th>
+              <th scope="col" class="p-1.5 text-center w-24">{t("table.status")}</th>
               <th scope="col" class="p-2 min-w-[140px] max-w-[200px]">{t("table.req")}</th>
               <th scope="col" class="p-1.5 text-center w-20">{t("table.action")}</th>
             </tr>
@@ -173,7 +173,7 @@ export default function LokerTable() {
             ) : displayed.map((job, i) => (
               <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-white/5 transition">
                 <td data-label={t("table.code")} class="p-2 font-mono text-xs text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
-                <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal min-w-[180px]">
+                <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal min-w-[140px]">
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
                       <img src={job.pamflet} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-16 md:h-24 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
@@ -187,7 +187,7 @@ export default function LokerTable() {
                     </div>
                   </div>
                 </td>
-                <td data-label={t("table.status")} class="p-1.5 text-center align-top text-xs">{getStatusBadge(job.status)}</td>
+                <td data-label={t("table.status")} class="p-1 text-center align-top text-xs w-24">{getStatusBadge(job.status)}</td>
                 <td data-label={t("table.req")} class="rt-full p-2 text-xs text-slate-300 whitespace-normal min-w-[140px] max-w-[200px] leading-relaxed align-top">
                   {(job.syarat || "").split(",").map(s => s.trim()).filter(Boolean).join(", ")}
                   {job.keterangan && job.keterangan !== "-" && (
