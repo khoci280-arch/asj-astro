@@ -9,13 +9,25 @@ import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { langStore, t, translateDataLang } from '../store/i18n';
+
+// ─── Named Constants ───
+const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
+
 import LoginModal from './LoginModal';
 import { showToast } from './Toast';
+
+/** User state from auth store */
+interface UserState {
+  isLoggedIn: boolean;
+  role: "admin" | "kandidat" | null;
+  name: string;
+  wa: string;
+}
 
 type ModalMode = 'closed' | 'login' | 'daftar';
 
 export default function App() {
-  const u = useStore(authStore);
+  const u: UserState = useStore(authStore) as UserState;
   const lang = useStore(langStore);
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,11 +58,12 @@ export default function App() {
               <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
             </div>
           </div>
-          <div class="absolute top-4 right-4 z-30">
+          <div class="absolute top-4 right-4" style={{ zIndex: Z_INDEX.HAMBURGER }}>
             <button onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg" aria-label="Toggle Menu">
               <i class={menuOpen ? "fas fa-times text-lg" : "fas fa-bars text-lg"}></i>
             </button>
           </div>
+          {/* ─── Desktop Nav ─── */}
           <div class="hidden md:flex flex-col items-end gap-3">
             <div class="flex items-center gap-3">
               <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
@@ -80,8 +93,10 @@ export default function App() {
         </div>
       </header>
 
-      {menuOpen && <div class="fixed inset-0 bg-black/70 z-[35]" onClick={() => setMenuOpen(false)}></div>}
-      <nav class={"fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 z-[40] shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")}>
+      {menuOpen && <div class="fixed inset-0 bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
+      
+      {/* ─── Mobile Nav ─── */}
+      <nav class={"fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} style={{ zIndex: Z_INDEX.NAV }}>
         <div class="flex items-center justify-between p-4 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><i class="fas fa-bars mr-2 text-sky-400"></i> {t("ui.menu")}</span>
           <button onClick={toggleMenu} class="text-slate-400 hover:text-white p-1 transition" aria-label="Close"><i class="fas fa-times text-xl"></i></button>
