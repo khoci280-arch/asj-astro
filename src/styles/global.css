@@ -189,3 +189,45 @@ html.light .mn-head { color: #64748b; }
   75% { transform: translate(22px, 78vh) rotate(275deg); }
   100% { transform: translateY(106vh) rotate(360deg); }
 }
+
+/* COMPREHENSIVE LIGHT THEME (SAKURA) */
+html.light body{background-color:#f6f1f2!important;color:#1c1917!important}
+html.light{color-scheme:light}
+html.light .bg-slate-950{background-color:#fbf6f6!important}
+html.light .bg-slate-900{background-color:#ffffffeb!important}
+html.light .bg-slate-800{background-color:#f7ecedf2!important}
+html.light .bg-slate-700{background-color:#f1e4e5!important}
+html.light .bg-slate-600{background-color:#e8ddde!important}
+html.light .bg-black{background-color:rgba(255,255,255,0.92)!important}
+html.light .text-white,html.light .text-slate-100,html.light .text-slate-200{color:#292524!important}
+html.light .text-slate-300{color:#44403c!important}
+html.light .text-slate-400{color:#78716c!important}
+html.light .text-slate-500{color:#a8a29e!important}
+html.light .text-pink-300,html.light .text-pink-400{color:#be185d!important}
+html.light .text-emerald-400{color:#047857!important}
+html.light .text-sky-400{color:#0369a1!important}
+html.light .text-red-400{color:#b91c1c!important}
+html.light .text-amber-400,html.light .text-amber-300{color:#b45309!important}
+html.light .text-violet-400{color:#6d28d9!important}
+html.light .text-purple-400{color:#9333ea!important}
+html.light .text-blue-400{color:#1d4ed8!important}
+html.light .text-teal-400{color:#0f766e!important}
+html.light .text-rose-400{color:#be123c!important}
+html.light .border-slate-700,html.light .border-slate-800{border-color:#d6d6d6!important}
+html.light .border-slate-600{border-color:#dcdcdc!important}
+html.light input[type=text],html.light input[type=email],html.light input[type=number],html.light input[type=tel],html.light input[type=url],html.light input[type=password],html.light input[type=date],html.light input[type=datetime-local],html.light textarea,html.light select{background-color:#fff!important;color:#1c1917!important;border-color:#d6d6d6!important}
+html.light input::placeholder,html.light textarea::placeholder{color:#9a9a9a!important}
+html.light input:focus,html.light textarea:focus,html.light select:focus{border-color:#be185d!important;box-shadow:0 0 0 3px rgba(190,24,93,0.1)!important}
+html.light .input,html.light .input-micro{background-color:#fff!important;color:#1c1917!important;border-color:#d6d6d6!important}
+html.light .label,html.light .label-micro,html.light .section-title{color:#475569!important}
+html.light table{background-color:#fff!important}
+html.light thead{background-color:#f7eced!important}
+html.light thead th{color:#44403c!important}
+html.light tbody tr{border-color:#e8e0e1!important}
+html.light tbody tr:hover{background-color:#fdf2f3!important}
+html.light td{color:#292524!important}
+html.light .bg-emerald-600,html.light .bg-emerald-500,html.light .bg-sky-600,html.light .bg-sky-500,html.light .bg-amber-600,html.light .bg-amber-500,html.light .bg-red-600,html.light .bg-rose-600,html.light .bg-pink-600,html.light .bg-violet-600,html.light .bg-indigo-600,html.light .bg-teal-600,html.light .bg-blue-600,html.light .bg-orange-600,html.light .bg-green-600{color:#fff!important}
+html.light .glass-panel,html.light .glass{background:rgba(255,255,255,0.95)!important;border-color:#e2e2e2!important;box-shadow:0 25px 60px rgba(0,0,0,0.08)!important}
+html.light .skeleton{background:linear-gradient(90deg,#e8e0e1 25%,#f5f0f1 50%,#e8e0e1 75%)!important;background-size:200% 100%!important}
+html.light ::-webkit-scrollbar-thumb{background:#c4b5b7!important}
+html.light ::-webkit-scrollbar-track{background:#f1e4e5!important}
