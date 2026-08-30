@@ -40,6 +40,8 @@ const COL_MIN_WIDTH = { JOB: "250px", REQ: "250px" } as const;
 
 
 export default function LokerTable() {
+  const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
+  function toggleTheme() { document.documentElement.classList.toggle("light"); setIsDark(!isDark); localStorage.setItem("asjTheme", !isDark ? "light" : "dark"); }
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
@@ -134,8 +136,8 @@ export default function LokerTable() {
       <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><i class="fas fa-paint-brush"></i> Tema</span>
-          <button onClick={() => { document.documentElement.classList.toggle("light"); localStorage.setItem("asjTheme", document.documentElement.classList.contains("light") ? "light" : "dark"); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
-            <i class="fas fa-moon"></i> Dark
+          <button onClick={toggleTheme} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+            <i class={"fas fa-" + (isDark ? "moon" : "sun")}></i> {isDark ? "Dark" : "Light"}
           </button>
         </div>
         <div class="flex gap-2 items-center flex-wrap">

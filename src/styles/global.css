@@ -232,5 +232,75 @@ html.light .skeleton{background:linear-gradient(90deg,#e8e0e1 25%,#f5f0f1 50%,#e
 html.light ::-webkit-scrollbar-thumb{background:#c4b5b7!important}
 html.light ::-webkit-scrollbar-track{background:#f1e4e5!important}
 
+
+/* Light mode header: lighter gradient overlay */
+html.light #asj-header-overlay {
+  background: linear-gradient(to top, rgba(251,246,246,0.97) 0%, rgba(251,246,246,0.6) 40%, rgba(251,246,246,0.15) 100%) !important;
+  mix-blend-mode: normal !important;
+}
+html.light #asj-header {
+  background: linear-gradient(135deg, #fbf6f6 0%, #f7eced 50%, #f1e4e5 100%) !important;
+  background-image: none !important;
+  border-color: #e2e2e2 !important;
+}
+html.light #asj-header h1,
+html.light #asj-header span {
+  color: #1c1917 !important;
+  text-shadow: none !important;
+}
+html.light #asj-header .text-pink-300 {
+  color: #be185d !important;
+}
+
+/* Light mode filter section */
+html.light .bg-slate-900.border {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Light mode table header */
+html.light thead.bg-slate-800 {
+  background-color: #f7eced !important;
+}
+
+/* Light mode table rows */
+html.light tbody.divide-y {
+  border-color: #e8e0e1 !important;
+}
+html.light tbody tr:hover {
+  background-color: #fdf2f3 !important;
+}
+
+/* Light mode filter buttons */
+html.light button.bg-sky-600 {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+html.light button.bg-slate-700,
+html.light button.bg-slate-800 {
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* Light mode bottom nav */
+html.light .bg-white.border-t {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Light mode main content */
+html.light main {
+  color: #1c1917 !important;
+}
+html.light main .text-slate-300 {
+  color: #475569 !important;
+}
+html.light main .text-slate-400 {
+  color: #78716c !important;
+}
+
+/* Light mode bottom nav */
+html.light #asj-bottom-nav { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+
 /* Bottom safe area for fixed bottom nav */
 .pb-safe { padding-bottom: 5rem; }

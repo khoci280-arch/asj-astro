@@ -33,6 +33,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "public.close": "Tutup",
     "public.no_data": "Tidak ada lowongan ditemukan.",
     "public.loading": "Memuat data lowongan...",
+    "public.empty": "Tidak ada lowongan ditemukan.",
     "public.lowongan_count": "lowongan",
     "public.badge_new": "Dibuka Kelas Baru",
     "public.portal_kandidat": "Portal Kandidat",
