@@ -13,7 +13,7 @@ import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, ad
 import { t } from '../store/i18n';
 
 type ModalMode = "closed" | "login" | "daftar";
-type AdminStep = 0 | 1 | 2;
+type AdminStep = 0 | 1 | 2 | 3;
 
 interface Props {
   mode: ModalMode;
@@ -122,7 +122,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // ─── Render ───
   return (
     <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-700 p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative">
+      <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <i class="fas fa-times text-2xl"></i>
         </button>
@@ -180,31 +180,21 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
         {/* ── Admin Step 1: Master PIN + Account Select ── */}
         {mode === "login" && adminStep === 1 && (
-          <div>
-            <h3 class="text-xl font-bold text-red-400 mb-6 border-b border-red-900/50 pb-4 text-center">
-              <i class="fas fa-shield-alt mr-2"></i> Otorisasi Sistem
-            </h3>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">Pilih Akun Admin</label>
-            <select value={selectedAdmin} onChange={(e) => selectAdmin((e.target as HTMLSelectElement).value)}
-              class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-red-500">
-              <option value="">Pilih Akun Admin...</option>
-              <option value="SACHOU">SACHOU (Boss)</option>
-              <option value="AYOK">AYOK</option>
-              <option value="KHOLIS">KHOLIS</option>
-              <option value="KHOCI">KHOCI</option>
-            </select>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">Masukkan PIN</label>
+          <div class="text-center">
+            <i class="fas fa-shield-alt text-5xl text-red-500 mb-5 drop-shadow-lg"></i>
+            <h3 class="text-xl font-bold text-white mb-6 tracking-wide">{t("admin.auth_title")}</h3>
+            <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_master")}</label>
             <input type="password" value={masterPin} onInput={(e) => setMasterPin((e.target as HTMLInputElement).value)}
-              placeholder="PIN Master"
-              class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-6 outline-none focus:border-red-500"
+              placeholder={t("admin.pin_master")}
+              class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-red-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handleMaster(); }} />
-            <button onClick={handleMaster} disabled={loading || !selectedAdmin}
-              class="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50">
-              {loading ? "Memeriksa..." : "Masuk"}
+            <button onClick={handleMaster} disabled={loading}
+              class="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-full font-bold transition shadow-[0_0_15px_rgba(220,38,38,0.5)] text-lg hover:-translate-y-1 disabled:opacity-50">
+              {loading ? t("ui.checking") : t("button.verify")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              <button onClick={() => { onSwitchMode("login"); setAdminStep(1); setMasterPin(""); }} class="text-sky-400 underline font-bold">
-                Login Pelamar
+              <button onClick={() => { onSwitchMode("login"); setAdminStep(0); setMasterPin(""); }} class="text-sky-400 underline font-bold">
+                {t("header.login")}
               </button>
             </p>
           </div>
@@ -212,24 +202,41 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
         {/* ── Admin Step 2: Personal PIN ── */}
         {mode === "login" && adminStep === 2 && (
-          <div>
-            <h3 class="text-xl font-bold text-red-400 mb-6 border-b border-red-900/50 pb-4 text-center">
-              <i class="fas fa-key mr-2"></i> PIN Pribadi
-            </h3>
-            <div class="text-center mb-4">
-              <span class="px-4 py-2 bg-red-900/40 border border-red-500/50 rounded-full text-red-300 font-bold text-sm">{selectedAdmin}</span>
+          <div class="text-center">
+            <i class="fas fa-users-cog text-5xl text-sky-500 mb-5 drop-shadow-lg"></i>
+            <h3 class="text-lg font-bold text-white mb-6 tracking-wide">{t("admin.select_account")}</h3>
+            <div class="grid grid-cols-2 gap-4">
+              {["SACHOU", "AYOK", "KHOLIS", "KHOCI"].map(name => (
+                <button key={name} onClick={() => { setSelectedAdmin(name); setAdminStep(3); }}
+                  class="py-4 bg-white/10 hover:bg-sky-600 border border-white/20 rounded-2xl font-bold text-white transition shadow-md hover:-translate-y-1">
+                  {name}
+                </button>
+              ))}
             </div>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">PIN Pribadi</label>
+            <p class="text-sm text-center mt-5 text-slate-400">
+              <button onClick={() => { setAdminStep(1); setMasterPin(""); }} class="text-amber-400 underline font-bold">
+                Kembali
+              </button>
+            </p>
+          </div>
+        )}
+
+        {mode === "login" && adminStep === 3 && (
+          <div class="text-center">
+            <i class="fas fa-lock text-5xl text-amber-500 mb-4 drop-shadow-lg"></i>
+            <h3 class="text-lg font-bold text-white mb-1">{t("admin.auth_title")} {selectedAdmin}</h3>
+            <p class="text-sm text-slate-400 mb-6">{t("admin.enter_pin")}</p>
+            <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_personal")}</label>
             <input type="password" value={personalPin} onInput={(e) => setPersonalPin((e.target as HTMLInputElement).value)}
-              placeholder="Masukkan PIN Pribadi"
-              class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-6 outline-none focus:border-red-500"
+              placeholder={t("admin.pin_personal")}
+              class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-amber-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handlePersonal(); }} />
             <button onClick={handlePersonal} disabled={loading}
-              class="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50">
-              {loading ? "Memeriksa..." : "Masuk"}
+              class="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-full font-bold transition shadow-[0_0_15px_rgba(217,119,6,0.5)] text-lg hover:-translate-y-1 disabled:opacity-50">
+              {loading ? t("ui.checking") : t("button.enter_portal")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              <button onClick={() => { setAdminStep(1); setPersonalPin(""); }} class="text-amber-400 underline font-bold">
+              <button onClick={() => { setAdminStep(2); setPersonalPin(""); }} class="text-amber-400 underline font-bold">
                 Kembali
               </button>
             </p>
