@@ -93,7 +93,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
     setParseStatus("Generating...");
     try {
       const data = await apiCall("generateWawancaraModel", [{ candidateId: candidateId || undefined, wa: parseWa || undefined, bidang: parseBidang || undefined }]);
-      if (data) { addMsg("Model Wawancara - " + (data.bidang || "SSW") + "\n" + (data.model || ""), "assistant"); showToast(t("ai.model_ready"), "success"); }
+      if (data) { addMsg(t("admin.model_wawancara") + (data.bidang || "SSW") + "\n" + (data.model || ""), "assistant"); showToast(t("ai.model_ready"), "success"); }
       setParseStatus("");
     } catch (e) { addMsg("Gagal: " + (e as Error).message, "assistant"); setParseStatus(""); }
   };

@@ -108,7 +108,7 @@ export default function TabConfig() {
       <h3 class="text-sm font-bold text-rose-400 mb-2 uppercase tracking-wider"><i class="fas fa-bullhorn mr-1"></i> Pengumuman Berjalan (Live)</h3>
       <p class="text-xs text-slate-300 mb-3">Teks ini akan muncul berjalan (Marquee) di semua halaman.</p>
       <div class="flex gap-2">
-        <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder="Ketik pengumuman di sini... (Kosongkan untuk menghapus)" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
+        <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder={t("admin.announce_ph")} class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
         <button onClick={handleSavePengumuman} class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-lg"><i class="fas fa-save mr-1"></i> Simpan &amp; Tayangkan</button>
       </div>
     </div>

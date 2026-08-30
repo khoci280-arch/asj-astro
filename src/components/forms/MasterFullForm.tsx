@@ -244,7 +244,7 @@ export default function MasterFullForm() {
               <F label={t("form.mf_panggilan_ktk")} k="panggilanKatakana" ph={t("form.mf_ph_teks_jepang")} />
               <F label={t("form.mf_tempat_lahir")} k="tempatLahir" ph={t("form.mf_ph_auto_jp")} />
               <div class="grid grid-cols-2 gap-3">
-                <F label="Tgl Lahir" k="tglLahir" type="date" twoCol />
+                <F label={t("master.tgl_lahir")} k="tglLahir" type="date" twoCol />
                 <F label={t("form.mf_gender")} k="gender" opts={['LAKI-LAKI','PEREMPUAN']} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">

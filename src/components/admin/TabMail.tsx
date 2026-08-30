@@ -50,7 +50,7 @@ export default function TabMail() {
         <div class="flex flex-wrap items-center gap-2">
           <input type="text" value={searchText}
             onInput={(e) => setMailSearchText((e.target as HTMLInputElement).value)}
-            placeholder="Cari nama / WA / job…"
+            placeholder={t("admin.search_mail")}
             class="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52" />
 
           {/* Status filter buttons */}

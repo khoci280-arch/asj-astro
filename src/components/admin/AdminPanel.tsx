@@ -122,7 +122,7 @@ export default function AdminPanel() {
           onClick={() => setSidebarOpen(false)}
           role="button"
           tabIndex={0}
-          aria-label="Tutup sidebar"
+          aria-label={t("admin.close_sidebar")}
         />
       )}
 

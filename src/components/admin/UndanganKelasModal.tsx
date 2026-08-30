@@ -27,7 +27,7 @@ function parseDaftarOrtu(text: string): { list: { nama: string; wa: string }[]; 
     else { const m = line.match(/^(.*?)(\d{9,15})$/); if (!m) { invalid++; return; } nama = m[1].trim(); waRaw = m[2]; }
     const wa = waRaw.replace(/\D/g, "");
     if (!/^628\d{9,11}$/.test(wa) || !wa) { invalid++; return; }
-    list.push({ nama: nama || "Orang Tua/Wali", wa });
+    list.push({ nama: nama || t("wa.nama_orangtua"), wa });
   });
   return { list, invalid };
 }
@@ -45,7 +45,7 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
 
   const { list, invalid } = parseDaftarOrtu(daftar);
   const variants = parseVarianPesan(pesan);
-  const contohNama = list.length ? list[0].nama : "Nama Siswa";
+  const contohNama = list.length ? list[0].nama : t("wa.nama_siswa_ph");
   const preview = (variants[0] || pesan).replace(/\{nama\}/g, contohNama).replace(/\{link_grup\}/g, linkGrup || "https://chat.whatsapp.com/...");
 
   const handleSend = useCallback(async () => {

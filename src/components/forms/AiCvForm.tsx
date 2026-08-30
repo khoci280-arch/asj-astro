@@ -329,11 +329,11 @@ export default function AiCvForm() {
                 <TextAreaPair label={t("cv.field_promo_diri")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
                 <TextAreaPair label="Kelebihan / 長所" idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
                 <TextAreaPair label="Kekurangan / 短所" idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
-                <TextAreaPair label="Hobi" idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.hobi")} idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_keahlian")} idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
               </div>
               <div class="space-y-2">
-                <TextAreaPair label="Motivasi ke Jepang" idId="moti_id" idJp="moti_jp" valueId={cv.moti_id} valueJp={cv.moti_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.motivasi")} idId="moti_id" idJp="moti_jp" valueId={cv.moti_id} valueJp={cv.moti_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_alasan_bidang")} idId="alasan_id" idJp="alasan_jp" valueId={cv.alasan_id} valueJp={cv.alasan_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_rencana_pulang")} idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_target_pribadi")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
