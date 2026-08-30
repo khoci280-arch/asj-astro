@@ -69,7 +69,7 @@ export default function App() {
           </div>
           {/* ─── Desktop Nav ─── */}
           <div class="flex flex-col items-end gap-3">
-            <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center gap-3">
               <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
               <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "ID" : "JP"}</button>
             </div>

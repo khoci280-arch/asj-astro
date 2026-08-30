@@ -140,7 +140,7 @@ export default function LokerTable() {
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><i class="fas fa-filter"></i> Filter</span>
            {fDefs.map(fd => {
-            const btnCls = "px-4 py-2 rounded-lg text-xs font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
+            const btnCls = "px-4 py-2 rounded-lg text-sm font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
             const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/30 text-white" : "bg-slate-900 text-slate-200");
             return (
               <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
@@ -168,7 +168,7 @@ export default function LokerTable() {
             ) : displayed.length === 0 ? (
               <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
             ) : displayed.map((job, i) => (
-              <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-black/10 transition">
+              <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-white/5 transition">
                 <td data-label={t("table.code")} class="p-4 font-mono text-sm text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
                 <td data-label={t("table.job")} class="rt-full p-4 align-top whitespace-normal min-w-[250px]">
                   <div class="flex items-start gap-4">
