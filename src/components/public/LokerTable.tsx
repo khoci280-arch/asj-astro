@@ -6,9 +6,12 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
+import PamfletModal from "./PamfletModal";
 import { t } from '../../store/i18n';
 import LokerDetailModal from './LokerDetailModal';
 
+// NOTE: Shared Job type available at types/api.ts
+// This local interface extends it with public-view specific fields
 interface Job {
   code: string;
   pekerjaan: string;
@@ -41,6 +44,8 @@ export default function LokerTable() {
   const [filter, setFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(LIMIT_INITIAL);
+  const [pamfletUrl, setPamfletUrl] = useState("");
+  const [showPamflet, setShowPamflet] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   useEffect(() => { fetchJobs(); }, []);
@@ -168,7 +173,7 @@ export default function LokerTable() {
                 <td data-label={t("table.job")} class="rt-full p-4 align-top whitespace-normal min-w-[250px]">
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
-                      <img src={job.pamflet} loading="lazy" decoding="async" class="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => window.open(job.pamflet, "_blank")} />
+                      <img src={job.pamflet} loading="lazy" decoding="async" class="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
                     )}
                     <div class="flex flex-col pt-1">
                       <span class="font-bold text-base text-white leading-tight">{job.pekerjaan || "-"}</span>
@@ -214,6 +219,7 @@ export default function LokerTable() {
       )}
 
       {selectedJob && <LokerDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
-    </div>
+          <PamfletModal isOpen={showPamflet} url={pamfletUrl} onClose={() => setShowPamflet(false)} />
+</div>
   );
 }
