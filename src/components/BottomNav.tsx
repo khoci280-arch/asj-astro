@@ -33,11 +33,11 @@ export default function BottomNav() {
           <button onClick={() => {
             const sidebar = document.querySelector('[id*="admin-sidebar"]') as HTMLElement;
             if (sidebar) sidebar.classList.toggle('-translate-x-full');
-          }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10">
-            <i class="fas fa-bars text-xs"></i>
+          }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label="Menu">
+            <i class="fas fa-bars text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
-            <i class="fas fa-briefcase text-xs"></i>
+          <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Lowongan">
+            <i class="fas fa-briefcase text-xs" aria-hidden="true"></i>
           </button>
           <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
             <i class="fas fa-users text-xs"></i>

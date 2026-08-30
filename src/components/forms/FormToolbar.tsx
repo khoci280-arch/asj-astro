@@ -29,10 +29,10 @@ export default function FormToolbar({ title }: Props) {
       </a>
       {title && <span class="text-xs font-bold text-slate-300 hidden sm:inline">{title}</span>}
       <div class="flex items-center gap-2">
-        <button onClick={toggleTheme} class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-all flex items-center gap-1">
+        <button onClick={toggleTheme} aria-label="Toggle theme" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-all flex items-center gap-1">
           <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")}></i> {isDark ? "Dark" : "Light"}
         </button>
-        <button onClick={toggleLang} class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-all flex items-center gap-1">
+        <button onClick={toggleLang} aria-label="Toggle language" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-all flex items-center gap-1">
           <i class="fas fa-language"></i> {lang === "id" ? "JP" : "ID"}
         </button>
       </div>

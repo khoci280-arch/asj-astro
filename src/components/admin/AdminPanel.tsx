@@ -157,7 +157,7 @@ export default function AdminPanel() {
           </button>
         ))}
         <div class="flex-1"></div>
-        <button onClick={() => {}} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30">
+        <button onClick={() => {}} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
           <i class="fas fa-robot w-5 text-center"></i> <span>AI HR</span>
         </button>
         <button onClick={() => setActiveTab('config')} class={`w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${

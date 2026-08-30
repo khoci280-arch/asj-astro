@@ -192,7 +192,7 @@ html.light .mn-head { color: #64748b; }
 
 /* COMPREHENSIVE LIGHT THEME (SAKURA) */
 html.light body{background-color:#f6f1f2!important;color:#1c1917!important}
-html.light{color-scheme:light}
+html{color-scheme:dark} html.light{color-scheme:light}
 html.light .bg-slate-950{background-color:#fbf6f6!important}
 html.light .bg-slate-900{background-color:#ffffffeb!important}
 html.light .bg-slate-800{background-color:#f7ecedf2!important}
@@ -304,3 +304,27 @@ html.light #asj-bottom-nav { background-color: #ffffff !important; border-color:
 
 /* Bottom safe area for fixed bottom nav */
 .pb-safe { padding-bottom: 5rem; }
+
+
+/* === Web Interface Guidelines compliance === */
+/* Focus-visible ring for interactive elements */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Overscroll containment for modals */
+[class*="fixed inset-0"] {
+  overscroll-behavior: contain;
+}
+
+/* Reduced motion — disable non-essential animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  #sakura-particles { display: none !important; }
+  .animate-pulse { animation: none !important; }
+}

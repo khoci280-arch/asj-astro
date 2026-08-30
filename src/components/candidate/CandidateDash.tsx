@@ -82,6 +82,7 @@ export default function CandidateDash() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCvMiniModal, setShowCvMiniModal] = useState(false);
   const [showESign, setShowESign] = useState(false);
+  const [showDocPreview, setShowDocPreview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
 
   useEffect(() => { loadDashboard(); }, []);
@@ -116,7 +117,21 @@ export default function CandidateDash() {
   }
 
   if (loading) return <div class="text-center py-12"><i class="fas fa-spinner fa-spin text-3xl text-emerald-400 mb-4"></i><p class="text-slate-400">{t('ui.loading')}</p></div>;
-  if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
+    async function handleSaveSignature(dataUrl: string) {
+    try {
+      const res = await fetch('/.netlify/functions/bridge-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveSignature', args: [user?.wa, dataUrl] }),
+      });
+      const r = await res.json();
+      if (r.success) { showToast('Tanda tangan tersimpan!', 'success'); }
+      else { showToast(r.error || 'Gagal menyimpan', 'error'); }
+    } catch { showToast('Error menyimpan tanda tangan', 'error'); }
+    setShowESign(false);
+  }
+
+if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
 
   const overallProgress = Math.round((data.cvMiniProgress + data.cvMasterProgress) / 2);
   const crown = overallProgress >= 100 ? 'gold' : overallProgress >= 50 ? 'silver' : overallProgress > 0 ? 'bronze' : 'none';
@@ -289,7 +304,7 @@ export default function CandidateDash() {
               <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><i class="fas fa-signature mr-1.5"></i> {t('ui.esign_naitei')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-robot mr-1.5"></i> AI CV Master Assistant</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
-              <button class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> Preview Desain CV</button>
+              <button onClick={() => setShowDocPreview(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> Preview Desain CV</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-key mr-1.5"></i> {t('ui.change_password')}</button>
             </div>
           </div>
@@ -299,7 +314,7 @@ export default function CandidateDash() {
             <h3 class="text-red-400 font-bold mb-2 text-lg"><i class="fas fa-exclamation-triangle mr-2"></i> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <input type="file" accept=".pdf,.xls,.xlsx,.jpg,.png" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:font-bold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/40 cursor-pointer mb-4 transition-colors" />
-            <button class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><i class="fas fa-upload mr-2"></i>{t('button.upload_revise')}</button>
+            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); /* TODO: upload to Supabase storage */ }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><i class="fas fa-upload mr-2"></i>{t('button.upload_revise')}</button>
           </div>
         )}
 
@@ -338,7 +353,8 @@ export default function CandidateDash() {
       {/* ── Modals ── */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
-      {showESign && <ESignatureModal onSave={(d) => { console.log('TD saved', d.length); setShowESign(false); }} onClose={() => setShowESign(false)} />}
+      {showDocPreview && <DocumentPreviewModal onClose={() => setShowDocPreview(false)} />}
+      {showESign && <ESignatureModal onSave={handleSaveSignature} onClose={() => setShowESign(false)} />}
     </div>
   );
 }
