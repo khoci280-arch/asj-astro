@@ -75,7 +75,7 @@ export default function TabDbJob() {
             type="text"
             value={search}
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
-            placeholder="Cari ID, TSK, Pekerjaan..."
+            placeholder={t("db.placeholder_search")}
             class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition"
           />
         </div>

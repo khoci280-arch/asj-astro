@@ -10,7 +10,7 @@ interface Props {
   title?: string;
 }
 
-export default function FormToolbar({ title }: Props) {
+export default function FormToolbar({ title, titleKey }: Props) {
   const lang = useStore(langStore);
   const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
 
@@ -27,7 +27,7 @@ export default function FormToolbar({ title }: Props) {
       <a href="/" aria-label="Kembali ke Portal" class="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-all hover:scale-105">
         <i class="fas fa-arrow-left" aria-hidden="true"></i> <span class="hidden sm:inline">{t('button.portal')}</span>
       </a>
-      {title && <span class="text-xs font-bold text-slate-300 hidden sm:inline">{title}</span>}
+      {(titleKey ? t(titleKey) : title) && <span class="text-xs font-bold text-slate-300 hidden sm:inline">{titleKey ? t(titleKey) : title}</span>}
       <div class="flex items-center gap-2">
         <button onClick={toggleTheme} aria-label="Toggle theme" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-all flex items-center gap-1">
           <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")} aria-hidden="true"></i> {isDark ? "Dark" : "Light"}

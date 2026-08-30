@@ -33,22 +33,22 @@ export default function BottomNav() {
           <button onClick={() => {
             const sidebar = document.querySelector('[id*="admin-sidebar"]') as HTMLElement;
             if (sidebar) sidebar.classList.toggle('-translate-x-full');
-          }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label="Menu">
+          }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label={t("bottomnav.menu")}>
             <i class="fas fa-bars text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Lowongan">
+          <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.loker")}>
             <i class="fas fa-briefcase text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Pelamar">
+          <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.pelamar")}>
             <i class="fas fa-users text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Mail">
+          <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.mail")}>
             <i class="fas fa-envelope text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-10" aria-label="WhatsApp">
+          <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-10" aria-label={t("bottomnav.wa")}>
             <i class="fab fa-whatsapp text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Settings">
+          <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.config")}>
             <i class="fas fa-cogs text-xs" aria-hidden="true"></i>
           </button>
         </div>
@@ -60,15 +60,15 @@ export default function BottomNav() {
   return (
     <div id="bottom-nav-kandidat" class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-[90]">
       <div class="flex justify-around items-center h-11 px-6">
-        <a href="/public" class="flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Cari Lowongan">
+        <a href="/public" class="flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.cari")}>
           <i class="fas fa-globe text-xs" aria-hidden="true"></i>
         </a>
-        <a href="/candidate" class="relative -top-2 flex items-center justify-center" aria-label="Dashboard">
+        <a href="/candidate" class="relative -top-2 flex items-center justify-center" aria-label={t("bottomnav.dashboard")}>
           <div class="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white border-2 border-slate-950 shadow-md active:scale-95 transition">
             <i class="fas fa-id-card text-sm" aria-hidden="true"></i>
           </div>
         </a>
-        <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label="Logout">
+        <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label={t("bottomnav.keluar")}>
           <i class="fas fa-power-off text-xs" aria-hidden="true"></i>
         </button>
       </div>

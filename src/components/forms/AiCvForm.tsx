@@ -264,20 +264,20 @@ export default function AiCvForm() {
 
           <Section title="1. Identitas & Kontak" icon="fa-address-card" color="sky">
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <Field label="Nama Lengkap" id="nama" value={cv.nama} span={2} readonly />
+              <Field label={t("cv.field_nama")} id="nama" value={cv.nama} span={2} readonly />
               <Field label="Katakana" id="katakana" value={cv.katakana} span={2} jp />
               <Field label="Panggilan" id="panggilan" value={cv.panggilan} readonly />
               <Field label="P. Katakana" id="panggilan_katakana" value={cv.panggilan_katakana} jp />
-              <Field label="Tmp Lahir" id="tmplahir" value={cv.tmplahir} readonly />
-              <Field label="Tgl Lahir" id="tgllahir" value={cv.tgllahir} readonly />
+              <Field label={t("cv.field_tmp_lahir")} id="tmplahir" value={cv.tmplahir} readonly />
+              <Field label={t("cv.field_tgl_lahir")} id="tgllahir" value={cv.tgllahir} readonly />
               <Field label="Umur" id="umur" value={cv.umur} center readonly />
               <Field label="Gender" id="gender" value={cv.gender} center readonly />
               <Field label="Agama" id="agama" value={cv.agama} center readonly />
               <Field label="Gol. Darah" id="goldar" value={cv.goldar} center readonly />
-              <Field label="Status Nikah" id="status" value={cv.status} center readonly />
+              <Field label={t("cv.field_status_nikah")} id="status" value={cv.status} center readonly />
               <Field label="Anak" id="anak" value={cv.anak} center readonly />
               <Field label="Email" id="email" value={cv.email} span={2} readonly />
-              <Field label="Alamat Lengkap" id="alamat" value={cv.alamat} span={3} spanMd={3} readonly />
+              <Field label={t("cv.field_alamat")} id="alamat" value={cv.alamat} span={3} spanMd={3} readonly />
               <Field label="No. HP (WA)" id="hp" value={cv.hp} readonly />
               <Field label="HP Darurat" id="hpdarurat" value={cv.hpdarurat} readonly />
               <Field label="NIK KTP" id="ktp" value={cv.ktp} span={2} readonly />
@@ -291,19 +291,19 @@ export default function AiCvForm() {
               <div class="grid grid-cols-3 gap-2">
                 <Field label="Tinggi (cm)" id="tb" value={cv.tb} center readonly />
                 <Field label="Berat (kg)" id="bb" value={cv.bb} center readonly />
-                <Field label="Tgn Dominan" id="tangan" value={cv.tangan} center readonly />
+                <Field label={t("cv.field_tgn_dominan")} id="tangan" value={cv.tangan} center readonly />
                 <Field label="Uk. Sepatu" id="sepatu" value={cv.sepatu} center readonly />
                 <Field label="Uk. Baju" id="baju" value={cv.baju} center readonly />
                 <Field label="Uk. Topi" id="topi" value={cv.topi} center readonly />
-                <div class="col-span-3"><Field label="Tanpa AC?" id="tahan_ac" value={cv.tahan_ac} readonly /></div>
+                <div class="col-span-3"><Field label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} readonly /></div>
               </div>
             </Section>
             <Section title="3. Medis & Kebiasaan" icon="fa-notes-medical" color="red">
               <div class="grid grid-cols-4 gap-2">
-                <Field label="Mata Kanan" id="matakanan" value={cv.matakanan} center readonly />
-                <Field label="Mata Kiri" id="matakiri" value={cv.matakiri} center readonly />
+                <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center readonly />
+                <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center readonly />
                 <div class="col-span-2"><Field label="Kacamata?" id="kacamata" value={cv.kacamata} center readonly /></div>
-                <div class="col-span-2"><Field label="Buta Warna" id="butawarna" value={cv.butawarna} readonly /></div>
+                <div class="col-span-2"><Field label={t("cv.field_butawarna")} id="butawarna" value={cv.butawarna} readonly /></div>
                 <div class="col-span-2"><Field label="Tato / Tindik" id="tato" value={cv.tato} readonly /></div>
                 <Field label="Rokok" id="rokok" value={cv.rokok} center readonly />
                 <Field label="Alkohol" id="alkohol" value={cv.alkohol} center readonly />
@@ -326,18 +326,18 @@ export default function AiCvForm() {
             <div class="mb-2"><Field label="Pernah ke Jepang?" id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} /></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="space-y-2">
-                <TextAreaPair label="Promosi Diri" idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_promo_diri")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
                 <TextAreaPair label="Kelebihan / 長所" idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
                 <TextAreaPair label="Kekurangan / 短所" idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
                 <TextAreaPair label="Hobi" idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
-                <TextAreaPair label="Keahlian Khusus" idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_keahlian")} idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
               </div>
               <div class="space-y-2">
                 <TextAreaPair label="Motivasi ke Jepang" idId="moti_id" idJp="moti_jp" valueId={cv.moti_id} valueJp={cv.moti_jp} onChange={updateCv} />
-                <TextAreaPair label="Alasan Memilih Bidang" idId="alasan_id" idJp="alasan_jp" valueId={cv.alasan_id} valueJp={cv.alasan_jp} onChange={updateCv} />
-                <TextAreaPair label="Rencana Setelah Pulang" idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
-                <TextAreaPair label="Target Pribadi" idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
-                <TextAreaPair label="Tujuan Kerja di Jepang" idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_alasan_bidang")} idId="alasan_id" idJp="alasan_jp" valueId={cv.alasan_id} valueJp={cv.alasan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_rencana_pulang")} idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_target_pribadi")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_tujuan_jepang")} idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
                 <div class="grid grid-cols-3 gap-2">
                   <Field label="Lama di Jepang" id="lama" value={cv.lama} center readonly />
                   <Field label="Gaji (Yen)" id="gaji_yen" value={cv.gaji_yen} center readonly jp />
@@ -350,7 +350,7 @@ export default function AiCvForm() {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <Section title="Pendidikan" icon="fa-graduation-cap" color="emerald">
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
-                <Field label="Bhs Jepang" id="bhs_jepang" value={cv.bhs_jepang} readonly />
+                <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} readonly />
                 <Field label="Nilai" id="nilai" value={cv.nilai} readonly />
                 <Field label="Lisensi/SSW" id="lisensi" value={cv.lisensi} readonly />
               </div>
@@ -381,9 +381,9 @@ export default function AiCvForm() {
           </Section>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <UploadRow type="foto" label="Pas Foto" icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} onUpload={handleDocUpload} />
-            <UploadRow type="jft" label="Sertifikat JFT" icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
-            <UploadRow type="ssw" label="Sertifikat SSW" icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
+            <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} onUpload={handleDocUpload} />
+            <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
+            <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <UploadRow type="ktp" label="KTP" icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />

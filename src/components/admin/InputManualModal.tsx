@@ -143,7 +143,7 @@ export default function InputManualModal() {
             {/* Search existing candidate */}
             <div class="bg-sky-900/20 p-3 rounded-xl border border-sky-500/30">
               <label class="block text-xs font-bold text-sky-400 mb-1">CARI KANDIDAT TERDAFTAR (Opsional)</label>
-              <input type="text" placeholder="Ketik Nama / WA untuk auto-fill..."
+              <input type="text" placeholder={t("input.placeholder_auto")}
                 class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
               <p class="text-[9px] text-slate-400 mt-1">Jika dipilih, dokumen lama kandidat akan dipertahankan.</p>
             </div>

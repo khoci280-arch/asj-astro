@@ -10,8 +10,8 @@ import FormToolbar from '../components/forms/FormToolbar';
   <App showHeader={false} client:only="preact" />
   <Toast client:only="preact" />
 
-  <FormToolbar title="Panel Admin" client:only="preact" />
-  <main id="main-content" class="w-full min-h-[50vh] pb-24 pt-[42px]">
+  <FormToolbar titleKey="toolbar.admin" client:only="preact" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
     <AdminPanel client:only="preact" />
   </main>
 </BaseLayout>
