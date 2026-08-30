@@ -7,8 +7,8 @@ import LayananSection from '../components/public/LayananSection.astro';
 ---
 
 <BaseLayout title="PT Amanah Sakura Japan — Job Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW">
-  <App client:load />
-  <Toast client:load />
+  <App client:only="preact" />
+  <Toast client:only="preact" />
 
   <!-- Global Announcement Marquee (public page only) -->
 <div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-4">
@@ -38,7 +38,7 @@ import LayananSection from '../components/public/LayananSection.astro';
 
     <!-- Section: Loker -->
     <div id="public-loker-section" class="block animate-fade-in">
-      <LokerTable client:load />
+      <LokerTable client:only="preact" />
     </div>
 
     <!-- Section: Layanan -->

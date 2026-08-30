@@ -7,11 +7,11 @@ import FormToolbar from "../components/forms/FormToolbar";
 ---
 
 <BaseLayout title="ASJ - Pendaftaran Siswa (AI Assistant)" description="Form pendaftaran siswa baru LPK ASJ dengan AI Assistant Qween Jeklin">
-  <App client:load />
-  <Toast client:load />
+  <App client:only="preact" />
+  <Toast client:only="preact" />
 
   
 
-  <FormToolbar client:load title="Pendaftaran Siswa Baru" />
-  <SiswaBaruForm client:load />
+  <FormToolbar client:only="preact" title="Pendaftaran Siswa Baru" />
+  <SiswaBaruForm client:only="preact" />
 </BaseLayout>

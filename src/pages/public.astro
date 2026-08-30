@@ -7,8 +7,8 @@ import Toast from '../components/Toast.tsx';
 ---
 
 <BaseLayout title="Lowongan & Layanan — ASJ Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW">
-  <App client:load />
-  <Toast client:load />
+  <App client:only="preact" />
+  <Toast client:only="preact" />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
     <!-- Back button -->
@@ -40,7 +40,7 @@ import Toast from '../components/Toast.tsx';
 
     <!-- Section: Loker (Preact island) -->
     <div id="section-loker">
-      <LokerTable client:load />
+      <LokerTable client:only="preact" />
     </div>
 
     <!-- Section: Layanan (static Astro) -->

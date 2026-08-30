@@ -58,7 +58,7 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     <slot />
   
   <Footer />
-  <BottomNav client:load />
+  <BottomNav client:only="preact" />
   
   <script>
     // ─── Fase 3 (Reactive): Auth restore via authReactive.ts ───

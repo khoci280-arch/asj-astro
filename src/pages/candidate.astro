@@ -6,13 +6,13 @@ import Toast from '../components/Toast.tsx';
 ---
 
 <BaseLayout title="Dashboard Kandidat — ASJ Portal" description="Dashboard kandidat: CV, lamaran, status tahapan">
-  <App client:load />
-  <Toast client:load />
+  <App client:only="preact" />
+  <Toast client:only="preact" />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
     <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
       <i class="fas fa-arrow-left"></i> Kembali ke Portal
     </a>
-    <CandidateDash client:load />
+    <CandidateDash client:only="preact" />
   </main>
 </BaseLayout>
