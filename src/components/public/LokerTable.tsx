@@ -158,11 +158,11 @@ export default function LokerTable() {
         <table class="w-full min-w-[900px] text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
             <tr>
-              <th scope="col" class="p-4 text-center w-32">{t("table.code")}</th>
-              <th scope="col" class="p-4 min-w-[250px]">{t("table.job")}</th>
-              <th scope="col" class="p-4 text-center">{t("table.status")}</th>
-              <th scope="col" class="p-4 min-w-[250px] max-w-sm">{t("table.req")}</th>
-              <th scope="col" class="p-4 text-center w-48">{t("table.action")}</th>
+              <th scope="col" class="p-2 text-center w-24">{t("table.code")}</th>
+              <th scope="col" class="p-2 min-w-[180px]">{t("table.job")}</th>
+              <th scope="col" class="p-2 text-center">{t("table.status")}</th>
+              <th scope="col" class="p-2 min-w-[140px] max-w-[200px]">{t("table.req")}</th>
+              <th scope="col" class="p-2 text-center w-28">{t("table.action")}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
@@ -172,11 +172,11 @@ export default function LokerTable() {
               <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
             ) : displayed.map((job, i) => (
               <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-white/5 transition">
-                <td data-label={t("table.code")} class="p-4 font-mono text-sm text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
-                <td data-label={t("table.job")} class="rt-full p-4 align-top whitespace-normal min-w-[250px]">
+                <td data-label={t("table.code")} class="p-2 font-mono text-xs text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
+                <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal min-w-[180px]">
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
-                      <img src={job.pamflet} loading="lazy" decoding="async" class="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
+                      <img src={job.pamflet} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-16 md:h-24 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
                     )}
                     <div class="flex flex-col pt-1">
                       <span class="font-bold text-base text-white leading-tight">{job.pekerjaan || "-"}</span>
@@ -187,14 +187,14 @@ export default function LokerTable() {
                     </div>
                   </div>
                 </td>
-                <td data-label={t("table.status")} class="p-4 text-center align-top">{getStatusBadge(job.status)}</td>
-                <td data-label={t("table.req")} class="rt-full p-4 text-xs text-slate-300 whitespace-normal min-w-[250px] max-w-sm leading-relaxed align-top">
+                <td data-label={t("table.status")} class="p-1.5 text-center align-top text-xs">{getStatusBadge(job.status)}</td>
+                <td data-label={t("table.req")} class="rt-full p-2 text-xs text-slate-300 whitespace-normal min-w-[140px] max-w-[200px] leading-relaxed align-top">
                   {(job.syarat || "").split(",").map(s => s.trim()).filter(Boolean).join(", ")}
                   {job.keterangan && job.keterangan !== "-" && (
                     <div class="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-amber-300/90 leading-relaxed"><i class="fas fa-info-circle mr-1"></i> {job.keterangan}</div>
                   )}
                 </td>
-                <td data-label={t("table.action")} class="rt-full p-4 align-top w-48">
+                <td data-label={t("table.action")} class="rt-full p-1.5 align-top w-28">
                   <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
                     <button onClick={() => setSelectedJob(job)} class="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><i class="fas fa-eye mr-1"></i> {t("button.detail")}</button>
                     {job.templateCv && job.templateCv !== "-" && (

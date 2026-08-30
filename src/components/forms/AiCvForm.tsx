@@ -186,7 +186,7 @@ export default function AiCvForm() {
           </div>
         </div>
 
-        <div ref={chatRef} class="flex-1 overflow-y-auto p-3 space-y-4 pb-24 md:pb-4">
+        <div ref={chatRef} class="flex-1 overflow-y-auto p-3 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} fade-in`}>
               {msg.role === 'assistant' && (

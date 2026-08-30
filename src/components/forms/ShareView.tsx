@@ -196,7 +196,7 @@ export default function ShareView() {
 
         {/* Candidates Grid */}
         {!loading && !error && filtered.length > 0 && (
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out] pb-24">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out] pb-16">
             {filtered.map(c => (
               <div key={c.id} class={`bg-slate-900/[.97] border rounded-2xl p-4 md:p-5 transition-all hover:shadow-pink-500/10 hover:border-pink-500/30 ${selected.has(c.id) ? 'border-pink-500 shadow-[0_0_20px_rgba(236,72,153,.15)]' : 'border-slate-700/50'}`}>
                 <div class="flex gap-3 md:gap-4">
