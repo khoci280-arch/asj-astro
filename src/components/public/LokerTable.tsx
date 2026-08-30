@@ -1,172 +1,213 @@
 /**
- * LokerTable.tsx — Public job listing table with status filters
- * Source: legacy/index.html page-public → public-loker-section
- * Preact island — interactive (filters + data fetch + theme toggle + cek siswa modal)
+ * LokerTable.tsx - Public job listing table with status filters
+ * Source: legacy/js/render/public.ts renderPublicFiltered()
+ * Matches legacy: sorting, limit 10, pamflet, gender badges,
+ * Detail/Template/Apply buttons, filter counts, syarat + keterangan
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { langStore, t } from '../../store/i18n';
-import { SkeletonTable } from '../Skeleton';
 import LokerDetailModal from './LokerDetailModal';
 
-type Job = {
+interface Job {
   code: string;
   pekerjaan: string;
   status: string;
+  tahapan: string;
   keterangan: string;
   kategori: string;
   kuota: string;
   gender: string;
   lokasi: string;
   syarat: string;
-};
+  rincianBiaya?: string;
+  totalBiaya?: string;
+  pamflet?: string;
+  templateCv?: string;
+  dokumenShare?: string;
+  createdAt?: string;
+}
 
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-  URGENT: 'bg-red-500/20 text-red-400 border-red-500/40',
-  CLOSE: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
-};
-
-const FILTER_BTN = 'px-4 py-2 rounded-lg text-sm font-bold shadow-md transition';
+const LIMIT_INITIAL = 10;
 
 export default function LokerTable() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filter, setFilter] = useState('ALL');
+  const [filter, setFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
-  const [showCekModal, setShowCekModal] = useState(false);
-  const [isDark, setIsDark] = useState(() => typeof document !== "undefined" ? !document.documentElement.classList.contains("light") : true);
-  const [cekQuery, setCekQuery] = useState('');
-  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [limit, setLimit] = useState(LIMIT_INITIAL);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const lang = useStore(langStore);
 
-  useEffect(() => {
-    fetchJobs();
-    const onOpenCek = () => setShowCekModal(true);
-    window.addEventListener('openCekSiswaModal', onOpenCek);
-    return () => window.removeEventListener('openCekSiswaModal', onOpenCek);
-  }, []);
+  useEffect(() => { fetchJobs(); }, []);
 
   async function fetchJobs() {
     try {
-      const res = await fetch('/.netlify/functions/get-app-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['public'] }),
+      const res = await fetch("/.netlify/functions/get-app-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "getAppData", args: ["public"] }),
       });
       const data = await res.json();
       if (data.success && data.jobs) setJobs(data.jobs);
     } catch (err) {
-      console.error('[LokerTable] Failed to fetch jobs:', err);
+      console.error("[LokerTable] fetch error:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  const filtered = filter === 'ALL'
+  const filtered = filter === "ALL"
     ? jobs
-    : jobs.filter((j) => (j.status || '').toUpperCase() === filter);
+    : jobs.filter((j) => (j.status || "").toUpperCase().includes(filter));
 
-  function getStatusClass(status: string) {
-    return STATUS_COLORS[(status || '').toUpperCase()] || STATUS_COLORS.CLOSE;
+  const sorted = [...filtered].sort((a, b) => {
+    const aO = (a.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
+    const bO = (b.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
+    if (aO !== bO) return bO - aO;
+    const tA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt((a.code || "").replace(/D/g, "")) || 0;
+    const tB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt((b.code || "").replace(/D/g, "")) || 0;
+    return tB - tA;
+  });
+
+  const displayed = sorted.slice(0, limit);
+
+  function getStatusBadge(status: string) {
+    const s = (status || "").toUpperCase();
+    if (s.includes("OPEN"))
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-emerald-600 text-white border-emerald-400/60"><i class="fas fa-door-open"></i> {t("status.open")}</span>;
+    if (s.includes("URGENT"))
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-red-600 text-white border-red-400/60 animate-pulse"><i class="fas fa-exclamation-triangle"></i> {t("status.urgent")}</span>;
+    if (s.includes("CLOSE"))
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-red-600 text-white border-red-400/60"><i class="fas fa-door-closed"></i> {t("status.close")}</span>;
+    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-slate-800 text-slate-300 border-slate-600"><i class="fas fa-tag"></i> {status || "-"}</span>;
   }
 
-  function openWhatsApp(job: Job) {
-    const text = encodeURIComponent(
-      `Halo Admin ASJ, saya tertarik melamar posisi ${job.pekerjaan} (${job.code}). Mohon info lebih lanjut.`
-    );
-    window.open(`https://wa.me/6287889502004?text=${text}`, '_blank');
+  function getGenderBadge(gender: string) {
+    const g = (gender || "").toUpperCase();
+    const lbl = t("option." + gender) || gender;
+    if (g.includes("PRIA") || g.includes("LAKI"))
+      return <span class="px-2 py-0.5 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><i class="fas fa-mars mr-1"></i> {lbl}</span>;
+    if (g.includes("WANITA") || g.includes("PEREMPUAN"))
+      return <span class="px-2 py-0.5 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><i class="fas fa-venus mr-1"></i> {lbl}</span>;
+    return <span class="px-2 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><i class="fas fa-venus-mars mr-1"></i> {lbl || "-"}</span>;
   }
+
+  function jobTutupUntukLamar(j: Job) {
+    if (!j) return true;
+    if ((j.status || "").toUpperCase().includes("CLOSE")) return true;
+    const tp = (j.tahapan || "").toUpperCase().trim();
+    if (!tp || tp === "-" || tp === "LIST" || tp === "PENCARIAN" || tp === "PENDAFTARAN" || tp === "OPEN" || tp === "DAFTAR" || tp === "MENUNGGU" || tp === "REVIEW") return false;
+    return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL/i.test(tp);
+  }
+
+  function openWA(job: Job) {
+    const msg = encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + "). Mohon info lebih lanjut.");
+    window.open("https://wa.me/6287889502004?text=" + msg, "_blank");
+  }
+
+  function filterCount(s: string) {
+    if (s === "ALL") return jobs.length;
+    return jobs.filter(j => (j.status || "").toUpperCase().includes(s)).length;
+  }
+
+  const fDefs = [
+    { key: "ALL", icon: "fa-th-large", lbl: t("public.all"), cls: "bg-slate-700 hover:bg-slate-600 text-white" },
+    { key: "OPEN", icon: "fa-door-open", lbl: t("public.open"), cls: "bg-emerald-600 hover:bg-emerald-500 text-white" },
+    { key: "URGENT", icon: "fa-bolt", lbl: t("public.urgent"), cls: "bg-amber-500 hover:bg-amber-400 text-white" },
+    { key: "CLOSE", icon: "fa-door-closed", lbl: t("public.close"), cls: "bg-red-600 hover:bg-red-500 text-white" },
+  ];
 
   return (
     <div class="animate-fade-in">
-      {/* Control bar: Theme toggle (left) + Filter buttons (right) — same as legacy */}
-      <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border shadow-lg mb-6 gap-4 transition-colors bg-slate-900 border-slate-700">
+      <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><i class="fas fa-paint-brush"></i> Tema</span>
-          <button onClick={() => { document.documentElement.classList.toggle('light'); var isL = document.documentElement.classList.contains('light'); setIsDark(!isL); localStorage.setItem('asjTheme', isL ? 'light' : 'dark'); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
-            <i class={"fas " + (isDark ? "fa-moon" : "fa-sun")}></i> {isDark ? 'Dark' : 'Light'}
+          <button onClick={() => { document.documentElement.classList.toggle("light"); localStorage.setItem("asjTheme", document.documentElement.classList.contains("light") ? "light" : "dark"); }} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+            <i class="fas fa-moon"></i> Dark
           </button>
         </div>
         <div class="flex gap-2 items-center flex-wrap">
-          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest">
-            <i class="fas fa-filter"></i> Filter
-          </span>
-          {['ALL', 'OPEN', 'URGENT', 'CLOSE'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              class={`${FILTER_BTN} ${filter === f ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`}
-            >
-              {f === 'ALL' ? 'Semua' : f === 'OPEN' ? 'Buka' : f === 'URGENT' ? 'Urgent' : 'Tutup'}
-            </button>
-          ))}
-          <span class="text-xs text-slate-500 font-bold ml-2">{filtered.length} {t('public.lowongan_count')}</span>
+          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><i class="fas fa-filter"></i> Filter</span>
+           {fDefs.map(fd => {
+            const btnCls = "px-4 py-2 rounded-lg text-xs font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
+            const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/30 text-white" : "bg-slate-900 text-slate-200");
+            return (
+              <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
+                <i class={"fas " + fd.icon + " mr-1"}></i> {fd.lbl} <span class={cntCls}>{filterCount(fd.key)}</span>
+              </button>
+            );
+          })}
+          <span class="text-xs text-slate-500 font-bold ml-2">{displayed.length} / {filtered.length} {t("public.lowongan_count")}</span>
         </div>
       </div>
-
-      {/* Table */}
-      <div class="overflow-x-auto rounded-xl border border-slate-800 shadow-xl bg-slate-900 transition-colors duration-300">
+      <div class="overflow-x-auto rounded-xl border border-slate-800 shadow-xl bg-slate-900">
         <table class="responsive-table w-full min-w-[900px] text-left text-sm whitespace-nowrap">
-          <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700 transition-colors duration-300">
+          <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
             <tr>
-              <th scope="col" class="p-4 text-center w-32">Kode Job</th>
-              <th scope="col" class="p-4">Nama Pekerjaan</th>
-              <th scope="col" class="p-4 text-center">Status</th>
-              <th scope="col" class="p-4">Persyaratan &amp; Ket.</th>
-              <th scope="col" class="p-4 text-center w-48">Aksi Pelamar</th>
+              <th scope="col" class="p-4 text-center w-32">{t("table.code")}</th>
+              <th scope="col" class="p-4 min-w-[250px]">{t("table.job")}</th>
+              <th scope="col" class="p-4 text-center">{t("table.status")}</th>
+              <th scope="col" class="p-4 min-w-[250px] max-w-sm">{t("table.req")}</th>
+              <th scope="col" class="p-4 text-center w-48">{t("table.action")}</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-white/5 transition-colors duration-300">
+          <tbody class="divide-y divide-white/5">
             {loading ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> {t('public.loading')}</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-inbox mr-2"></i> {t('public.no_data')}</td></tr>
-            ) : (
-              filtered.map((job, i) => (
-                <tr key={job.code || i} class="hover:bg-white/5 transition-colors">
-                  <td class="p-4 text-center">
-                    <span class="font-mono font-black text-sky-400 text-xs bg-sky-900/30 px-2 py-1 rounded-md border border-sky-500/30">{job.code || '-'}</span>
-                  </td>
-                  <td class="p-4">
-                    <div class="font-bold text-white">{job.pekerjaan || '-'}</div>
-                    {job.kategori && <div class="text-xs text-slate-500 mt-0.5">{job.kategori}</div>}
-                  </td>
-                  <td class="p-4 text-center">
-                    <span class={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusClass(job.status)}`}>{job.status || 'CLOSE'}</span>
-                  </td>
-                  <td class="p-4">
-                    <div class="text-slate-300 text-xs max-w-[300px] truncate" title={job.keterangan || ''}>{job.keterangan || '-'}</div>
-                    {job.gender && <div class="text-xs text-slate-500 mt-0.5"><i class="fas fa-user mr-1"></i>{job.gender}</div>}
-                  </td>
-                  <td class="p-4 text-center">
-                    {(job.status || '').toUpperCase() === 'CLOSE' ? (
-                      <span class="text-xs text-slate-500 font-bold">{t('public.close')}</span>
-                    ) : (
-                      <button onClick={() => openWhatsApp(job)} class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg inline-flex items-center gap-1">
-                        <i class="fab fa-whatsapp"></i> Lamar
-                      </button>
+              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> {t("public.loading")}</td></tr>
+            ) : displayed.length === 0 ? (
+              <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
+            ) : displayed.map((job, i) => (
+              <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-black/10 transition">
+                <td data-label={t("table.code")} class="p-4 font-mono text-sm text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
+                <td data-label={t("table.job")} class="rt-full p-4 align-top whitespace-normal min-w-[250px]">
+                  <div class="flex items-start gap-4">
+                    {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
+                      <img src={job.pamflet} loading="lazy" decoding="async" class="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => window.open(job.pamflet, "_blank")} />
                     )}
-                  </td>
-                </tr>
-              ))
-            )}
+                    <div class="flex flex-col pt-1">
+                      <span class="font-bold text-base text-white leading-tight">{job.pekerjaan || "-"}</span>
+                      <div class="flex flex-wrap items-center gap-2 mt-2">
+                        <span class="text-[11px] text-slate-300"><i class="fas fa-map-marker-alt mr-1 text-red-400"></i> {job.lokasi || "-"}</span>
+                        {getGenderBadge(job.gender)}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td data-label={t("table.status")} class="p-4 text-center align-top">{getStatusBadge(job.status)}</td>
+                <td data-label={t("table.req")} class="rt-full p-4 text-xs text-slate-300 whitespace-normal min-w-[250px] max-w-sm leading-relaxed align-top">
+                  {(job.syarat || "").split(",").map(s => s.trim()).filter(Boolean).join(", ")}
+                  {job.keterangan && job.keterangan !== "-" && (
+                    <div class="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-amber-300/90 leading-relaxed"><i class="fas fa-info-circle mr-1"></i> {job.keterangan}</div>
+                  )}
+                </td>
+                <td data-label={t("table.action")} class="rt-full p-4 align-top w-48">
+                  <div class="flex flex-col xl:flex-row gap-2 w-full justify-center">
+                    <button onClick={() => setSelectedJob(job)} class="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><i class="fas fa-eye mr-1"></i> {t("button.detail")}</button>
+                    {job.templateCv && job.templateCv !== "-" && (
+                      <a href={job.templateCv} target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><i class="fas fa-download mr-1"></i> {t("button.format")}</a>
+                    )}
+                    {jobTutupUntukLamar(job) ? (
+                      <button disabled class="w-full sm:w-auto px-4 py-2.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
+                    ) : (
+                      <button onClick={() => openWA(job)} class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><i class="fas fa-paper-plane mr-1"></i> {t("button.apply")}</button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Modal: Cek Data Siswa */}
-      {showCekModal && (
-        <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowCekModal(false)}>
-          <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 class="text-lg font-bold text-white mb-4"><i class="fas fa-search mr-2 text-sky-400"></i> t('form.placeholder_search')</h3>
-            <input type="text" value={cekQuery} onInput={(e) => setCekQuery((e.target as HTMLInputElement).value)} placeholder="Cari nama / NIS..." class="w-full p-3 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition mb-4" />
-            <div class="text-xs text-slate-500 text-center py-4">Data akan dimuat dari backend.</div>
-            <button onClick={() => setShowCekModal(false)} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm transition">Tutup</button>
-          </div>
+      {filtered.length > limit && (
+        <div class="p-5 text-center">
+          <button onClick={() => setLimit(prev => prev + 10)} class="px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
+            {t("button.more")} <i class="fas fa-chevron-down ml-2"></i>
+          </button>
         </div>
       )}
+
       {selectedJob && <LokerDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
     </div>
-
   );
 }
