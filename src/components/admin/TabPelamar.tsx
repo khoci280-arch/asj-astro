@@ -3,7 +3,7 @@
  * Source: legacy/index.html page-admin → admin-pelamar
  * With modals: Input Manual, Laporan Bulanan, Toggle View
  */
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {
   kandidatList, allKandidatList, kandidatLoading,
@@ -15,6 +15,7 @@ import {
   fetchKandidatFromAPI,
 } from '../../store/adminStore';
 import InputManualModal from './InputManualModal.tsx';
+import RirekishoBuilder from './RirekishoBuilder';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 
 import type { Kandidat } from "../../store/adminStore";
@@ -23,6 +24,8 @@ export default function TabPelamar() {
                         
   useEffect(() => { fetchKandidatFromAPI(); }, []);
   const kandidat = useStore(kandidatList);
+  const [rirekWa, setRirekWa] = useState("");
+  const [showRirek, setShowRirek] = useState(false);
   const allKandidat = useStore(allKandidatList);
   const loading = useStore(kandidatLoading);
   const search = useStore(adminSearch);
@@ -151,7 +154,7 @@ te-800">
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
                       <button class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition"><i class="fas fa-clock"></i></button>
-                      <button class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
+                      <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
                       <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-edit mr-1"></i> Edit</button>
                       <button class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-robot mr-1"></i> AI CV</button>
                       <button class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition"><i class="fab fa-whatsapp"></i></button>
@@ -173,6 +176,7 @@ te-800">
       {/* Modals */}
       <InputManualModal />
       <LaporanBulananModal />
-    </div>
+          <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} />
+</div>
   );
 }
