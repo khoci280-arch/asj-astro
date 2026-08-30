@@ -89,7 +89,7 @@ export default function AdminPanel() {
             {/* ============================================
           3. SIDEBAR TOGGLE (visible on all sizes)
           ============================================ */}
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} class="sticky top-2 style={{ zIndex: Z_INDEX.MENU_BUTTON }} ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: String(Z_INDEX.MENU_BUTTON) }} class="sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
         <i class="fas fa-bars"></i> Menu
       </button>
 
@@ -97,7 +97,7 @@ export default function AdminPanel() {
           4. SIDEBAR BACKDROP (mobile only)
           ============================================ */}
       {sidebarOpen && (
-        <div class="fixed inset-0 bg-black/60 style={{ zIndex: Z_INDEX.SIDEBAR_BACKDROP }} transition-opacity duration-300 lg:hidden"
+        <div style={{ zIndex: String(Z_INDEX.SIDEBAR_BACKDROP) }} class="fixed inset-0 bg-black/60 transition-opacity duration-300 lg:hidden"
           onClick={() => setSidebarOpen(false)}
           role="button"
           tabIndex={0}
@@ -111,9 +111,10 @@ export default function AdminPanel() {
       <aside
         role="navigation"
         aria-label="Admin sidebar"
-        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl style={{ zIndex: Z_INDEX.SIDEBAR }} transition-transform duration-300 ease-in-out
+        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
+        style={{ zIndex: String(Z_INDEX.SIDEBAR) }}
         onClick={(e: Event) => e.stopPropagation()}
       >
         <div class="flex items-center justify-between px-2 py-2 mb-2 border-b border-slate-700">

@@ -6,8 +6,13 @@ const mimeTypes = {'.html':'text/html','.js':'application/javascript','.css':'te
 const dist = path.join(__dirname, 'dist');
 const PROXY_TARGET = 'https://asjportal.netlify.app';
 
+function serveFile(res, fp) {
+  const ext = path.extname(fp);
+  res.writeHead(200, {'Content-Type': mimeTypes[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache'});
+  fs.createReadStream(fp).pipe(res);
+}
+
 const server = http.createServer((req, res) => {
-  // Proxy Netlify functions to production
   if (req.url.startsWith('/.netlify/functions/')) {
     const targetUrl = PROXY_TARGET + req.url;
     let body = '';
@@ -23,12 +28,16 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  // Static files
-  let fp = path.join(dist, req.url === '/' ? '/index.html' : req.url);
-  if (!fs.existsSync(fp) && !path.extname(fp)) fp = path.join(dist, 'index.html');
-  if (!fs.existsSync(fp)) { res.writeHead(404); res.end('Not found'); return; }
-  const ext = path.extname(fp);
-  res.writeHead(200, {'Content-Type': mimeTypes[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache'});
-  fs.createReadStream(fp).pipe(res);
+  const urlPath = req.url.split('?')[0].split('#')[0];
+  let fp = path.join(dist, urlPath === '/' ? 'index.html' : urlPath);
+  // If file exists, serve it
+  if (fs.existsSync(fp) && fs.statSync(fp).isFile()) { serveFile(res, fp); return; }
+  // Try index.html inside directory
+  const dirIdx = path.join(fp, 'index.html');
+  if (fs.existsSync(dirIdx)) { serveFile(res, dirIdx); return; }
+  // SPA fallback
+  const fallback = path.join(dist, 'index.html');
+  if (fs.existsSync(fallback)) { serveFile(res, fallback); return; }
+  res.writeHead(404); res.end('Not found');
 });
 server.listen(4321, () => console.log('Serving + proxying on http://localhost:4321'));
