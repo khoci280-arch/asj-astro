@@ -17,6 +17,7 @@ import TabDbJob from './TabDbJob.tsx';
 import TabTambah from './TabTambah.tsx';
 import TabJadwal from './TabJadwal.tsx';
 import TabWA from './TabWA.tsx';
+import UndanganKelasModal from "./UndanganKelasModal";
 import TabConfig from './TabConfig.tsx';
 
 /**
@@ -50,6 +51,7 @@ const TABS: TabDef[] = [
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('kelola');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showUndanganKelas, setShowUndanganKelas] = useState(false);
 
   return (
     <div class="space-y-6">
@@ -166,6 +168,7 @@ function TabPlaceholder({ tab }: { tab: string }) {
     <div class="text-center py-8">
       <i class="fas fa-tools text-3xl text-slate-600 mb-3"></i>
       <p class="text-slate-500">Tab "{tab}" sedang dalam migrasi.</p>
-    </div>
+          {showUndanganKelas && <UndanganKelasModal isOpen={showUndanganKelas} onClose={() => setShowUndanganKelas(false)} />}
+</div>
   );
 }
