@@ -27,7 +27,7 @@ interface UserState {
 
 type ModalMode = 'closed' | 'login' | 'daftar';
 
-export default function App() {
+export default function App({ showHeader = true }: { showHeader?: boolean } = {}) {
   const u: UserState = useStore(authStore) as UserState;
   const lang = useStore(langStore);
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
@@ -51,7 +51,7 @@ export default function App() {
 
   return (
     <>
-      <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700">
+      {showHeader && <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700">
         <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
         <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
           <div class="flex items-center gap-5">
@@ -96,7 +96,7 @@ export default function App() {
           </div>
         </div>
           </div>
-      </header>
+      </header>}
 
       {menuOpen && <div class="fixed inset-0 bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
       

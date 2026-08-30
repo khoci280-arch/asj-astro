@@ -6,7 +6,7 @@ import App from '../components/App.tsx';
 ---
 
 <BaseLayout title="ASJ - Candidate Viewer" description="View candidates for ASJ job">
-  <App client:only="preact" />
+  <App showHeader={false} client:only="preact" />
   
   <FormToolbar client:only="preact" title="Share Loker" />
   <ShareView client:only="preact" />

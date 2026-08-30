@@ -9,6 +9,15 @@ export default defineConfig({
   // adapter: netlify(),  // Enable for SSR deploy
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      proxy: {
+        "/.netlify/functions": {
+          target: "https://asjportal.netlify.app",
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
     resolve: {
       alias: { "react": "preact/compat", "react-dom": "preact/compat" },
       dedupe: ["preact", "preact/compat", "preact/hooks", "react", "react-dom"],

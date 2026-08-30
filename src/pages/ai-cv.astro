@@ -6,7 +6,7 @@ import FormToolbar from "../components/forms/FormToolbar";
 ---
 
 <BaseLayout title="ASJ AI - Qween Jeklin" description="AI CV Assistant for ASJ candidates">
-  <App client:only="preact" />
+  <App showHeader={false} client:only="preact" />
   
   <FormToolbar client:only="preact" title="AI CV Chat" />
   <AiCvForm client:only="preact" />

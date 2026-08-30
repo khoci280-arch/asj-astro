@@ -5,8 +5,8 @@ import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
 ---
 
-<BaseLayout title="Panel Admin — ASJ Portal" description="Admin panel: kelola kandidat, loker, mail, jadwal">
-  <App client:only="preact" />
+<BaseLayout title="Panel Admin — ASJ Portal" description="Admin panel: kelola kandidat, loker, mail, jadwal" showBottomNav={true}>
+  <App showHeader={false} client:only="preact" />
   <Toast client:only="preact" />
 
   <main id="main-content" class="w-full min-h-[50vh] pb-24">
