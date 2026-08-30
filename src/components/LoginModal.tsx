@@ -141,11 +141,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {mode === "daftar" && (
           <div>
             <h3 class="text-xl font-bold text-emerald-400 mb-6 border-b border-emerald-900/50 pb-4 text-center">
-              <i class="fas fa-user-plus mr-2"></i> Daftar
+              <i class="fas fa-user-plus mr-2" aria-hidden="true"></i> Daftar
             </h3>
+            <label class="block text-sm font-bold text-slate-400 mb-1.5">Nama Lengkap</label>
             <input type="text" value={regNama} onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
               placeholder={t("login.nama_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
+            <label class="block text-sm font-bold text-slate-400 mb-1.5">No WhatsApp</label>
             <input type="tel" value={regWa} onInput={(e) => setRegWa((e.target as HTMLInputElement).value)}
               placeholder={t("login.wa_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
@@ -167,7 +169,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {mode === "login" && adminStep === 0 && (
           <div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
-              <i class="fas fa-sign-in-alt mr-2"></i> Login Pelamar
+              <i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i> Login Pelamar
             </h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
             <input type="tel" value={logWa} onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}
@@ -191,7 +193,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Admin Step 1: Master PIN + Account Select ── */}
         {mode === "login" && adminStep === 1 && (
           <div class="text-center">
-            <i class="fas fa-shield-alt text-5xl text-red-500 mb-5 drop-shadow-lg"></i>
+            <i class="fas fa-shield-alt text-5xl text-red-500 mb-5 drop-shadow-lg" aria-hidden="true"></i>
             <h3 class="text-xl font-bold text-white mb-6 tracking-wide">{t("admin.auth_title")}</h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_master")}</label>
             <input type="password" value={masterPin} onInput={(e) => setMasterPin((e.target as HTMLInputElement).value)}
@@ -213,7 +215,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Admin Step 2: Personal PIN ── */}
         {mode === "login" && adminStep === 2 && (
           <div class="text-center">
-            <i class="fas fa-users-cog text-5xl text-sky-500 mb-5 drop-shadow-lg"></i>
+            <i class="fas fa-users-cog text-5xl text-sky-500 mb-5 drop-shadow-lg" aria-hidden="true"></i>
             <h3 class="text-lg font-bold text-white mb-6 tracking-wide">{t("admin.select_account")}</h3>
             <div class="grid grid-cols-2 gap-4">
               {["SACHOU", "AYOK", "KHOLIS", "KHOCI"].map(name => (
@@ -233,7 +235,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
         {mode === "login" && adminStep === 3 && (
           <div class="text-center">
-            <i class="fas fa-lock text-5xl text-amber-500 mb-4 drop-shadow-lg"></i>
+            <i class="fas fa-lock text-5xl text-amber-500 mb-4 drop-shadow-lg" aria-hidden="true"></i>
             <h3 class="text-lg font-bold text-white mb-1">{t("admin.auth_title")} {selectedAdmin}</h3>
             <p class="text-sm text-slate-400 mb-6">{t("admin.enter_pin")}</p>
             <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_personal")}</label>

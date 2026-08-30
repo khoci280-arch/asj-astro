@@ -39,17 +39,17 @@ export default function BottomNav() {
           <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Lowongan">
             <i class="fas fa-briefcase text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
-            <i class="fas fa-users text-xs"></i>
+          <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Pelamar">
+            <i class="fas fa-users text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
-            <i class="fas fa-envelope text-xs"></i>
+          <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Mail">
+            <i class="fas fa-envelope text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-10">
-            <i class="fab fa-whatsapp text-xs"></i>
+          <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-10" aria-label="WhatsApp">
+            <i class="fab fa-whatsapp text-xs" aria-hidden="true"></i>
           </button>
-          <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
-            <i class="fas fa-cogs text-xs"></i>
+          <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Settings">
+            <i class="fas fa-cogs text-xs" aria-hidden="true"></i>
           </button>
         </div>
       </div>
@@ -60,16 +60,16 @@ export default function BottomNav() {
   return (
     <div id="bottom-nav-kandidat" class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-[90]">
       <div class="flex justify-around items-center h-11 px-6">
-        <a href="/public" class="flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10">
-          <i class="fas fa-globe text-xs"></i>
+        <a href="/public" class="flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label="Cari Lowongan">
+          <i class="fas fa-globe text-xs" aria-hidden="true"></i>
         </a>
-        <a href="/candidate" class="relative -top-2 flex items-center justify-center">
+        <a href="/candidate" class="relative -top-2 flex items-center justify-center" aria-label="Dashboard">
           <div class="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white border-2 border-slate-950 shadow-md active:scale-95 transition">
-            <i class="fas fa-id-card text-sm"></i>
+            <i class="fas fa-id-card text-sm" aria-hidden="true"></i>
           </div>
         </a>
-        <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10">
-          <i class="fas fa-power-off text-xs"></i>
+        <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label="Logout">
+          <i class="fas fa-power-off text-xs" aria-hidden="true"></i>
         </button>
       </div>
     </div>
