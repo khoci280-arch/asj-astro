@@ -1,13 +1,12 @@
 /**
  * LoginModal.tsx — Auth forms (login/register/admin)
  *
- * - Kandidat login/register: Supabase auth via userStore
+ * - Kandidat login/register: bridge-links API (server-side)
  * - Admin 2-step login: Netlify functions (master pin + personal pin)
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { authStore, loginAsAdmin } from '../store/authReactive';
-import { loginKandidatSupabase, registerKandidatSupabase } from '../store/userStore';
+import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive';
 import { showToast } from './Toast';
 import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t } from '../store/i18n';
@@ -52,7 +51,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     const r = await fetch(API + "/bridge-links", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, args }),
+      body: JSON.stringify({ action, payload: args }),
     });
     if (!r.ok) throw new Error("API " + r.status);
     return r.json();
@@ -61,25 +60,36 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // ─── Register ───
   async function handleReg() {
     const vr = validate(registerSchema, { nama: regNama, wa: regWa });
-    if (!vr.success) { showToast(vr.errors[0], "error"); return; }
+    if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
     setLoading(true);
     try {
       const password = regWa.slice(-4);
-      const ok = await registerKandidatSupabase(regNama, regWa, password);
-      if (ok) onSwitchMode("login");
-    } catch (e: unknown) { showToast(e.message, "error"); }
+      const r = await api('daftarKandidat', [regNama, regWa, password]);
+      if (r.success) {
+        showToast(r.message || 'Registrasi berhasil! Silakan login.', 'success');
+        onSwitchMode('login');
+      } else {
+        showToast(r.error || 'Registrasi gagal', 'error');
+      }
+    } catch (e: any) { showToast(e.message, 'error'); }
     finally { setLoading(false); }
   }
 
   // ─── Login ───
   async function handleLogin() {
     const vl = validate(kandidatLoginSchema, { wa: logWa, password: logPass });
-    if (!vl.success) { showToast(vl.errors[0], "error"); return; }
+    if (!vl.success) { showToast(vl.errors[0], 'error'); return; }
     setLoading(true);
     try {
-      const ok = await loginKandidatSupabase(logWa, logPass);
-      if (ok) { onClose(); window.location.reload(); }
-    } catch (e: unknown) { showToast(e.message, "error"); }
+      const r = await api('loginKandidat', [logWa, logPass]);
+      if (r.success) {
+        loginAsKandidat(r.nama || r.name || logWa, logWa, r.sessionToken || '', r.refreshToken || '');
+        showToast('Selamat datang, ' + (r.nama || r.name || logWa) + '!', 'success');
+        onClose();
+      } else {
+        showToast(r.error || 'Login gagal', 'error');
+      }
+    } catch (e: any) { showToast(e.message, 'error'); }
     finally { setLoading(false); }
   }
 

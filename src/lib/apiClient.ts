@@ -126,7 +126,7 @@ export async function apiClient<T = ApiResponse>(
     const res = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ action, args, sessionToken }),
+      body: JSON.stringify({ action, payload: args, sessionToken }),
     });
 
     if (!res.ok) {

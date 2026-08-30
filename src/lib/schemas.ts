@@ -16,7 +16,7 @@ import { z } from 'zod';
  * - Internasional lain: 10-15 digit (tanpa spasi/simbol)
  */
 export const waSchema = z.string()
-  .regex(/^(\+?62|\+?81|\+?\d{1,3})\d{8,13}$/, 'Nomor WA tidak valid. Gunakan format 628xx (Indo) atau 81xx (Jepang), 10-15 digit');
+  .regex(/^(\+?62|\+?81|0\d{9,14}|\+?\d{1,3}\d{8,13})$/, 'Nomor WA tidak valid. Gunakan format 08xx, 628xx, atau +81xx');
 
 /** Email (optional) */
 export const emailSchema = z.string()
@@ -28,7 +28,7 @@ export const emailSchema = z.string()
 export const passwordSchema = z.string()
   .min(4, 'Password minimal 4 karakter')
   .max(20, 'Password maksimal 20 karakter')
-  .regex(/^\S+$/, 'Password tidak boleh mengandung spasi');
+  .regex(/^[^\s]+$/, 'Password tidak boleh mengandung spasi');
 
 // ─── Candidate Profile ───
 
