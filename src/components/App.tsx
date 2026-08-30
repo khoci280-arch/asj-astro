@@ -66,6 +66,7 @@ export default function App() {
                 <a href="/admin#mail" class="relative w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full transition-colors shadow-lg"><i class="fas fa-bell"></i></a>
                 <span class="px-5 py-2.5 bg-black text-amber-300 border border-amber-500/60 rounded-full text-sm font-bold">Admin: {u.name}</span>
                 <a href="/public" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors"><i class="fas fa-globe mr-1"></i> {t("header.public")}</a>
+                <button class="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white border border-violet-300/40 rounded-full text-sm font-bold transition-colors shadow-lg"><i class="fas fa-robot mr-1"></i> AI HR</button>
                 <a href="/admin" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg"><i class="fas fa-cogs mr-1"></i> {t("header.admin")}</a>
                 <button onClick={handleLogout} class="px-5 py-2.5 bg-black text-white border border-white/20 hover:bg-white/10 rounded-full text-sm font-bold transition-colors"><i class="fas fa-sign-out-alt mr-1"></i> {t("header.logout")}</button>
               </>)}
@@ -97,6 +98,7 @@ export default function App() {
           </div>)}
           {u.isLoggedIn && u.role === "admin" && (<div class="space-y-3">
             <a href="/admin" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-cogs mr-2"></i> {t("header.admin")}</a>
+            <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><i class="fas fa-robot mr-2"></i> AI HR Copilot</a>
             <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><i class="fas fa-globe mr-2"></i> {t("header.public")}</a>
             <button onClick={handleLogout} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><i class="fas fa-sign-out-alt mr-2"></i> {t("header.logout")}</button>
           </div>)}

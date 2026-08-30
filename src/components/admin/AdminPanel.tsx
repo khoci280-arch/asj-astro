@@ -65,21 +65,7 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* ============================================
-          2. PENGUMUMAN BERJALAN (Marquee)
-          ============================================ */}
-      <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-lg overflow-hidden">
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold text-red-400 whitespace-nowrap"><i class="fas fa-bullhorn mr-1"></i> Pengumuman:</span>
-          <div class="overflow-hidden flex-1">
-            <div class="animate-marquee whitespace-nowrap text-sm text-slate-300">
-              <span id="marquee-text">{t('ui.marquee_default')}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================
+            {/* ============================================
           3. SIDEBAR TOGGLE (visible on all sizes)
           ============================================ */}
       <button onClick={() => setSidebarOpen(!sidebarOpen)} class="sticky top-2 z-[30] ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
