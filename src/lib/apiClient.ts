@@ -11,6 +11,43 @@ import { authStore, logout } from '../store/authReactive';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
 
+
+/** SWR-lite cache — sessionStorage with TTL (matching legacy api-client.ts) */
+const READ_CACHE_TTL_MS = 30 * 1000; // 30 seconds freshness
+const CACHEABLE_READS = new Set([
+  'getAppData', 'cekDataPelamar', 'getMasterDataByWa',
+  'getDrafCvMaster', 'getShareData', 'getJobsPublic',
+  'getJadwalList', 'getConfigDropdown', 'getWaTemplates',
+  'getAgendaAdmin', 'getApplicantDetail',
+]);
+
+function getCacheKey(action, args) {
+  return 'asj_cache_' + action + ':' + JSON.stringify(args || []);
+}
+function getCached(action, args) {
+  try {
+    const hitStr = sessionStorage.getItem(getCacheKey(action, args));
+    if (hitStr) {
+      const hit = JSON.parse(hitStr);
+      if (Date.now() - hit.at < READ_CACHE_TTL_MS) return hit.value;
+      sessionStorage.removeItem(getCacheKey(action, args));
+    }
+  } catch {}
+  return null;
+}
+function setCache(action, args, value) {
+  try {
+    sessionStorage.setItem(getCacheKey(action, args), JSON.stringify({ at: Date.now(), value }));
+  } catch {}
+}
+function invalidateCache() {
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('asj_cache_')) sessionStorage.removeItem(key);
+    }
+  } catch {}
+}
 /** Single backend endpoint — all actions dispatched through bridge-links */
 const API_ENDPOINT = '/.netlify/functions/bridge-links';
 
@@ -53,6 +90,15 @@ export async function apiClient<T = ApiResponse>(
   options: { requireAuth?: boolean } = {}
 ): Promise<T> {
   const { requireAuth = true } = options;
+
+  // SWR-lite: return cached result for read-only actions
+  if (CACHEABLE_READS.has(action)) {
+    const cached = getCached(action, args);
+    if (cached) return cached as T;
+  } else {
+    // Mutation -> invalidate all read cache
+    invalidateCache();
+  }
 
   // Read token from nanostores (reactive, always fresh)
   const { isLoggedIn } = authStore.get();
@@ -97,6 +143,10 @@ export async function apiClient<T = ApiResponse>(
       throw new Error('Session expired');
     }
 
+    // Cache successful read responses
+    if (CACHEABLE_READS.has(action)) {
+      setCache(action, args, data);
+    }
     return data as T;
   } catch (err: any) {
     // Network error

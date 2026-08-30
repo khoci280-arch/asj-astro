@@ -22,7 +22,9 @@ interface JobInfo {
 }
 
 export default function ShareView() {
-  const code = new URLSearchParams(window.location.search).get('code') || '';
+  const code = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('code') || '' : '';
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [job, setJob] = useState<JobInfo | null>(null);
   const [loading, setLoading] = useState(true);

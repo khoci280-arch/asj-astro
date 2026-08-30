@@ -7,6 +7,9 @@ export default defineConfig({
   output: 'static',
   vite: {
     plugins: [tailwindcss()],
+    resolve: {
+      dedupe: ["preact", "preact/compat", "preact/hooks"],
+    },
     build: {
       rollupOptions: {
         output: {
