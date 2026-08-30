@@ -40,7 +40,8 @@ export default function App() {
     return cleanup;
   }, []);
 
-  function openLogin() { setModalMode("login"); setMenuOpen(false); }
+  function openLogin() { setModalMode("login"); setMenuOpen(false); window.dispatchEvent(new Event("asj-kandidat-login")); }
+  function openAdminLogin() { setModalMode("login"); setMenuOpen(false); window.dispatchEvent(new Event("asj-admin-login")); }
   function openRegister() { setModalMode("daftar"); setMenuOpen(false); }
   function closeModal() { setModalMode("closed"); }
   async function handleLogout() { await logoutSupabase(); window.location.reload(); }
@@ -60,22 +61,22 @@ export default function App() {
               <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
             </div>
           </div>
-          <div class="absolute top-4 right-4" style={{ zIndex: Z_INDEX.HAMBURGER }}>
+          <div class="absolute top-4 right-4 z-30">
             <button onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg" aria-label="Toggle Menu">
               <i class={menuOpen ? "fas fa-times text-lg" : "fas fa-bars text-lg"}></i>
             </button>
           </div>
           {/* ─── Desktop Nav ─── */}
-          <div class="hidden md:flex flex-col items-end gap-3">
+          <div class="hidden md:flex flex-col items-end gap-2 mt-2">
             <div class="flex items-center gap-3">
               <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
               <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "ID" : "JP"}</button>
             </div>
-            <div class="flex flex-wrap gap-3 mt-1">
+            <div class="flex flex-wrap justify-end gap-2 mt-1">
               {!u.isLoggedIn && (<>
                 <button onClick={openLogin} class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg">{t("header.login")}</button>
                 <button onClick={openRegister} class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors">{t("header.register")}</button>
-                <button onClick={openLogin} class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg" aria-label="Admin"><i class="fas fa-shield-alt"></i></button>
+                <button onClick={openAdminLogin} class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg" aria-label="Admin"><i class="fas fa-shield-alt"></i></button>
               </>)}
               {u.isLoggedIn && u.role === "admin" && (<>
                 <a href="/admin#mail" class="relative w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full transition-colors shadow-lg"><i class="fas fa-bell"></i></a>
@@ -111,7 +112,7 @@ export default function App() {
           {!u.isLoggedIn && (<div class="space-y-3">
             <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
             <button onClick={openRegister} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition">{t("header.register")}</button>
-            <button onClick={openLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><i class="fas fa-shield-alt mr-2"></i> {t("header.admin_login")}</button>
+            <button onClick={openAdminLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><i class="fas fa-shield-alt mr-2"></i> {t("header.admin_login")}</button>
           </div>)}
           {u.isLoggedIn && u.role === "admin" && (<div class="space-y-3">
             <a href="/admin" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-cogs mr-2"></i> {t("header.admin")}</a>
