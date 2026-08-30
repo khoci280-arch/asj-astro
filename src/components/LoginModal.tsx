@@ -164,7 +164,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         )}
 
         {/* ── Kandidat Login ── */}
-        {mode === "login" && adminStep !== 1 && adminStep !== 2 && (
+        {mode === "login" && adminStep === 0 && (
           <div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
               <i class="fas fa-sign-in-alt mr-2"></i> Login Pelamar
