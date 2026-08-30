@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 
-interface ConfigGroup { id: string; label: string; options: string[]; }
+// ConfigGroup type imported from shared types
 
 export default function TabConfig() {
   const [configs, setConfigs] = useState<ConfigGroup[]>([

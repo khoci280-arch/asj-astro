@@ -55,7 +55,7 @@ export default function CvMiniModal({ onClose }: Props) {
       } else {
         showToast(data.error || 'Gagal menyimpan', 'error');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast('Error: ' + (e.message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };

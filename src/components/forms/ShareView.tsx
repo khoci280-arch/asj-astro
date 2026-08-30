@@ -48,7 +48,7 @@ export default function ShareView() {
       if (!res.ok) throw new Error('Not found');
       const data = await res.json();
       setJob(data.job);
-      setCandidates((data.candidates || []).map((c: any) => ({ ...c, photo: c.pas_photo || c.photo || "" })));
+      setCandidates((data.candidates || []).map((c: Record<string, unknown>) => ({ ...c, photo: c.pas_photo || c.photo || "" })));
     } catch (e) {
       setError((e as Error).message || 'Access Denied or Not Found');
     } finally {

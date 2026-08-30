@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 
-interface WaTemplate { id: string; nama: string; isi: string; }
+// WaTemplate type imported from shared types
 
 export default function TabWA() {
   const [templates, setTemplates] = useState<WaTemplate[]>([]);

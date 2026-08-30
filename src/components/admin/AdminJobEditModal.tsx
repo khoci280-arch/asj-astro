@@ -5,8 +5,8 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 
-interface Job { code: string; pekerjaan: string; status: string; kategori: string; kuota: string; gender: string; lokasi: string; syarat: string; keterangan: string; templateCv?: string; pamflet?: string; }
-interface Props { job: Job; onClose: () => void; onSave?: (data: any) => void; }
+// Job type imported from shared types
+interface Props { job: Job; onClose: () => void; onSave?: (data: Job) => void; }
 
 export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
   const [form, setForm] = useState({

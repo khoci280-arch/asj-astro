@@ -42,7 +42,7 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     ctx.fillText('Gunakan jari di area putih di atas', rect.width / 2, rect.height / 2);
   }, []);
 
-  const getPos = (e: any) => {
+  const getPos = (e: MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches?.[0] || e;
@@ -52,7 +52,7 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     };
   };
 
-  const startDraw = (e: any) => {
+  const startDraw = (e: MouseEvent | TouchEvent) => {
     e.preventDefault();
     setIsDrawing(true);
     setHasDrawn(true);
@@ -67,7 +67,7 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     }
   };
 
-  const draw = (e: any) => {
+  const draw = (e: MouseEvent | TouchEvent) => {
     if (!isDrawing) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');

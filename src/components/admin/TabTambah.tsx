@@ -3,7 +3,8 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 
-interface DD { tsk: string[]; tahapan: string[]; kategori: string[]; gender: string[]; lokasi: string[]; syarat: string[]; }
+// DropdownData type imported from shared types
+// Note: DD alias used for backward compatibility
 const RF = ['CV', 'JFT', 'SSW'];
 
 export default function TabTambah() {

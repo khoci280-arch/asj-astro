@@ -57,7 +57,7 @@ interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   data?: T;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -86,7 +86,7 @@ async function getFreshToken(): Promise<string> {
  */
 export async function apiClient<T = ApiResponse>(
   action: string,
-  args: any[] = [],
+  args: unknown[] = [],
   options: { requireAuth?: boolean } = {}
 ): Promise<T> {
   const { requireAuth = true } = options;
@@ -148,7 +148,7 @@ export async function apiClient<T = ApiResponse>(
       setCache(action, args, data);
     }
     return data as T;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Network error
     if (err.message === 'No valid session' || err.message === 'Session expired') {
       throw err;

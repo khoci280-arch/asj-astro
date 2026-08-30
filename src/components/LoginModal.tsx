@@ -42,7 +42,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
   // ─── Admin API (still uses Netlify functions — 2-step pin flow) ───
   const API = "/.netlify/functions";
-  async function api(action: string, args: any[] = []) {
+  async function api(action: string, args: unknown[] = []) {
     const r = await fetch(API + "/bridge-links", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,7 +62,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const password = regWa.slice(-4); // legacy pattern: password = last 4 digits of WA
       const ok = await registerKandidatSupabase(regNama, regWa, password);
       if (ok) onSwitchMode("login");
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast(e.message, "error");
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         onClose();
         window.location.reload();
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast(e.message, "error");
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const r = await api("checkAdminMaster", [masterPin, t]);
       if (r.success) setAdminStep(2);
       else showToast(r.error || t('login.pin_salah'), "error");
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast(e.message, "error");
     } finally {
       setLoading(false);
@@ -128,7 +128,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       } else {
         showToast(r.error || t('login.pin_salah'), "error");
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast(e.message, "error");
     } finally {
       setLoading(false);

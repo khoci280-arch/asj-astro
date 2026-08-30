@@ -38,7 +38,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
       } else {
         showToast(data.error || 'Password lama salah', 'error');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       showToast('Error: ' + (e.message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };

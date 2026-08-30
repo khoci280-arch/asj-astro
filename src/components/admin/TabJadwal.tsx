@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 
-interface Jadwal { id: string; nama: string; loker: string; waktu: string; lokasi: string; tsk: string; link: string; }
+// Jadwal type imported from shared types
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);

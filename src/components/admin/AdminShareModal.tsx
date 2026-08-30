@@ -5,7 +5,7 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 
-interface Job { code: string; pekerjaan: string; }
+// Job type imported from shared types
 interface Props { job: Job; onClose: () => void; }
 
 export default function AdminShareModal({ job, onClose }: Props) {

@@ -10,7 +10,7 @@ import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 
-interface ChatMessage { role: 'assistant' | 'user'; text: string; time: string }
+// ChatMessage type imported from shared types
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -402,7 +402,7 @@ export default function AiCvForm() {
 /* === Sub-components === */
 
 function Section({ title, icon, color, borderLeft, children }: {
-  title: string; icon: string; color: string; borderLeft?: boolean; children: any;
+  title: string; icon: string; color: string; borderLeft?: boolean; children: preact.ComponentChildren;
 }) {
   return (
     <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
