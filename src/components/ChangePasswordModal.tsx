@@ -19,11 +19,11 @@ export default function ChangePasswordModal({ onClose }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!lama || !baru || !konfirmasi) { showToast('Isi semua field', 'error'); return; }
-    if (baru !== konfirmasi) { showToast('Password baru tidak cocok', 'error'); return; }
+    if (!lama || !baru || !konfirmasi) { showToast(t('error.fill_all'), 'error'); return; }
+    if (baru !== konfirmasi) { showToast(t('error.password_mismatch'), 'error'); return; }
     const v = validate(passwordSchema, baru);
     if (!v.success) { showToast(v.errors[0], 'error'); return; }
-    if (!user.wa) { showToast('Sesi expired', 'error'); return; }
+    if (!user.wa) { showToast(t('error.session_expired'), 'error'); return; }
     setLoading(true);
     try {
       const res = await fetch('/.netlify/functions/bridge-links', {
@@ -36,7 +36,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
         showToast('Password berhasil diubah!', 'success');
         onClose();
       } else {
-        showToast(data.error || 'Password lama salah', 'error');
+        showToast(data.error || t('error.wrong_password'), 'error');
       }
     } catch (e: unknown) {
       showToast('Error: ' + (e.message || 'Unknown'), 'error');

@@ -50,10 +50,10 @@ export default function CvMiniModal({ onClose }: Props) {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('CV berhasil diperbarui!', 'success');
+        showToast(t('toast.cv_updated'), 'success');
         onClose();
       } else {
-        showToast(data.error || 'Gagal menyimpan', 'error');
+        showToast(data.error || t('toast.failed'), 'error');
       }
     } catch (e: unknown) {
       showToast('Error: ' + (e.message || 'Unknown'), 'error');

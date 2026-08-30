@@ -28,8 +28,10 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
     ctx.scale(2, 2);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
+    const STROKE_COLOR = "#ffffff";
+    const STROKE_WIDTH = 2.5;
+    ctx.strokeStyle = STROKE_COLOR;
+    ctx.lineWidth = STROKE_WIDTH;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     // White background
@@ -62,8 +64,8 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
       ctx.fillStyle = '#0f172a';
       const rect = canvasRef.current!.getBoundingClientRect();
       ctx.fillRect(0, 0, rect.width, rect.height);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = STROKE_COLOR;
+      ctx.lineWidth = STROKE_WIDTH;
     }
   };
 

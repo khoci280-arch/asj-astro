@@ -16,6 +16,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     syarat: job.syarat || '', keterangan: job.keterangan || '',
   });
   const [loading, setLoading] = useState(false);
+  /** Update single field in edit form */
   const upd = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   const handleSave = async () => {

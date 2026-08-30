@@ -16,12 +16,12 @@ export default function AdminShareModal({ job, onClose }: Props) {
   const toggleDoc = (key: keyof typeof docs) => setDocs(prev => ({ ...prev, [key]: !prev[key] }));
 
   const copyLink = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => alert('Link copied!'));
+    navigator.clipboard.writeText(shareUrl).then(() => showToast(t('toast.link_copied'), 'success'));
   };
 
   const copyWA = () => {
     const msg = `${job.pekerjaan}\n\nLihat detail loker:\n${shareUrl}\n\n${template}`;
-    navigator.clipboard.writeText(msg).then(() => alert('WA template copied!'));
+    navigator.clipboard.writeText(msg).then(() => showToast(t('toast.wa_copied'), 'success'));
   };
 
   return (

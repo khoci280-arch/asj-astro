@@ -41,7 +41,7 @@ function StepTimeline({ sections }: { sections: RSection[] }) {
   const byType: Record<string, RSection[]> = {};
   for (const s of sections) { const k = s.type === 'TAHAPAN_PEMBAYARAN' ? 'TAHAPAN' : s.type; (byType[k] ??= []).push(s); }
   const itemsOf = (arr?: RSection[]): (Step | string)[] => { if (!arr) return []; const o: (Step | string)[] = []; for (const s of arr) if (s.items) o.push(...s.items.filter(Boolean)); return o; };
-  const stepAll = itemsOf(byType.TAHAPAN as any);
+  const stepAll = itemsOf(byType.TAHAPAN as unknown as RSection[]);
   const incItems = itemsOf(byType.INCLUDE); const excItems = itemsOf(byType.EXCLUDE);
   const benItems = itemsOf(byType.BENEFIT); const perItems = itemsOf(byType.PERSYARATAN);
   const catItems = itemsOf(byType.CATATAN); const infoItems = itemsOf(byType.INFO);
@@ -68,14 +68,14 @@ export default function LokerDetailModal({ job, onClose }: Props) {
   const total = job.totalBiaya || parsed.total || '';
   const tutupLamar = jobTutupUntukLamar(job);
   const waMsg = 'Halo Admin ASJ, saya tertarik lowongan ' + job.code + ' (' + job.pekerjaan + '). Mohon info lebih lanjut.';
-  const waNum = '6287889502004';
+  const WA_NUMBER = '6287889502004';
   const syaratList = job.syarat && job.syarat !== '-'
     ? String(job.syarat).split(',').map(s => s.trim()).filter(Boolean) : [];
   const pamfletUrl = job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 ? job.pamflet : '';
 
   return (
     <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" onClick={onClose}>
-      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e: any) => e.stopPropagation()}>
+      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
           <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><i class="fas fa-times text-xl"></i></button>
@@ -107,7 +107,7 @@ export default function LokerDetailModal({ job, onClose }: Props) {
             {job.templateCv && <a href={job.templateCv} target="_blank" download class="flex-1 px-5 py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fas fa-download mr-1.5"></i>{t('button.format')}</a>}
             {tutupLamar ? <button disabled class="flex-1 px-5 py-3.5 bg-slate-600 text-white text-sm font-black text-center rounded-xl shadow-inner opacity-60 cursor-not-allowed"><i class="fas fa-door-closed mr-1.5"></i>{t('button.closed')}</button>
             : <a href="/apply" class="flex-1 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black text-center rounded-xl shadow transition"><i class="fas fa-paper-plane mr-1.5"></i>{t('button.apply_now')}</a>}
-            <a href={'https://wa.me/' + waNum + '?text=' + encodeURIComponent(waMsg)} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fab fa-whatsapp mr-1.5"></i>{t('button.chat_wa')}</a>
+            <a href={'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waMsg)} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><i class="fab fa-whatsapp mr-1.5"></i>{t('button.chat_wa')}</a>
           </div>
         </div>
       </div>
