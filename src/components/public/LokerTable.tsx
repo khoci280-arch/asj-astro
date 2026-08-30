@@ -155,13 +155,13 @@ export default function LokerTable() {
         </div>
       </div>
       <div class="overflow-x-auto rounded-xl border border-slate-800 shadow-xl bg-slate-900">
-        <table class="w-full min-w-[900px] text-left text-sm whitespace-nowrap">
+        <table class="w-full min-w-[700px] text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-2 text-center w-24">{t("table.code")}</th>
-              <th scope="col" class="p-2 min-w-[140px]">{t("table.job")}</th>
+              <th scope="col" class="p-2 max-w-[220px]">{t("table.job")}</th>
               <th scope="col" class="p-1.5 text-center w-24">{t("table.status")}</th>
-              <th scope="col" class="p-2 min-w-[140px] max-w-[200px]">{t("table.req")}</th>
+              <th scope="col" class="p-2">{t("table.req")}</th>
               <th scope="col" class="p-1.5 text-center w-20">{t("table.action")}</th>
             </tr>
           </thead>
@@ -173,10 +173,10 @@ export default function LokerTable() {
             ) : displayed.map((job, i) => (
               <tr key={job.code || i} class="rt-row border-b border-slate-800 hover:bg-white/5 transition">
                 <td data-label={t("table.code")} class="p-2 font-mono text-xs text-center font-bold align-top text-sky-400">{job.code || "-"}</td>
-                <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal min-w-[140px]">
+                <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal max-w-[220px]">
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
-                      <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-16 md:h-24 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
+                      <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-all flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
                     )}
                     <div class="flex flex-col pt-1">
                       <span class="font-bold text-base text-white leading-tight">{job.pekerjaan || "-"}</span>
@@ -188,7 +188,7 @@ export default function LokerTable() {
                   </div>
                 </td>
                 <td data-label={t("table.status")} class="p-1 text-center align-top text-xs w-24">{getStatusBadge(job.status)}</td>
-                <td data-label={t("table.req")} class="rt-full p-2 text-xs text-slate-300 whitespace-normal min-w-[140px] max-w-[200px] leading-relaxed align-top">
+                <td data-label={t("table.req")} class="rt-full p-2 text-xs text-slate-300 whitespace-normal leading-relaxed align-top">
                   {(job.syarat || "").split(",").map(s => s.trim()).filter(Boolean).join(", ")}
                   {job.keterangan && job.keterangan !== "-" && (
                     <div class="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-amber-300/90 leading-relaxed"><i class="fas fa-info-circle mr-1"></i> {job.keterangan}</div>
