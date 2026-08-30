@@ -152,7 +152,7 @@ export default function LokerTable() {
         </div>
       </div>
       <div class="overflow-x-auto rounded-xl border border-slate-800 shadow-xl bg-slate-900">
-        <table class="responsive-table w-full min-w-[900px] text-left text-sm whitespace-nowrap">
+        <table class="w-full min-w-[900px] text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-4 text-center w-32">{t("table.code")}</th>
@@ -192,7 +192,7 @@ export default function LokerTable() {
                   )}
                 </td>
                 <td data-label={t("table.action")} class="rt-full p-4 align-top w-48">
-                  <div class="flex flex-col xl:flex-row gap-2 w-full justify-center">
+                  <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
                     <button onClick={() => setSelectedJob(job)} class="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><i class="fas fa-eye mr-1"></i> {t("button.detail")}</button>
                     {job.templateCv && job.templateCv !== "-" && (
                       <a href={job.templateCv} target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><i class="fas fa-download mr-1"></i> {t("button.format")}</a>
