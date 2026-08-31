@@ -85,7 +85,8 @@ async function fetchPagedAll(table, select) {
       end: start + pageSize - 1,
     });
     all.push(...rows);
-    if (rows.length === 0 || start + rows.length >= total) break;
+    // Short page = no more rows. Stop early to save a round-trip (~39ms).
+    if (rows.length < pageSize || rows.length === 0 || start + rows.length >= total) break;
   }
   return all;
 }

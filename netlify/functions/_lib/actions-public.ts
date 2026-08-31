@@ -131,34 +131,6 @@ async function loadWaTemplates() {
   }
 }
 
-// Satu kandidat = satu baris di panel admin. (OK) Baris `database_candidate` dengan
-// WA yang sama dianggap duplikat (warisan data lama / baris ganda); simpan yang
-// paling baru (updated_at/created_at). Baris tanpa WA tetap dipertahankan.
-function dedupeKandidatRaw(rows) {
-  if (!Array.isArray(rows)) return rows;
-  const seen = new Map();
-  const out = [];
-  const tsOf = (r) => String(pick(r, ['updated_at', 'created_at', 'tanggal_daftar']) || '');
-  for (const r of rows) {
-    const wa = normalizeWa(
-      String(pick(r, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']) || ''),
-    );
-    if (!wa) {
-      out.push(r);
-      continue;
-    }
-    const ts = tsOf(r);
-    const prev = seen.get(wa);
-    // Seri: timestamp sama (mis. insert dalam satu request) → prefer baris
-    // dengan id lebih besar (insert terakhir).
-    if (!prev || ts > prev.ts || (ts === prev.ts && Number(r.id || 0) > Number(prev.row.id || 0))) {
-      seen.set(wa, { ts, row: r });
-    }
-  }
-  for (const v of seen.values()) out.push(v.row);
-  return out;
-}
-
 // Saring daftar kandidat unik dengan kata kunci (nama / WA) — dipakai jalur
 // cepat & fallback supaya perilaku sama persis.
 function saringKandidatUnik(uniq, q) {
@@ -207,7 +179,7 @@ async function loadCandidatesUnik(q, opts = {}) {
 
   const light = await findAllCandidatesLight();
   if (light !== undefined) {
-    let uniq = dedupeKandidatRaw(light);
+    let uniq = light;
     uniq = saringKandidatUnik(uniq, q);
     urutkan(uniq);
     const total = uniq.length;
@@ -231,7 +203,7 @@ async function loadCandidatesUnik(q, opts = {}) {
   // Fallback lama: scan penuh (perilaku persis sebelum optimasi).
   const found = await findCandidates();
   const rows = Array.isArray(found.rows) ? found.rows : [];
-  let uniq = dedupeKandidatRaw(rows);
+  let uniq = rows;
   uniq = saringKandidatUnik(uniq, q);
   urutkan(uniq);
   return { rows: uniq.slice(start, start + pageSize), total: uniq.length };
