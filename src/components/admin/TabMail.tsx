@@ -11,6 +11,7 @@ import {
 } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
+import Icon from '../ui/Icon';
 
 const STATUSES = ['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 
@@ -48,7 +49,7 @@ export default function TabMail() {
     <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 shadow-xl overflow-x-auto">
       {/* Header */}
       <div class="flex flex-wrap justify-between items-center gap-3 border-b border-sky-900/50 pb-4 mb-4">
-        <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-envelope mr-2"></i> Form Mail Inbox</h2>
+        <h2 class="text-sky-400 font-bold text-lg"><Icon name="envelope" class="mr-2" /> Form Mail Inbox</h2>
         <div class="flex flex-wrap items-center gap-2">
           <input type="text" value={searchText}
             onInput={(e) => setMailSearchText((e.target as HTMLInputElement).value)}
@@ -71,7 +72,7 @@ export default function TabMail() {
 
           <button onClick={() => fetchMailFromAPI()}
             class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition">
-            <i class="fas fa-sync-alt mr-1"></i> Refresh MAIL
+            <Icon name="sync-alt" class="mr-1" /> Refresh MAIL
           </button>
         </div>
       </div>
@@ -124,19 +125,19 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold shadow transition">
-                    <i class="fas fa-folder-open mr-1"></i> Lihat
+                    <Icon name="folder-open" class="mr-1" /> Lihat
                   </button>
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
                     <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <i class="fas fa-check mr-1"></i> Lulus
+                      <Icon name="check" class="mr-1" /> Lulus
                     </button>
                     <button class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <i class="fas fa-eye mr-1"></i> Review
+                      <Icon name="eye" class="mr-1" /> Review
                     </button>
                     <button class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <i class="fas fa-times mr-1"></i> Gagal
+                      <Icon name="times" class="mr-1" /> Gagal
                     </button>
                   </div>
                 </td>

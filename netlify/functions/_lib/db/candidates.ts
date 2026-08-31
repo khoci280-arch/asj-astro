@@ -106,6 +106,18 @@ async function fetchPagedAll(table, select) {
 const CAND_LIGHT_COLS =
   'id,id_kandidat,nama_lengkap,no_wa,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar';
 
+// Kolom LENGKAP yang dibaca mapCandidate — pengganti SELECT * di
+// findCandidatesByIds. Kolom berat yang TIDAK dibaca (password_kandidat,
+// catatan_internal, catatan_external, nilai_jft_text saat tidak dipakai)
+// tidak ikut, menghemat bandwidth per baris.
+const CAND_MAP_COLS =
+  'id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,' +
+  'id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,' +
+  'catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,' +
+  'no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,' +
+  'catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,' +
+  'created_at,updated_at,password_diubah';
+
 // Semua baris kandidat bentuk RINGAN (proyeksi) — paginasi penuh TANPA batas
 // 300 baris (admin list sebelumnya diam-diam terpotong saat >300 kandidat).
 // Return: array (tabel ditemukan, boleh kosong) | undefined (tidak dikenal —
@@ -123,6 +135,8 @@ async function findAllCandidatesLight() {
 
 // Baris PENUH untuk daftar id (halaman daftar admin) — pengganti scan 300
 // baris `select *`: hanya id di halaman yang ditarik. undefined → gagal.
+// OPTIMIZED: pakai CAND_MAP_COLS (proyeksi kolom yang dibaca mapCandidate)
+// alih-alih SELECT * — kolom yang tidak pernah dibaca tidak ikut.
 async function findCandidatesByIds(ids) {
   const list = [
     ...new Set((Array.isArray(ids) ? ids : []).map((x) => String(x).trim()).filter(Boolean)),
@@ -130,11 +144,19 @@ async function findCandidatesByIds(ids) {
   if (!list.length) return [];
   try {
     const rows = await supabaseJson('GET', 'database_candidate', {
-      query: { select: '*', id: 'in.(' + list.join(',') + ')' },
+      query: { select: CAND_MAP_COLS, id: 'in.(' + list.join(',') + ')' },
     });
     return Array.isArray(rows) ? rows : undefined;
   } catch {
-    return undefined;
+    // Fallback: SELECT * bila proyeksi kolom tidak cocok (skema berbeda)
+    try {
+      const rows = await supabaseJson('GET', 'database_candidate', {
+        query: { select: '*', id: 'in.(' + list.join(',') + ')' },
+      });
+      return Array.isArray(rows) ? rows : undefined;
+    } catch {
+      return undefined;
+    }
   }
 }
 
@@ -145,6 +167,8 @@ const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
 // Cari kandidat via query SERVER-SIDE (filter kolom WA) — bukan tarik 300 baris
 // lalu filter di JS. Return: row (ketemu) | null (tidak ketemu, query jalan) |
 // undefined (kolom tidak cocok — caller pakai fallback scan).
+// OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT * — kolom berat yang tidak
+// dibaca mapCandidate tidak ikut. Fallback SELECT * bila proyeksi gagal.
 async function findCandidateByWaFiltered(wa) {
   const want = normalizeWa(wa);
   // Fase 3.18: probe 3 kolom WA (no_wa / wa / whatsapp) dijalankan PARALEL —
@@ -154,14 +178,29 @@ async function findCandidateByWaFiltered(wa) {
   const settled = await Promise.allSettled(
     cols.map((col) =>
       supabaseJson('GET', 'database_candidate', {
-        query: { select: '*', limit: '5', [col]: 'eq.' + want },
+        query: { select: CAND_MAP_COLS, limit: '5', [col]: 'eq.' + want },
       }),
     ),
   );
   let anySucceed = false;
   for (let i = 0; i < cols.length; i++) {
     const r = settled[i];
-    if (r.status === 'rejected') continue; // kolom ini tidak ada di skema
+    if (r.status === 'rejected') {
+      // Proyeksi kolom mungkin tidak cocok — coba SELECT * untuk kolom ini
+      try {
+        const rows = await supabaseJson('GET', 'database_candidate', {
+          query: { select: '*', limit: '5', [cols[i]]: 'eq.' + want },
+        });
+        if (Array.isArray(rows) && rows.length) {
+          const hit = rows.find((x) => normalizeWa(pick(x, CAND_WA_COLS) || '') === want);
+          if (hit) return hit;
+        }
+        anySucceed = true;
+      } catch {
+        /* kolom ini tidak ada di skema */
+      }
+      continue;
+    }
     anySucceed = true;
     const rows = r.value;
     if (!Array.isArray(rows) || rows.length === 0) continue;
@@ -202,6 +241,7 @@ async function maxCandidateIdNumber() {
 }
 
 // Cari baris kandidat per id_kandidat / id — dipakai lookup by ID (admin).
+// OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT *; fallback SELECT *.
 async function findCandidateByIdFiltered(id) {
   const want = String(id || '').trim();
   if (!want) return undefined;
@@ -209,12 +249,21 @@ async function findCandidateByIdFiltered(id) {
   for (const col of ['id_kandidat', 'id']) {
     try {
       const rows = await supabaseJson('GET', 'database_candidate', {
-        query: { select: '*', limit: '1', [col]: 'eq.' + want },
+        query: { select: CAND_MAP_COLS, limit: '1', [col]: 'eq.' + want },
       });
       anyOk = true;
       if (Array.isArray(rows) && rows.length) return rows[0];
     } catch {
-      /* kolom tidak ada / tipe tidak cocok — coba berikutnya */
+      // Proyeksi mungkin gagal — coba SELECT *
+      try {
+        const rows = await supabaseJson('GET', 'database_candidate', {
+          query: { select: '*', limit: '1', [col]: 'eq.' + want },
+        });
+        anyOk = true;
+        if (Array.isArray(rows) && rows.length) return rows[0];
+      } catch {
+        /* kolom tidak ada / tipe tidak cocok — coba berikutnya */
+      }
     }
   }
   return anyOk ? null : undefined;
@@ -223,16 +272,25 @@ async function findCandidateByIdFiltered(id) {
 // Kandidat yang terkait ke satu kode job (id_loker_pilihan bisa berisi banyak
 // kode dipisah koma) — filter server-side; caller TETAP memverifikasi token
 // eksak di JS supaya ilike tidak salah tangkap (mis. TG9ASJ vs TG90ASJ).
+// OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT *; fallback SELECT *.
 async function findCandidatesByJobFiltered(code) {
   const want = String(code || '').trim();
   if (!want) return undefined;
   try {
     const rows = await supabaseJson('GET', 'database_candidate', {
-      query: { select: '*', limit: '500', id_loker_pilihan: 'ilike.*' + want + '*' },
+      query: { select: CAND_MAP_COLS, limit: '500', id_loker_pilihan: 'ilike.*' + want + '*' },
     });
     return Array.isArray(rows) ? rows : undefined;
   } catch {
-    return undefined;
+    // Fallback SELECT * bila proyeksi tidak cocok
+    try {
+      const rows = await supabaseJson('GET', 'database_candidate', {
+        query: { select: '*', limit: '500', id_loker_pilihan: 'ilike.*' + want + '*' },
+      });
+      return Array.isArray(rows) ? rows : undefined;
+    } catch {
+      return undefined;
+    }
   }
 }
 

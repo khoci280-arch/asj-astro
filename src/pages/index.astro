@@ -4,6 +4,7 @@ import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
 import LokerTable from '../components/public/LokerTable.tsx';
 import LayananSection from '../components/public/LayananSection.astro';
+import Icon from '../components/ui/Icon';
 ---
 
 <BaseLayout title="PT Amanah Sakura Japan — Job Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
@@ -14,7 +15,7 @@ import LayananSection from '../components/public/LayananSection.astro';
 <div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-4">
   <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
     <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-red-600/60 shadow-md">
-      <i class="fas fa-bullhorn text-white animate-bounce text-lg"></i>
+      <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
     </div>
     <div class="marquee-track ml-12 mr-2"><div id="marquee-text" class="marquee-content text-white text-sm font-bold tracking-wide"></div></div>
   </div>
@@ -28,10 +29,10 @@ import LayananSection from '../components/public/LayananSection.astro';
     <div class="flex justify-center mb-8 relative z-10">
       <div id="tab-pub-wrap" class="inline-flex bg-slate-900 border-slate-700 rounded-full p-1 shadow-2xl border transition-colors">
         <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md">
-          <i class="fas fa-briefcase mr-2"></i> <span data-lang="ui.tab_loker">Lowongan Loker</span>
+          <Icon name="briefcase" class="mr-2" /> <span data-lang="ui.tab_loker">Lowongan Loker</span>
         </button>
         <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white">
-          <i class="fas fa-handshake mr-2"></i> <span data-lang="ui.tab_layanan">Program &amp; Layanan ASJ</span>
+          <Icon name="handshake" class="mr-2" /> <span data-lang="ui.tab_layanan">Program &amp; Layanan ASJ</span>
         </button>
       </div>
     </div>

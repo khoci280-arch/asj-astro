@@ -15,6 +15,7 @@ import ESignatureModal from '../ESignatureModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import { showToast } from "../Toast";
+import Icon from '../ui/Icon';
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -122,7 +123,7 @@ export default function CandidateDash() {
     finally { setLoading(false); }
   }
 
-  if (loading) return <div class="text-center py-12"><i class="fas fa-spinner fa-spin text-3xl text-emerald-400 mb-4"></i><p class="text-slate-400">{t('ui.loading')}</p></div>;
+  if (loading) return <div class="text-center py-12"><Icon spin name="spinner" class="text-3xl text-emerald-400 mb-4" /><p class="text-slate-400">{t('ui.loading')}</p></div>;
     async function handleSaveSignature(dataUrl: string) {
     try {
       const res = await fetch('/.netlify/functions/bridge-links', {
@@ -152,7 +153,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
   return (
     <div class="pb-16">
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
-        <i class="fas fa-id-card text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl"></i>
+        <Icon name="id-card" class="text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl" />
         <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama}! <CrownBadge progress={overallProgress} /></h2>
         <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
           <span>{t('candidate.job_applied')}</span> <span class="font-black text-emerald-400">{data.job}</span>
@@ -165,7 +166,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           <div class="max-w-sm mx-auto mb-8 perspective-1000 relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-[2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
             <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-[2rem] p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
-              <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><i class="fas fa-sun"></i></div>
+              <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><Icon name="sun" /></div>
               <div class="flex justify-between items-start z-10">
                 <div class="flex items-center gap-3">
                   <div class="w-11 h-11 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center border border-slate-600">
@@ -176,7 +177,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     <p class="text-amber-400 text-[9px] font-bold uppercase tracking-[0.2em]">{data.kelas || t('ui.vip_member')}</p>
                   </div>
                 </div>
-                <i class="fas fa-check-circle text-emerald-400 text-xl shadow-[0_0_10px_rgba(118,185,0,0.5)] rounded-full"></i>
+                <Icon name="check-circle" class="text-emerald-400 text-xl shadow-[0_0_10px_rgba(118,185,0,0.5)] rounded-full" />
               </div>
               <div class="flex justify-between items-center mt-auto z-10">
                 <div>
@@ -196,32 +197,32 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         {/* ── CV Progress ── */}
         <div class="max-w-xl mx-auto mb-6 md:mb-8 bg-black/40 border border-slate-700 p-4 md:p-5 rounded-2xl text-left shadow-lg">
           <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-bold text-slate-300"><i class="fas fa-id-badge text-sky-400 mr-1"></i> {t('ui.cv_mini_basic')}</span>
+            <span class="text-sm font-bold text-slate-300"><Icon name="id-badge" class="text-sky-400 mr-1" /> {t('ui.cv_mini_basic')}</span>
             <span class="text-sm font-bold text-sky-400">{data.cvMiniProgress}%</span>
           </div>
           <div class="w-full bg-slate-800 rounded-full h-2.5 mb-4 shadow-inner">
             <div class="bg-gradient-to-r from-sky-600 to-sky-400 h-2.5 rounded-full transition-[width] duration-1000" style={`width:${data.cvMiniProgress}%`}></div>
           </div>
           <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-bold text-slate-300"><i class="fas fa-file-signature text-emerald-400 mr-1"></i> {t('ui.cv_master_detail')}</span>
+            <span class="text-sm font-bold text-slate-300"><Icon name="file-signature" class="text-emerald-400 mr-1" /> {t('ui.cv_master_detail')}</span>
             <span class="text-sm font-bold text-emerald-400">{data.cvMasterProgress}%</span>
           </div>
           <div class="w-full bg-slate-800 rounded-full h-2.5 shadow-inner">
             <div class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2.5 rounded-full transition-[width] duration-1000" style={`width:${data.cvMasterProgress}%`}></div>
           </div>
-          <p class="text-xs text-slate-300 mt-4 italic text-center font-bold">{crown === 'gold' ? t('ui.profile_100') : crown === 'silver' ? t('ui.profile_silver_next') : t('ui.profile_incomplete')} <i class="fas fa-medal"></i></p>
+          <p class="text-xs text-slate-300 mt-4 italic text-center font-bold">{crown === 'gold' ? t('ui.profile_100') : crown === 'silver' ? t('ui.profile_silver_next') : t('ui.profile_incomplete')} <Icon name="medal" /></p>
         </div>
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
           <div class="mb-6 md:mb-8 max-w-xl mx-auto bg-gradient-to-r from-amber-950 to-rose-950 border border-amber-500/40 p-5 rounded-[2rem] text-left shadow-xl relative overflow-hidden">
-            <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><i class="fas fa-calendar-alt"></i></div>
-            <h3 class="relative z-10 text-lg font-black text-amber-400 mb-4"><i class="fas fa-calendar-check mr-2 text-rose-400 animate-pulse"></i> {t('ui.your_schedule')}</h3>
+            <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
+            <h3 class="relative z-10 text-lg font-black text-amber-400 mb-4"><Icon name="calendar-check" class="mr-2 text-rose-400 animate-pulse" /> {t('ui.your_schedule')}</h3>
             <div class="relative z-10 space-y-3">
               {data.jadwal.map((j, i) => (
                 <div key={i} class="bg-black/30 border border-amber-900/50 rounded-xl p-4">
                   <div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[10px] text-amber-400 font-mono">{j.waktu}</span></div>
-                  <p class="text-xs text-slate-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>{j.lokasi}</p>
+                  <p class="text-xs text-slate-400 mt-1"><Icon name="map-marker-alt" class="mr-1" />{j.lokasi}</p>
                   {j.link && <a href={j.link} target="_blank" class="text-[10px] text-sky-400 underline mt-1 inline-block">{t('ui.open_link')}</a>}
                 </div>
               ))}
@@ -232,25 +233,25 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         {/* ── Catatan Admin ── */}
         {data.catatan && (
           <div class="mb-8 max-w-xl mx-auto bg-sky-900/20 border border-sky-500/30 p-5 rounded-2xl text-center shadow-lg">
-            <p class="text-xs text-sky-400 font-bold uppercase mb-2"><i class="fas fa-envelope-open-text mr-1"></i> {t('ui.admin_eval_msg')}</p>
+            <p class="text-xs text-sky-400 font-bold uppercase mb-2"><Icon name="envelope-open-text" class="mr-1" /> {t('ui.admin_eval_msg')}</p>
             <p class="text-sm text-slate-200 italic">"{data.catatan}"</p>
           </div>
         )}
 
         {/* ── Profil button ── */}
         <div class="mb-6 md:mb-8 flex justify-center">
-          <button onClick={() => setShowCvMiniModal(true)} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><i class="fas fa-user-circle mr-2 text-sky-400"></i> {t('button.profil')}</button>
+          <button onClick={() => setShowCvMiniModal(true)} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><Icon name="user-circle" class="mr-2 text-sky-400" /> {t('button.profil')}</button>
         </div>
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
         <div class="mb-6 md:mb-8 bg-gradient-to-r from-sky-950 to-indigo-950 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
-          <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><i class="fas fa-rocket"></i></div>
+          <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
-            <h3 class="text-xl font-black text-sky-300 mb-2"><i class="fas fa-bolt mr-2 text-amber-400"></i> {t('ui.app_status_latest')}</h3>
+            <h3 class="text-xl font-black text-sky-300 mb-2"><Icon name="bolt" class="mr-2 text-amber-400" /> {t('ui.app_status_latest')}</h3>
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
             <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
               <div class="bg-[#0f172a] rounded-[1.3rem] p-5 md:p-7">
-                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><i class="fas fa-satellite-dish mr-2 text-sky-400 animate-pulse"></i> {t('ui.app_status_latest')}</h3>
+                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_status_latest')}</h3>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -273,18 +274,18 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                       <div key={i} class="flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-all shadow-lg mb-3 overflow-hidden">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3 mb-1">
                           <div class="min-w-0">
-                            <div class="text-sm font-black text-white tracking-wide"><i class="fas fa-building text-slate-500 mr-2"></i>{r.jobCode || '-'} <span class="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
-                            {r.kategori && <div class="text-[11px] text-slate-400 mt-1"><i class="fas fa-tag mr-1 text-sky-500/70"></i> {r.kategori}</div>}
+                            <div class="text-sm font-black text-white tracking-wide"><Icon name="building" class="text-slate-500 mr-2" />{r.jobCode || '-'} <span class="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
+                            {r.kategori && <div class="text-[11px] text-slate-400 mt-1"><Icon name="tag" class="mr-1 text-sky-500/70" /> {r.kategori}</div>}
                           </div>
                           <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] md:text-xs font-bold max-w-full break-words text-left shadow-sm ${statusBadgeClass(r.status)}`}>
-                            <i class={`fas ${statusIcon(r.status)} mt-0.5 flex-shrink-0`}></i> {statusText(r.status)}
+                            <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status)}
                           </span>
                         </div>
                         {/* Tahapan pipeline */}
                         <div class="mt-3">
                           <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"><i class="fas fa-route mr-1 text-sky-400"></i> {t('form.txt_tahapan_saat_ini')}</span>
-                            <span class="text-[10px] font-black text-emerald-400"><i class="fas fa-map-pin"></i> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"><Icon name="route" class="mr-1 text-sky-400" /> {t('form.txt_tahapan_saat_ini')}</span>
+                            <span class="text-[10px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
                           </div>
                           <div class="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700/50">
                             <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-all duration-1000" style={`width:${progressPct}%`}></div>
@@ -293,7 +294,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             {TAHAPAN_STEPS.map((nm, si) => {
                               const done = si < stepIdx;
                               const active = si === stepIdx;
-                              return <span key={si} class={`flex items-center gap-1 text-[9px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><i class={`fas ${done ? 'fa-check-circle' : 'fa-circle'} flex-shrink-0`}></i> {nm}</span>;
+                              return <span key={si} class={`flex items-center gap-1 text-[9px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
                             })}
                           </div>
                         </div>
@@ -305,23 +306,23 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             </div>
             {/* Action buttons grid */}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
-              <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><i class="fas fa-user-edit mr-1.5"></i> {t('ui.update_cv_mini')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition text-center"><i class="fas fa-microphone-alt mr-1.5"></i> {t('ui.interview_practice')}</a>
-              <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><i class="fas fa-signature mr-1.5"></i> {t('ui.esign_naitei')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-robot mr-1.5"></i> AI CV Master Assistant</a>
-              <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
+              <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
+              <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition text-center"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</a>
+              <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
+              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> AI CV Master Assistant</a>
+              <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
-                            <button onClick={() => { setDocPreviewUrl(''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> {t('candidate.btn_preview_cv')}</button>
-              <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-key mr-1.5"></i> {t('ui.change_password')}</button>
+                            <button onClick={() => { setDocPreviewUrl(''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
+              <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="key" class="mr-1.5" /> {t('ui.change_password')}</button>
             </div>
           </div>
         </div>
         {data.needRevision && (
           <div class="bg-red-950 border border-red-500/40 rounded-[2rem] p-5 mb-6 md:mb-8 text-left">
-            <h3 class="text-red-400 font-bold mb-2 text-lg"><i class="fas fa-exclamation-triangle mr-2"></i> {t('candidate.doc_revise_title')}</h3>
+            <h3 class="text-red-400 font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <input type="file" accept=".pdf,.xls,.xlsx,.jpg,.png" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:font-bold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/40 cursor-pointer mb-4 transition-colors" />
-            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); try { const payload = { wa: user?.wa || '', nama: user?.name || '', jenisBerkas: 'REVISI', fileUrl: await uploadToCloudinary(file) }; const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanBerkasTahapan', args: [payload] }) }); const data = await res.json(); if (data.success) { showToast('File revisi berhasil diupload!', 'success'); loadDashboard(); } else { showToast(data.error || 'Gagal upload', 'error'); } } catch (err) { showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error'); } }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><i class="fas fa-upload mr-2"></i>{t('button.upload_revise')}</button>
+            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); try { const payload = { wa: user?.wa || '', nama: user?.name || '', jenisBerkas: 'REVISI', fileUrl: await uploadToCloudinary(file) }; const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanBerkasTahapan', args: [payload] }) }); const data = await res.json(); if (data.success) { showToast('File revisi berhasil diupload!', 'success'); loadDashboard(); } else { showToast(data.error || 'Gagal upload', 'error'); } } catch (err) { showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error'); } }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><Icon name="upload" class="mr-2" />{t('button.upload_revise')}</button>
           </div>
         )}
 
@@ -330,7 +331,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           <div class="mb-8 max-w-xl mx-auto">
             <div class="bg-black/60 border border-emerald-500/30 rounded-[2rem] p-5 mb-4 text-left">
               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 class="text-sm font-black text-emerald-400 uppercase tracking-widest"><i class="fas fa-tasks mr-1.5"></i> {t('ui.berkas_progress')}</h4>
+                <h4 class="text-sm font-black text-emerald-400 uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h4>
                 <span class="text-lg font-black text-white">{Math.round(data.berkasProgress)}%</span>
               </div>
               <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden mb-3">
@@ -342,15 +343,15 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
                 {data.berkasList.map((b, i) => (
                   <div key={i} class={`flex items-center gap-2 text-xs px-2 py-1 rounded ${b.done ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <i class={`fas ${b.done ? 'fa-check-circle' : 'fa-circle'}`}></i> {b.name}
+                    <Icon name={b.done ? 'check-circle' : 'circle'} /> {b.name}
                   </div>
                 ))}
               </div>
             </div>
             <button onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
-              <i class="fas fa-folder-open mr-2"></i>{t('ui.complete_berkas_biodata')}
+              <Icon name="folder-open" class="mr-2" />{t('ui.complete_berkas_biodata')}
             </button>
-            <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><i class="fas fa-info-circle mr-1"></i> {t('ui.berkas_stage_hint')}</p>
+            <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>
           </div>
         )}
 

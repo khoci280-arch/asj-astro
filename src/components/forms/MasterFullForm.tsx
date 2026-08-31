@@ -9,6 +9,7 @@ import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
+import Icon from '../ui/Icon';
 
 /* ── Types ── */
 interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; alamat: string; }
@@ -175,7 +176,7 @@ export default function MasterFullForm() {
       <div class="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
         <div class="bg-[#0b1220] border border-sky-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
-            <div class="text-2xl mb-1"><i class="fas fa-lock text-sky-400"></i></div>
+            <div class="text-2xl mb-1"><Icon name="lock" class="text-sky-400" /></div>
             <div class="font-bold text-white text-sm">Verifikasi Akun Kandidat</div>
             <div class="text-slate-400 text-xs mt-1">Form terhubung ke WA <span class="text-sky-400 font-bold">{gateWa}</span></div>
             <div class="text-slate-500 text-[11px] mt-1">Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.</div>
@@ -204,7 +205,7 @@ export default function MasterFullForm() {
         </div>
         <button onClick={() => setFormLang(l => l === 'id' ? 'jp' : 'id')}
           class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-full text-[11px] font-bold shadow-lg border border-sky-400/40 transition">
-          <i class="fas fa-language mr-1"></i><span>{formLang === 'id' ? 'JP' : 'ID'}</span>
+          <Icon name="language" class="mr-1" /><span>{formLang === 'id' ? 'JP' : 'ID'}</span>
         </button>
       </div>
 
@@ -221,7 +222,7 @@ export default function MasterFullForm() {
                 <div class="relative z-[2] flex flex-col items-center gap-1 w-[20%]">
                   <div class={`w-8 h-8 rounded-full flex justify-center items-center text-xs font-extrabold transition ${done ? 'bg-[#0284c7] border-[#0284c7] text-white' : isActive ? 'bg-[#38bdf8] border-[#38bdf8] text-[#020617] shadow-[0_0_15px_rgba(56,189,248,.4)]' : 'bg-[#1e293b] border-2 border-[#334155] text-[#64748b]'}`}
                     style={{ border: done ? '2px solid #0284c7' : isActive ? '2px solid #38bdf8' : '' }}>
-                    <i class={`fas ${s.icon}`}></i>
+                    <Icon name={s.icon} />
                   </div>
                   <div class={`text-[9px] font-extrabold text-center transition ${isActive ? 'text-[#38bdf8]' : done ? 'text-[#0284c7]' : 'text-[#64748b]'}`}>{s.label}</div>
                 </div>
@@ -233,7 +234,7 @@ export default function MasterFullForm() {
           {step === 1 && (
             <div class="animate-[fadeIn_.4s_ease]">
               <div class="bg-sky-900/20 border border-sky-500/30 p-3 rounded-xl mb-4 text-xs text-sky-400 font-bold">
-                <i class="fas fa-info-circle mr-1"></i> Form terhubung ke WA: <span>{data.wa || gateWa}</span>
+                <Icon name="info-circle" class="mr-1" /> Form terhubung ke WA: <span>{data.wa || gateWa}</span>
               </div>
               <div class="section-title">Identitas Dasar</div>
               <F label={t("form.mf_nama")} k="nama" />
@@ -333,7 +334,7 @@ export default function MasterFullForm() {
                 <div class="p-3 rounded-xl mb-3" style={{ background: '#0f172a', border: '1px dashed #334155' }}>
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-extrabold" style={{ color: '#94a3b8' }}>Pendidikan #{i + 1}</span>
-                    {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><i class="fas fa-trash mr-1"></i>Hapus</button>}
+                    {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />Hapus</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label">Jenjang</label>
@@ -354,14 +355,14 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {eduList.length < 5 && <button onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><i class="fas fa-plus mr-1"></i>Tambah Pendidikan</button>}
+              {eduList.length < 5 && <button onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Pendidikan</button>}
 
               <div class="section-title mt-6">Riwayat Pekerjaan (Maks 3)</div>
               {jobList.map((job, i) => (
                 <div class="p-3 rounded-xl mb-3" style={{ background: '#0f172a', border: '1px dashed #334155' }}>
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-extrabold" style={{ color: '#94a3b8' }}>Pekerjaan #{i + 1}</span>
-                    {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><i class="fas fa-trash mr-1"></i>Hapus</button>}
+                    {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />Hapus</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label">Perusahaan</label>
@@ -379,7 +380,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {jobList.length < 3 && <button onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><i class="fas fa-plus mr-1"></i>Tambah Pekerjaan</button>}
+              {jobList.length < 3 && <button onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />Tambah Pekerjaan</button>}
             </div>
           )}
 
@@ -391,7 +392,7 @@ export default function MasterFullForm() {
                 <div class="p-3 rounded-xl mb-3" style={{ background: '#0f172a', border: '1px dashed #334155' }}>
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-extrabold" style={{ color: '#94a3b8' }}>Keluarga #{i + 1}</span>
-                    {famList.length > 1 && <button onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><i class="fas fa-trash mr-1"></i>Hapus</button>}
+                    {famList.length > 1 && <button onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />Hapus</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label">Nama</label>
@@ -417,7 +418,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', ttl:'', gender:'', pekerjaan:'', alamat:'', wa:'' }])} class="text-sky-400 text-xs font-bold mb-6"><i class="fas fa-plus mr-1"></i>Tambah Keluarga</button>}
+              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', ttl:'', gender:'', pekerjaan:'', alamat:'', wa:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Keluarga</button>}
 
               <div class="section-title mt-6">Kontak Darurat (Wajib)</div>
               <div class="p-4 rounded-xl" style={{ background: '#0f172a', border: '1px solid rgba(14,165,233,.3)' }}>
@@ -503,9 +504,9 @@ export default function MasterFullForm() {
 
       {/* Nav Bar */}
       <div class="fixed bottom-0 left-0 w-full py-4 px-5 z-50 flex justify-between gap-4" style={{ background: 'rgba(2,6,23,.95)', borderTop: '1px solid #1e293b' }}>
-        {step > 1 && <button onClick={() => changeStep(-1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#1e293b', color: '#cbd5e1' }}><i class="fas fa-arrow-left mr-1"></i> Kembali</button>}
-        <button onClick={() => submitMaster(true)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white" style={{ background: '#d97706' }}><i class="fas fa-save mr-1"></i> Draft</button>
-        {step < 5 && <button onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>Lanjut <i class="fas fa-arrow-right ml-1"></i></button>}
+        {step > 1 && <button onClick={() => changeStep(-1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#1e293b', color: '#cbd5e1' }}><Icon name="arrow-left" class="mr-1" /> Kembali</button>}
+        <button onClick={() => submitMaster(true)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white" style={{ background: '#d97706' }}><Icon name="save" class="mr-1" /> Draft</button>
+        {step < 5 && <button onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>Lanjut <Icon name="arrow-right" class="ml-1" /></button>}
         {step === 5 && <button onClick={() => submitMaster(false)} disabled={saving} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white disabled:opacity-50" style={{ background: '#10b981', color: '#020617', boxShadow: '0 5px 15px rgba(16,185,129,.3)' }}>{saving ? 'Menyimpan...' : 'Simpan Final'}</button>}
       </div>
     </div>

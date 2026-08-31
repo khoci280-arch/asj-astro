@@ -7,6 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
+import Icon from '../ui/Icon';
 
 type Loker = {
   code: string; pekerjaan: string; status: string; kategori: string;
@@ -72,15 +73,15 @@ export default function TabKelola() {
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-red-400 font-bold text-lg"><i class="fas fa-globe mr-2"></i> {t('admin.tab_public_job')}</h2>
+        <h2 class="text-red-400 font-bold text-lg"><Icon name="globe" class="mr-2" /> {t('admin.tab_public_job')}</h2>
         <div class="relative w-72">
-          <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
+          <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
           <input type="text" value={search} onInput={e => setSearch((e.target as HTMLInputElement).value)} placeholder={t('admin.search_placeholder')} class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
         </div>
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-red-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat...</p></div>
+        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-red-400" /><p class="text-slate-500 mt-2 text-sm">Memuat...</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
@@ -107,12 +108,12 @@ export default function TabKelola() {
                     <div class="flex flex-wrap justify-center gap-2">
                       <button onClick={() => toggleStatus(j.code, 'OPEN')} class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[10px] text-white font-bold shadow transition">OPEN</button>
                       <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[10px] text-white font-bold shadow transition">CLOSE</button>
-                      <button onClick={() => setEditJob(j)} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[10px] font-bold shadow transition"><i class="fas fa-edit"></i> Edit</button>
-                      <button onClick={() => setShareJob(j)} class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[10px] font-bold shadow transition"><i class="fas fa-share-alt"></i> Share</button>
+                      <button onClick={() => setEditJob(j)} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[10px] font-bold shadow transition"><Icon name="edit" /> Edit</button>
+                      <button onClick={() => setShareJob(j)} class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[10px] font-bold shadow transition"><Icon name="share-alt" /> Share</button>
                     </div>
                   </td>
                   <td class="p-4 text-center">
-                    <button onClick={() => deleteJob(j.code)} class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-all mx-auto"><i class="fas fa-trash"></i></button>
+                    <button onClick={() => deleteJob(j.code)} class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-all mx-auto"><Icon name="trash" /></button>
                   </td>
                 </tr>
               ))}

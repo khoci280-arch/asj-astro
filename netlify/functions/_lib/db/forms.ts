@@ -82,31 +82,35 @@ async function findFormsLight() {
 
 // Semua baris mail (database_asj_form) untuk satu WA — urutan timestamp.desc
 // sama dengan findForms() supaya "baris pertama" konsisten.
+// OPTIMIZED: pakai FORM_LIGHT_COLS alih-alih SELECT * — mapForm &
+// attachApplications hanya membaca kolom di proyeksi ini.
 async function findFormsByWa(wa) {
   const want = normalizeWa(wa);
   if (!want) return [];
-  try {
-    const rows = await supabaseJson('GET', 'database_asj_form', {
-      query: {
-        select: '*',
-        limit: '100',
-        order: 'timestamp.desc',
-        or: `(no_wa.eq.${want},wa.eq.${want})`,
-      },
-    });
-    if (Array.isArray(rows)) return rows;
-  } catch {
-    /* or gagal (kolom wa tidak ada) — coba no_wa saja */
-  }
-  try {
-    const rows = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: '*', limit: '100', order: 'timestamp.desc', no_wa: 'eq.' + want },
-    });
-    if (Array.isArray(rows)) return rows;
-  } catch {
-    /* fallback scan penuh */
-  }
-  return undefined;
+  const tryQuery = async (query) => {
+    try {
+      const light = await supabaseJson('GET', 'database_asj_form', {
+        query: { ...query, select: FORM_LIGHT_COLS },
+      });
+      if (Array.isArray(light)) return light;
+    } catch {
+      /* proyeksi tidak cocok — coba select * */
+    }
+    try {
+      const full = await supabaseJson('GET', 'database_asj_form', { query });
+      if (Array.isArray(full)) return full;
+    } catch {
+      /* coba jalur berikutnya */
+    }
+    return undefined;
+  };
+  const r1 = await tryQuery({
+    limit: '100',
+    order: 'timestamp.desc',
+    or: `(no_wa.eq.${want},wa.eq.${want})`,
+  });
+  if (r1 !== undefined) return r1;
+  return tryQuery({ limit: '100', order: 'timestamp.desc', no_wa: 'eq.' + want });
 }
 
 // Insert baris mail dengan anti-duplikat (no_wa, code_job): upsert

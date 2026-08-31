@@ -8,6 +8,7 @@ import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
+import Icon from '../ui/Icon';
 
 interface DbJob {
   code: string; tsk: string; pekerjaan: string; kategori: string;
@@ -75,9 +76,9 @@ export default function TabDbJob() {
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-purple-400 font-bold text-lg"><i class="fas fa-server mr-2"></i> Histori Job Internal</h2>
+        <h2 class="text-purple-400 font-bold text-lg"><Icon name="server" class="mr-2" /> Histori Job Internal</h2>
         <div class="relative w-72">
-          <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
+          <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
           <input
             type="text"
             value={search}
@@ -90,7 +91,7 @@ export default function TabDbJob() {
 
       <div class="flex flex-col gap-3 mb-5 bg-black/30 p-4 rounded-lg border border-purple-900/30 text-sm">
         <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
-          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><i class="fas fa-sort-amount-down mr-1"></i> Urutkan:</span>
+          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="sort-amount-down" class="mr-1" /> Urutkan:</span>
           {[
             {id: 'TERBARU', l: 'Terbaru'}, {id: 'TERLAMA', l: 'Terlama'}, {id: 'TERBANYAK', l: 'Terbanyak'}
           ].map(o => (
@@ -103,7 +104,7 @@ export default function TabDbJob() {
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat data DB Job...</p></div>
+        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-purple-400" /><p class="text-slate-500 mt-2 text-sm">Memuat data DB Job...</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
@@ -127,17 +128,17 @@ export default function TabDbJob() {
                   <td class="p-4">
                     <div class="font-bold text-white text-[13px]">{db.pekerjaan || '-'}</div>
                     <div class="text-[10px] text-slate-400 font-bold mt-1.5">
-                      <span class="text-sky-400"><i class="fas fa-tag mr-1"></i>{db.kategori || '-'}</span>
+                      <span class="text-sky-400"><Icon name="tag" class="mr-1" />{db.kategori || '-'}</span>
                       <span class="mx-1.5">&bull;</span>
-                      <span class="text-amber-300"><i class="fas fa-map-marker-alt text-red-400 mr-1"></i>{db.lokasi || '-'}</span>
+                      <span class="text-amber-300"><Icon name="map-marker-alt" class="text-red-400 mr-1" />{db.lokasi || '-'}</span>
                     </div>
                   </td>
                   <td class="p-4 text-center"><div class="inline-block px-4 py-1.5 bg-sky-900/30 rounded-lg"><span class="text-sky-400 font-bold text-lg">-</span></div></td>
-                  <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold ' + badgeColor(db.tahapan)}><i class="fas fa-chevron-circle-right"></i> {db.tahapan || '-'}</span></td>
+                  <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">
-                    <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-edit"></i> Edit</button>
-                    <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-share-alt"></i> Share</button>
-                    <button onClick={async () => { try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-download"></i> Docs</button>
+                    <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button>
+                    <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="share-alt" /> Share</button>
+                    <button onClick={async () => { try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
               ))}

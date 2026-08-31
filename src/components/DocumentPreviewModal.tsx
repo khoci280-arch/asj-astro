@@ -10,6 +10,7 @@
  * previewOnly: hides download button (for candidates; admin can still download)
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
+import Icon from './ui/Icon';
 
 interface Props {
   url: string;
@@ -243,7 +244,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     return (
       <div class="flex items-center justify-center h-full">
         <div class="text-center space-y-4">
-          <i class="fas fa-file text-5xl text-slate-400"></i>
+          <Icon name="file" class="text-5xl text-slate-400" />
           <p class="text-sm text-slate-300 font-bold">
             Tidak bisa dipratinjau {ext && <span class="opacity-60">(.{ext})</span>}
           </p>
@@ -251,7 +252,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
           {!previewOnly ? (
             <a href={url} target="_blank" rel="noopener"
                class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-              <i class="fas fa-download mr-2"></i>Unduh File
+              <Icon name="download" class="mr-2" />Unduh File
             </a>
           ) : (
             <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>
@@ -269,19 +270,19 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
         {/* Header */}
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
           <h3 class="text-sm font-bold text-white truncate flex-1">
-            <i class="fas fa-file-alt mr-2 text-sky-400"></i>{title}
+            <Icon name="file-alt" class="mr-2 text-sky-400" />{title}
           </h3>
           <div class="flex items-center gap-2 ml-3">
             {!previewOnly && (
               <a href={url} target="_blank" rel="noopener"
                  class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
                  title="Unduh">
-                <i class="fas fa-download"></i>
+                <Icon name="download" />
               </a>
             )}
             <button onClick={onClose}
                     class="text-slate-400 hover:text-white transition p-1">
-              <i class="fas fa-times text-xl"></i>
+              <Icon name="times" class="text-xl" />
             </button>
           </div>
         </div>
@@ -290,7 +291,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
           {loading && !error && (
             <div class="absolute inset-0 flex items-center justify-center z-10">
               <div class="text-center space-y-2">
-                <i class="fas fa-spinner fa-spin text-2xl text-sky-400"></i>
+                <Icon spin name="spinner" class="text-2xl text-sky-400" />
                 <p class="text-xs text-slate-400">Memuat pratinjau...</p>
               </div>
             </div>
@@ -298,12 +299,12 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
           {error ? (
             <div class="flex items-center justify-center h-full">
               <div class="text-center space-y-3">
-                <i class="fas fa-exclamation-triangle text-4xl text-amber-400"></i>
+                <Icon name="exclamation-triangle" class="text-4xl text-amber-400" />
                 <p class="text-sm text-slate-300 font-bold">Gagal memuat pratinjau</p>
                 {!previewOnly ? (
                   <a href={url} target="_blank" rel="noopener"
                      class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-                    <i class="fas fa-download mr-2"></i>Unduh File
+                    <Icon name="download" class="mr-2" />Unduh File
                   </a>
                 ) : (
                   <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>

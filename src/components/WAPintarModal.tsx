@@ -5,6 +5,7 @@
 import { useState } from 'preact/hooks';
 import { showToast } from './Toast';
 import { t } from '../store/i18n';
+import Icon from './ui/Icon';
 
 interface WaTemplate {
   id: string;
@@ -51,10 +52,10 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
            onClick={e => e.stopPropagation()}>
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-xl font-bold text-emerald-400">
-            <i class="fab fa-whatsapp mr-2"></i>WA Pintar
+            <Icon name="whatsapp" class="mr-2" />WA Pintar
           </h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white transition">
-            <i class="fas fa-times text-2xl"></i>
+            <Icon name="times" class="text-2xl" />
           </button>
         </div>
 
@@ -92,7 +93,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
           {/* Send button */}
           <button onClick={handleSend}
                   class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition text-base mt-2">
-            <i class="fab fa-whatsapp mr-2"></i>Buka WhatsApp & Kirim
+            <Icon name="whatsapp" class="mr-2" />Buka WhatsApp & Kirim
           </button>
         </div>
       </div>

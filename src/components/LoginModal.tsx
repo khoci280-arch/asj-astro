@@ -10,6 +10,7 @@ import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive'
 import { showToast } from './Toast';
 import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t } from '../store/i18n';
+import Icon from './ui/Icon';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 0 | 1 | 2 | 3;
@@ -134,14 +135,14 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
-          <i class="fas fa-times text-2xl"></i>
+          <Icon name="times" class="text-2xl" />
         </button>
 
         {/* ── Register ── */}
         {mode === "daftar" && (
           <div>
             <h3 class="text-xl font-bold text-emerald-400 mb-6 border-b border-emerald-900/50 pb-4 text-center">
-              <i class="fas fa-user-plus mr-2" aria-hidden="true"></i> Daftar
+              <Icon name="user-plus" class="mr-2" /> Daftar
             </h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5">Nama Lengkap</label>
             <input type="text" value={regNama} onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
@@ -169,7 +170,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {mode === "login" && adminStep === 0 && (
           <div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
-              <i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i> Login Pelamar
+              <Icon name="sign-in-alt" class="mr-2" /> Login Pelamar
             </h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
             <input type="tel" value={logWa} onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}
@@ -193,7 +194,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Admin Step 1: Master PIN + Account Select ── */}
         {mode === "login" && adminStep === 1 && (
           <div class="text-center">
-            <i class="fas fa-shield-alt text-5xl text-red-500 mb-5 drop-shadow-lg" aria-hidden="true"></i>
+            <Icon name="shield-alt" class="text-5xl text-red-500 mb-5 drop-shadow-lg" />
             <h3 class="text-xl font-bold text-white mb-6 tracking-wide">{t("admin.auth_title")}</h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_master")}</label>
             <input type="password" value={masterPin} onInput={(e) => setMasterPin((e.target as HTMLInputElement).value)}
@@ -215,7 +216,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Admin Step 2: Personal PIN ── */}
         {mode === "login" && adminStep === 2 && (
           <div class="text-center">
-            <i class="fas fa-users-cog text-5xl text-sky-500 mb-5 drop-shadow-lg" aria-hidden="true"></i>
+            <Icon name="users-cog" class="text-5xl text-sky-500 mb-5 drop-shadow-lg" />
             <h3 class="text-lg font-bold text-white mb-6 tracking-wide">{t("admin.select_account")}</h3>
             <div class="grid grid-cols-2 gap-4">
               {["SACHOU", "AYOK", "KHOLIS", "KHOCI"].map(name => (
@@ -235,7 +236,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
         {mode === "login" && adminStep === 3 && (
           <div class="text-center">
-            <i class="fas fa-lock text-5xl text-amber-500 mb-4 drop-shadow-lg" aria-hidden="true"></i>
+            <Icon name="lock" class="text-5xl text-amber-500 mb-4 drop-shadow-lg" />
             <h3 class="text-lg font-bold text-white mb-1">{t("admin.auth_title")} {selectedAdmin}</h3>
             <p class="text-sm text-slate-400 mb-6">{t("admin.enter_pin")}</p>
             <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_personal")}</label>

@@ -1,11 +1,18 @@
 ---
 import Footer from '../components/Footer.astro';
 import BottomNav from '../components/BottomNav.tsx';
+import Toast from '../components/Toast.tsx';
+import sprite from '../icons/sprite.svg?raw';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/latin-700.css';
 
 export interface Props {
   title: string;
   description?: string;
   lang?: string;
+  showFooter?: boolean;
+  showBottomNav?: boolean;
 }
 
 const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false } = Astro.props;
@@ -28,29 +35,43 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Montserrat preloaded via Google Fonts stylesheet below -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
-  
+  <!-- Icons: inline SVG sprite (155 glyphs subsetted from Font Awesome).
+       Inlined rather than referenced via <use href="/sprite.svg#id"> because
+       cross-document <use> is unreliable on older iOS Safari / Android
+       WebView, which is a large share of this audience. -->
+  <div id="asj-sprite" aria-hidden="true" style="display:none" set:html={sprite} />
+
+  <!-- Inter is self-hosted via @fontsource (see imports above).
+       This replaces a render-blocking Google Fonts stylesheet that loaded
+       Montserrat — a family the stylesheet never actually referenced. -->
+
   <style is:global>
     @import '../styles/global.css';
   </style>
-<script>
-    // Restore theme from localStorage
+<script is:inline>
+    // ─── Theme restore (before paint, avoids a flash of the wrong theme) ───
+    // Writes BOTH `data-theme` (new token system) and the legacy `.light`
+    // class (the html.light !important shim in global.css still reads it).
+    // Both stay in sync until that shim is deleted. See store/theme.ts.
     (function(){
-      var t = localStorage.getItem("asjTheme");
-      if (t === "light") document.documentElement.classList.add("light");
+      try {
+        var t = localStorage.getItem("asjTheme");
+        var light = t === "light";
+        var root = document.documentElement;
+        root.setAttribute("data-theme", light ? "light" : "dark");
+        root.classList.toggle("light", light);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
     })();
   </script>
 </head>
-<body id="asj-body" class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-500 flow-root">
+<body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-500 flow-root">
   <div id="global-loader" style="display: none !important;">
-    <i class="fas fa-spinner fa-spin text-5xl text-pink-500 mb-4"></i>
+    <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-spinner" /></svg>
     <h2 class="text-xl font-bold tracking-widest text-slate-200">MEMUAT ASJ OS V7...</h2>
     <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6">Mempersiapkan UI Modern</p>
-    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><i class="fas fa-times mr-1"></i> Tutup Paksa Loading</button>
+    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-times" /></svg> Tutup Paksa Loading</button>
   </div>
   <div id="sakura-particles" class="fixed inset-0 overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
@@ -59,6 +80,11 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   
   {showFooter && <Footer />}
   {showBottomNav && <BottomNav client:only="preact" />}
+
+  <!-- Mounted here, once, so it can never be forgotten on a new page.
+       It was previously duplicated onto 6 of 9 pages, leaving
+       showToast() a silent no-op on ai-cv, master and share. -->
+  <Toast client:only="preact" />
   
   <script>
     // ─── Fase 3 (Reactive): Auth restore via authReactive.ts ───

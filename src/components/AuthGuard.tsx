@@ -7,6 +7,7 @@
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import type { ComponentChildren } from 'preact';
+import Icon from './ui/Icon';
 
 interface Props {
   children: ComponentChildren;
@@ -25,7 +26,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
     return (
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
-          <i class="fas fa-lock text-4xl text-slate-500 mb-4"></i>
+          <Icon name="lock" class="text-4xl text-slate-500 mb-4" />
           <p class="text-slate-400">Mengalihkan ke halaman login...</p>
         </div>
       </div>
@@ -40,7 +41,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
     return (
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
-          <i class="fas fa-ban text-4xl text-red-500 mb-4"></i>
+          <Icon name="ban" class="text-4xl text-red-500 mb-4" />
           <p class="text-slate-400">Akses ditolak. Mengalihkan...</p>
         </div>
       </div>

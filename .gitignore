@@ -12,3 +12,6 @@ superbase.env
 netlify/functions/.netlify-built/
 .agents/
 .freebuff/
+# Dependensi scratch untuk script diagnostik (scripts/db-baseline.mjs).
+# Bukan dependensi runtime aplikasi — jangan ikut ter-commit.
+.workbuddy-ai/tools/

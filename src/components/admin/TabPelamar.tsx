@@ -21,6 +21,7 @@ import LaporanBulananModal from './LaporanBulananModal.tsx';
 import type { Kandidat } from "../../store/adminStore";
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
+import Icon from '../ui/Icon';
 
 export default function TabPelamar() {
                         
@@ -70,26 +71,26 @@ export default function TabPelamar() {
     <div>
       {/* Header with buttons */}
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-sky-900/50 pb-4 mb-4 gap-4">
-        <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-users mr-2"></i> Database Pelamar</h2>
+        <h2 class="text-sky-400 font-bold text-lg"><Icon name="users" class="mr-2" /> Database Pelamar</h2>
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
           <div class="relative flex-1 md:w-64">
-            <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
+            <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
             <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); resetPage(); }}
               placeholder={t("pelamar.placeholder_search")}
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> Input Manual</button>
+          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> Input Manual</button>
           <button onClick={() => toggleSimpleView()} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
-            <i class={`fas ${simpleView ? 'fa-table-list' : 'fa-table-cells-large'} mr-1`}></i> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
+            <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
           </button>
-          <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
-          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-chart-bar mr-1"></i> Laporan Bulanan</button>
+          <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> Export CSV</button>
+          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> Laporan Bulanan</button>
         </div>
       </div>
 
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><i class="fas fa-filter"></i> Filter:</div>
+        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><Icon name="filter" /> Filter:</div>
         <select value={filterGender} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">Semua Gender</option><option value="l">Laki-laki (L)</option><option value="p">Perempuan (P)</option>
@@ -105,7 +106,7 @@ export default function TabPelamar() {
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-sky-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat data pelamar...</p></div>
+        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-sky-400" /><p class="text-slate-500 mt-2 text-sm">Memuat data pelamar...</p></div>
       ) : simpleView ? (
         /* Simple View — compact list */
         <div class="space-y-2">
@@ -120,7 +121,7 @@ export default function TabPelamar() {
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
-                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><i class="fab fa-whatsapp"></i></button>
+                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
               </div>
             </div>
           ))}
@@ -155,11 +156,11 @@ te-800">
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><i class="fas fa-clock"></i></button>
-                      <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><i class="fas fa-edit mr-1"></i> Edit</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><i class="fas fa-robot mr-1"></i> AI CV</button>
-                      <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><i class="fab fa-whatsapp"></i></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                      <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> Edit</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
+                      <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
                   </td>
                 </tr>
@@ -171,7 +172,7 @@ te-800">
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
         <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {allKandidat.length} kandidat</span>
         {shown.length < filtered.length && (
-          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><i class="fas fa-chevron-down mr-1"></i> Muat Lebih Banyak</button>
+          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><Icon name="chevron-down" class="mr-1" /> Muat Lebih Banyak</button>
         )}
       </div>
 

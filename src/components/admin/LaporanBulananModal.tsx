@@ -4,6 +4,7 @@
  */
 import { useStore } from '@nanostores/preact';
 import { reportModalOpen, closeReportModal, kandidatList } from '../../store/adminStore';
+import Icon from '../ui/Icon';
 
 
 
@@ -39,7 +40,7 @@ export default function LaporanBulananModal() {
       <div class="bg-slate-900 border border-blue-900/50 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <h3 class="text-xl font-bold text-blue-400 mb-4 border-b border-blue-900/50 pb-3">
-            <i class="fas fa-chart-bar mr-2"></i> Laporan Kandidat per Loker
+            <Icon name="chart-bar" class="mr-2" /> Laporan Kandidat per Loker
           </h3>
 
           <div class="mb-6">
@@ -48,7 +49,7 @@ export default function LaporanBulananModal() {
 
           {/* Per Job */}
           <div class="mb-6">
-            <h4 class="text-sm font-bold text-sky-400 mb-3 uppercase tracking-wider"><i class="fas fa-briefcase mr-1"></i> Per Loker</h4>
+            <h4 class="text-sm font-bold text-sky-400 mb-3 uppercase tracking-wider"><Icon name="briefcase" class="mr-1" /> Per Loker</h4>
             <div class="space-y-2">
               {Object.entries(byJob).sort((a, b) => b[1] - a[1]).map(([job, count]) => (
                 <div key={job} class="flex justify-between items-center p-2 bg-black/30 rounded-lg">
@@ -61,7 +62,7 @@ export default function LaporanBulananModal() {
 
           {/* Per Tahapan */}
           <div class="mb-6">
-            <h4 class="text-sm font-bold text-amber-400 mb-3 uppercase tracking-wider"><i class="fas fa-layer-group mr-1"></i> Per Tahapan</h4>
+            <h4 class="text-sm font-bold text-amber-400 mb-3 uppercase tracking-wider"><Icon name="layer-group" class="mr-1" /> Per Tahapan</h4>
             <div class="space-y-2">
               {Object.entries(byStage).sort((a, b) => b[1] - a[1]).map(([stage, count]) => (
                 <div key={stage} class="flex justify-between items-center p-2 bg-black/30 rounded-lg">
@@ -74,7 +75,7 @@ export default function LaporanBulananModal() {
 
           {/* Per Status */}
           <div class="mb-6">
-            <h4 class="text-sm font-bold text-emerald-400 mb-3 uppercase tracking-wider"><i class="fas fa-check-circle mr-1"></i> Per Status</h4>
+            <h4 class="text-sm font-bold text-emerald-400 mb-3 uppercase tracking-wider"><Icon name="check-circle" class="mr-1" /> Per Status</h4>
             <div class="space-y-2">
               {Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
                 <div key={status} class="flex justify-between items-center p-2 bg-black/30 rounded-lg">

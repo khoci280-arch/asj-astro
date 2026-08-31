@@ -100,6 +100,31 @@ async function handleShareData(jobCode) {
     );
     const showAllDocs = allowedDocTypes.has('ALL');
 
+    // OPTIMIZED: batch-list Storage folders untuk SEMUA kandidat PARALEL
+    // alih-alih sequential await per kandidat (N+1 pattern). Setiap
+    // listStorageFolder adalah independen — tidak ada dependency antar kandidat.
+    const folderResults = await Promise.all(
+      mapped.map((c) => {
+        const folder =
+          'master/' +
+          String(c.nama || '')
+            .toUpperCase()
+            .replace(/\s+/g, '_') +
+          '/';
+        return listStorageFolder(folder).catch(() => []);
+      }),
+    );
+    // Map kandidat → folder names (sejajar dengan mapped)
+    const folderNamesMap = new Map<string, string[]>();
+    mapped.forEach((c, i) => {
+      const folder =
+        'master/' +
+        String(c.nama || '')
+          .toUpperCase()
+          .replace(/\s+/g, '_') +
+        '/';
+      folderNamesMap.set(folder, folderResults[i] || []);
+    });
     const candidates = [];
     for (const c of mapped) {
       const folder =
@@ -108,12 +133,7 @@ async function handleShareData(jobCode) {
           .toUpperCase()
           .replace(/\s+/g, '_') +
         '/';
-      let names = [];
-      try {
-        names = await listStorageFolder(folder);
-      } catch {
-        /* non-fatal: tanpa folder → tanpa tombol ekstra */
-      }
+      const names = folderNamesMap.get(folder) || [];
       // Tombol utama (pas_photo/file_cv/jft/ssw) sudah tampil — file folder
       // yang TIPENYA sama tidak boleh dobel (mis. CVFILE lama vs baru, atau
       // "1. X_CV.xlsx" lawas vs CVFILE_… baru). CV/JFT/SSW/foto SELALU

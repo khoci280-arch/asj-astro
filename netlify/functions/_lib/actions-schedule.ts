@@ -55,12 +55,24 @@ async function handleHapusJadwal(payload, sessionToken) {
     // `id_jadwal` — DELETE dengan filter id_jadwal yang tidak cocok diam-diam
     // menghapus 0 baris (kenapa dulu "gak bisa hapus jadwal"). Cari barisnya
     // dulu (id_jadwal ATAU id), lalu hapus berdasarkan primary key `id`.
-    const rows = await supabaseJson('GET', 'database_schedule', {
-      query: { select: '*', limit: 500 },
-    });
-    const row = (Array.isArray(rows) ? rows : []).find(
-      (r) => String(r.id_jadwal || '') === id || String(r.id || '') === id,
-    );
+    //
+    // OPTIMIZED: targeted query (id_jadwal eq OR id eq) alih-alih SELECT *
+    // limit 500 lalu find di JS — 1 baris, bukan 500.
+    let row = null;
+    try {
+      const rowsByIdJadwal = await supabaseJson('GET', 'database_schedule', {
+        query: { select: 'id,id_jadwal', limit: '1', id_jadwal: 'eq.' + id },
+      });
+      if (Array.isArray(rowsByIdJadwal) && rowsByIdJadwal.length) row = rowsByIdJadwal[0];
+    } catch { /* kolom id_jadwal mungkin tidak ada di skema legacy */ }
+    if (!row) {
+      try {
+        const rowsById = await supabaseJson('GET', 'database_schedule', {
+          query: { select: 'id,id_jadwal', limit: '1', id: 'eq.' + id },
+        });
+        if (Array.isArray(rowsById) && rowsById.length) row = rowsById[0];
+      } catch { /* id kolom mungkin tidak ada */ }
+    }
     if (!row || row.id === undefined || row.id === null) {
       return { success: false, error: 'Jadwal tidak ditemukan.' };
     }
@@ -113,12 +125,24 @@ async function handleSetTugasStatus(payload, sessionToken) {
   try {
     // FIX sama seperti hapus jadwal: tugas legacy hanya punya `id`, bukan
     // `id_tugas` — cari barisnya dulu, update berdasarkan primary key `id`.
-    const rows = await supabaseJson('GET', 'database_tugas', {
-      query: { select: '*', limit: 500 },
-    });
-    const row = (Array.isArray(rows) ? rows : []).find(
-      (r) => String(r.id_tugas || '') === id || String(r.id || '') === id,
-    );
+    //
+    // OPTIMIZED: targeted query (id_tugas eq OR id eq) alih-alih SELECT *
+    // limit 500 lalu find di JS — 1 baris, bukan 500.
+    let row = null;
+    try {
+      const rowsByIdTugas = await supabaseJson('GET', 'database_tugas', {
+        query: { select: 'id,id_tugas,nama_tugas,dibuat_oleh,waktu_dibuat', limit: '1', id_tugas: 'eq.' + id },
+      });
+      if (Array.isArray(rowsByIdTugas) && rowsByIdTugas.length) row = rowsByIdTugas[0];
+    } catch { /* kolom id_tugas mungkin tidak ada di skema legacy */ }
+    if (!row) {
+      try {
+        const rowsById = await supabaseJson('GET', 'database_tugas', {
+          query: { select: 'id,id_tugas,nama_tugas,dibuat_oleh,waktu_dibuat', limit: '1', id: 'eq.' + id },
+        });
+        if (Array.isArray(rowsById) && rowsById.length) row = rowsById[0];
+      } catch { /* id kolom mungkin tidak ada */ }
+    }
     if (!row || row.id === undefined || row.id === null) {
       return { success: false, error: 'Tugas tidak ditemukan.' };
     }
@@ -151,12 +175,23 @@ async function handleHapusTugas(payload, sessionToken) {
   const id = String((payload && payload[0]) || '');
   if (!id) return { success: false, error: 'ID tugas tidak ditemukan.' };
   try {
-    const rows = await supabaseJson('GET', 'database_tugas', {
-      query: { select: '*', limit: 500 },
-    });
-    const row = (Array.isArray(rows) ? rows : []).find(
-      (r) => String(r.id_tugas || '') === id || String(r.id || '') === id,
-    );
+    // OPTIMIZED: targeted query (id_tugas eq OR id eq) alih-alih SELECT *
+    // limit 500 lalu find di JS — 1 baris, bukan 500.
+    let row = null;
+    try {
+      const rowsByIdTugas = await supabaseJson('GET', 'database_tugas', {
+        query: { select: 'id,id_tugas', limit: '1', id_tugas: 'eq.' + id },
+      });
+      if (Array.isArray(rowsByIdTugas) && rowsByIdTugas.length) row = rowsByIdTugas[0];
+    } catch { /* kolom id_tugas mungkin tidak ada di skema legacy */ }
+    if (!row) {
+      try {
+        const rowsById = await supabaseJson('GET', 'database_tugas', {
+          query: { select: 'id,id_tugas', limit: '1', id: 'eq.' + id },
+        });
+        if (Array.isArray(rowsById) && rowsById.length) row = rowsById[0];
+      } catch { /* id kolom mungkin tidak ada */ }
+    }
     if (!row || row.id === undefined || row.id === null) {
       return { success: false, error: 'Tugas tidak ditemukan.' };
     }
@@ -231,19 +266,44 @@ async function handleCheckAndSendAgendaReminders(payload, sessionToken) {
     };
 
     // Helper: kirim FCM ke list WA
+    // OPTIMIZED: batch-load ALL fcm_tokens for the entire waList in ONE query
+    // instead of N+1 (1 query per WA). PostgREST `wa=in.(...)` filter.
     const sendToWaList = async (waList, title, body) => {
-      for (const wa of waList) {
-        try {
-          const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
-            query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
-          });
-          if (Array.isArray(tokens) && tokens.length > 0) {
-            const tokenList = tokens.map((t) => t.token).filter(Boolean);
-            if (tokenList.length > 0) {
-              await fcm.sendMulticast(tokenList, title, body, '/');
-              sent++;
+      if (waList.length === 0) return;
+      // Batch-fetch all tokens in one round-trip
+      let allTokens: string[] = [];
+      try {
+        const inList = waList.join(',');
+        const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+          query: { select: 'token,wa', wa: 'in.(' + inList + ')', limit: String(waList.length * 5) },
+        });
+        if (Array.isArray(tokens)) {
+          allTokens = tokens.map((t) => t.token).filter(Boolean);
+        }
+      } catch {
+        // Fallback: per-WA query (old behavior) if batch fails
+        for (const wa of waList) {
+          try {
+            const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+              query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
+            });
+            if (Array.isArray(tokens) && tokens.length > 0) {
+              const tokenList = tokens.map((t) => t.token).filter(Boolean);
+              if (tokenList.length > 0) {
+                await fcm.sendMulticast(tokenList, title, body, '/');
+                sent++;
+              }
             }
+          } catch {
+            errors++;
           }
+        }
+        return;
+      }
+      if (allTokens.length > 0) {
+        try {
+          await fcm.sendMulticast(allTokens, title, body, '/');
+          sent++;
         } catch {
           errors++;
         }

@@ -7,6 +7,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import { logoutSupabase } from '../store/userStore';
 import { t } from '../store/i18n';
+import Icon from './ui/Icon';
 
 export default function BottomNav() {
   const auth = useStore(authStore);
@@ -34,22 +35,22 @@ export default function BottomNav() {
             const sidebar = document.querySelector('[id*="admin-sidebar"]') as HTMLElement;
             if (sidebar) sidebar.classList.toggle('-translate-x-full');
           }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label={t("bottomnav.menu")}>
-            <i class="fas fa-bars text-xs" aria-hidden="true"></i>
+            <Icon name="bars" class="text-xs" />
           </button>
           <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.loker")}>
-            <i class="fas fa-briefcase text-xs" aria-hidden="true"></i>
+            <Icon name="briefcase" class="text-xs" />
           </button>
           <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.pelamar")}>
-            <i class="fas fa-users text-xs" aria-hidden="true"></i>
+            <Icon name="users" class="text-xs" />
           </button>
           <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.mail")}>
-            <i class="fas fa-envelope text-xs" aria-hidden="true"></i>
+            <Icon name="envelope" class="text-xs" />
           </button>
           <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-10" aria-label={t("bottomnav.wa")}>
-            <i class="fab fa-whatsapp text-xs" aria-hidden="true"></i>
+            <Icon name="whatsapp" class="text-xs" />
           </button>
           <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.config")}>
-            <i class="fas fa-cogs text-xs" aria-hidden="true"></i>
+            <Icon name="cogs" class="text-xs" />
           </button>
         </div>
       </div>
@@ -61,15 +62,15 @@ export default function BottomNav() {
     <div id="bottom-nav-kandidat" class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-[90]">
       <div class="flex justify-around items-center h-11 px-6">
         <a href="/public" class="flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-10" aria-label={t("bottomnav.cari")}>
-          <i class="fas fa-globe text-xs" aria-hidden="true"></i>
+          <Icon name="globe" class="text-xs" />
         </a>
         <a href="/candidate" class="relative -top-2 flex items-center justify-center" aria-label={t("bottomnav.dashboard")}>
           <div class="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white border-2 border-slate-950 shadow-md active:scale-95 transition">
-            <i class="fas fa-id-card text-sm" aria-hidden="true"></i>
+            <Icon name="id-card" class="text-sm" />
           </div>
         </a>
         <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-10" aria-label={t("bottomnav.keluar")}>
-          <i class="fas fa-power-off text-xs" aria-hidden="true"></i>
+          <Icon name="power-off" class="text-xs" />
         </button>
       </div>
     </div>

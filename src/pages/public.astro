@@ -4,6 +4,7 @@ import LayananSection from '../components/public/LayananSection.astro';
 import LokerTable from '../components/public/LokerTable.tsx';
 import App from '../components/App.tsx';
 import Toast from '../components/Toast.tsx';
+import Icon from '../components/ui/Icon';
 ---
 
 <BaseLayout title="Lowongan & Layanan — ASJ Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
@@ -13,14 +14,14 @@ import Toast from '../components/Toast.tsx';
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pb-16">
     <!-- Back button -->
     <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-      <i class="fas fa-arrow-left"></i> Kembali ke Portal
+      <Icon name="arrow-left" /> Kembali ke Portal
     </a>
 
     <!-- Global Announcement Marquee -->
     <div id="global-announcement" class="hidden">
        <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
            <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-rose-600/60 shadow-md">
-               <i class="fas fa-bullhorn text-white animate-bounce text-lg"></i>
+               <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
            </div>
            <div class="marquee-track ml-12 mr-2"><div id="marquee-text" class="marquee-content text-white text-sm font-bold tracking-wide"></div></div>
        </div>
@@ -30,10 +31,10 @@ import Toast from '../components/Toast.tsx';
     <div class="flex justify-center relative z-10">
       <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors" id="tab-pub-wrap">
         <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md">
-          <i class="fas fa-briefcase mr-2"></i> Lowongan Loker
+          <Icon name="briefcase" class="mr-2" /> Lowongan Loker
         </button>
         <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white">
-          <i class="fas fa-handshake mr-2"></i> Program &amp; Layanan ASJ
+          <Icon name="handshake" class="mr-2" /> Program &amp; Layanan ASJ
         </button>
       </div>
     </div>

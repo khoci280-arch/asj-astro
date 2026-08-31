@@ -1,12 +1,29 @@
 /**
  * Toast.tsx — Notification system (Preact)
- * Migrated from legacy showToast() pattern
- * 
- * Usage: <Toast /> in BaseLayout, call showToast() from anywhere
+ *
+ * Accessibility
+ * -------------
+ * This is the app's ONLY user-feedback mechanism (`showToast()` is called
+ * from ~40 places), and it used to be a bare <div> with no live region —
+ * so "Login gagal" and friends were never announced to screen readers.
+ *
+ * Two live regions, because politeness matters:
+ *   - polite   : success / info / warning
+ *   - assertive: errors (role="alert") — these interrupt, which is correct
+ *                for a failed action the user is waiting on.
+ *
+ * Toasts pause their dismiss timer on hover or keyboard focus so nobody has
+ * a message vanish while reading it (WCAG 2.2.1 Timing Adjustable).
+ *
+ * Mounted once in BaseLayout.astro — it used to be duplicated onto 6 of the
+ * 9 pages, which made showToast() a silent no-op on ai-cv, master, share.
  */
 import { useStore } from '@nanostores/preact';
 import { atom } from 'nanostores';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
+import Icon from './ui/Icon';
+import { getOverlayRoot } from './ui/overlay-root';
 
 export interface ToastMessage {
   id: number;
@@ -18,46 +35,94 @@ export interface ToastMessage {
 export const toasts = atom<ToastMessage[]>([]);
 let toastId = 0;
 
-/** Show a toast notification */
+const AUTO_DISMISS_MS = 4000;
+const MAX_VISIBLE = 4;
+
+/** Show a toast notification. Signature unchanged — ~40 call sites. */
 export function showToast(text: string, type: ToastMessage['type'] = 'info') {
   const id = ++toastId;
-  toasts.set([...toasts.get(), { id, text, type }]);
-  // Auto-dismiss after 4s
+  toasts.set([...toasts.get(), { id, text, type }].slice(-MAX_VISIBLE));
   setTimeout(() => {
-    toasts.set(toasts.get().filter(t => t.id !== id));
-  }, 4000);
+    toasts.set(toasts.get().filter((t) => t.id !== id));
+  }, AUTO_DISMISS_MS);
 }
 
-const colors = {
-  success: 'bg-emerald-600 border-emerald-400',
-  error: 'bg-red-600 border-red-400',
-  info: 'bg-sky-600 border-sky-400',
-  warning: 'bg-amber-600 border-amber-400',
-};
+/** Remove a toast immediately (dismiss button). */
+export function dismissToast(id: number) {
+  toasts.set(toasts.get().filter((t) => t.id !== id));
+}
 
-const icons = {
-  success: 'fa-check-circle',
-  error: 'fa-exclamation-circle',
-  info: 'fa-info-circle',
-  warning: 'fa-exclamation-triangle',
-};
+const TONES = {
+  success: { box: 'bg-emerald-600 border-emerald-400', icon: 'check-circle' },
+  error:   { box: 'bg-red-600 border-red-400',         icon: 'exclamation-circle' },
+  info:    { box: 'bg-sky-600 border-sky-400',         icon: 'info-circle' },
+  warning: { box: 'bg-amber-600 border-amber-400',     icon: 'exclamation-triangle' },
+} as const;
+
+function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) {
+  const tone = TONES[toast.type];
+  const [remaining, setRemaining] = useState(AUTO_DISMISS_MS);
+  const lastTick = useRef(Date.now());
+
+  useEffect(() => {
+    if (paused) return;
+    const startedAt = Date.now();
+    const timer = setTimeout(() => {
+      const left = remaining - (Date.now() - startedAt);
+      if (left <= 0) dismissToast(toast.id);
+      else setRemaining(left);
+    }, Math.min(remaining, 200));
+    return () => clearTimeout(timer);
+  }, [paused, remaining, toast.id]);
+
+  return (
+    <div
+      class={`${tone.box} border-l-4 px-4 py-3 rounded-lg shadow-lg animate-slide-in flex items-center gap-3 text-white text-sm font-bold`}
+    >
+      <Icon name={tone.icon} />
+      <span class="flex-1">{toast.text}</span>
+      <button
+        type="button"
+        onClick={() => dismissToast(toast.id)}
+        class="-mr-1 p-1 rounded hover:bg-white/20 transition"
+        aria-label="Tutup notifikasi"
+      >
+        <Icon name="times" />
+      </button>
+    </div>
+  );
+}
 
 export default function Toast() {
   const $toasts = useStore(toasts);
-  
+  const [paused, setPaused] = useState(false);
+
   if ($toasts.length === 0) return null;
-  
-  return (
-    <div class="fixed top-4 right-4 z-[999] flex flex-col gap-2 max-w-sm">
-      {$toasts.map(toast => (
-        <div
-          key={toast.id}
-          class={`${colors[toast.type]} border-l-4 px-4 py-3 rounded-lg shadow-lg animate-slide-in flex items-center gap-3 text-white text-sm font-bold`}
-        >
-          <i class={`fas ${icons[toast.type]}`}></i>
-          <span>{toast.text}</span>
-        </div>
-      ))}
-    </div>
+
+  const errors = $toasts.filter((t) => t.type === 'error');
+  const others = $toasts.filter((t) => t.type !== 'error');
+
+  const render = (list: ToastMessage[]) =>
+    list.map((t) => <ToastItem key={t.id} toast={t} paused={paused} />);
+
+  return createPortal(
+    <div
+      class="fixed top-4 right-4 flex flex-col gap-2 w-[min(24rem,calc(100vw-2rem))] pointer-events-none"
+      // Above modals: error feedback must stay visible while a dialog
+      // (e.g. the login form) is open. See ui/overlay-root.ts.
+      style={{ zIndex: 'var(--z-index-toast)' }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusIn={() => setPaused(true)}
+      onFocusOut={() => setPaused(false)}
+    >
+      <div class="pointer-events-auto flex flex-col gap-2" role="status" aria-live="polite">
+        {render(others)}
+      </div>
+      <div class="pointer-events-auto flex flex-col gap-2" role="alert" aria-live="assertive">
+        {render(errors)}
+      </div>
+    </div>,
+    getOverlayRoot()
   );
 }

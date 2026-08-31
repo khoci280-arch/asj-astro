@@ -10,6 +10,7 @@ import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
 import { t } from '../../store/i18n';
+import Icon from '../ui/Icon';
 
 interface FormData {
   job: string; bidang: string; wa: string; nama: string; email: string;
@@ -203,7 +204,7 @@ export default function ApplyFullForm() {
                   ${i + 1 === step ? 'bg-pink-500 border-2 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,.4)]'
                     : i + 1 < step ? 'bg-pink-700 border-2 border-pink-700 text-white'
                     : 'bg-slate-800 border-2 border-slate-700 text-slate-400'}`}>
-                  <i class={`fa-solid ${i === 0 ? 'fa-user' : i === 1 ? 'fa-file-arrow-up' : 'fa-check-double'}`}></i>
+                  <Icon name={i === 0 ? 'user' : i === 1 ? 'file-arrow-up' : 'check-double'} />
                 </div>
                 <div class={`text-[11px] font-bold ${i + 1 === step ? 'text-pink-500' : i + 1 < step ? 'text-slate-300' : 'text-slate-500'}`}>{label}</div>
               </div>
@@ -219,15 +220,15 @@ export default function ApplyFullForm() {
             <div class="mb-5">
               <label class="block text-[13px] font-bold mb-2 text-slate-300">Nomor WhatsApp</label>
               <div class="relative">
-                <i class="fa-brands fa-whatsapp absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg"></i>
+                <Icon name="whatsapp" class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
                 <input type="tel" value={form.wa}
                   onInput={(e) => updateForm('wa', (e.target as HTMLInputElement).value)}
                   onBlur={cekRiwayat}
                   placeholder={t("apply.wa_ph")}
                   class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] transition-all placeholder:text-slate-500" />
-                {waLoading && <span class="absolute right-4 top-1/2 -translate-y-1/2"><i class="fas fa-spinner fa-spin text-emerald-500 text-lg"></i></span>}
+                {waLoading && <span class="absolute right-4 top-1/2 -translate-y-1/2"><Icon spin name="spinner" class="text-emerald-500 text-lg" /></span>}
               </div>
-              {waMsg && <div class="text-xs text-emerald-400 font-bold mt-3 bg-emerald-900/30 p-2.5 rounded-lg border border-emerald-500/30"><i class="fas fa-check-circle mr-1"></i>{waMsg}</div>}
+              {waMsg && <div class="text-xs text-emerald-400 font-bold mt-3 bg-emerald-900/30 p-2.5 rounded-lg border border-emerald-500/30"><Icon name="check-circle" class="mr-1" />{waMsg}</div>}
               {waWarn && <div class="text-xs text-amber-300 font-bold mt-3 bg-amber-900/40 p-2.5 rounded-lg border border-amber-500/40">{waWarn}</div>}
             </div>
 
@@ -289,7 +290,7 @@ export default function ApplyFullForm() {
                 { icon: 'fa-torii-gate', label: t('apply.asj') }
               ].map((c, i) => (
                 <div key={i} class="bg-slate-900 border border-slate-700 rounded-2xl p-[15px_10px] text-center">
-                  <i class={`fa-solid ${c.icon} text-[20px] text-pink-500 mb-2 block`}></i>
+                  <Icon name={c.icon} class="text-[20px] text-pink-500 mb-2 block" />
                   <div class="text-[10px] text-slate-300 font-bold">{c.label}</div>
                 </div>
               ))}
@@ -303,17 +304,17 @@ export default function ApplyFullForm() {
       <div class="fixed bottom-0 left-0 w-full bg-[rgba(2,6,23,.95)] backdrop-blur-xl border-t border-slate-800 p-[15px_20px] z-50 flex justify-between gap-4">
         {step > 1 && (
           <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
-            <i class="fa-solid fa-chevron-left"></i> Kembali
+            <Icon name="chevron-left" /> Kembali
           </button>
         )}
         {step < 3 && (
           <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
-            Lanjut <i class="fa-solid fa-chevron-right"></i>
+            Lanjut <Icon name="chevron-right" />
           </button>
         )}
         {step === 3 && (
           <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="fa-solid fa-paper-plane"></i> KIRIM LAMARAN
+            <Icon name="paper-plane" /> KIRIM LAMARAN
           </button>
         )}
       </div>
@@ -353,7 +354,7 @@ function InputField({ icon, label, value, readonly, type = 'text', placeholder, 
     <div class="mb-5">
       <label class="block text-[13px] font-bold mb-2 text-slate-300">{label}</label>
       <div class="relative">
-        <i class={`fa-solid ${icon} absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg`}></i>
+        <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
         <input type={type} value={value} readonly={readonly} placeholder={placeholder}
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
           class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] transition-all placeholder:text-slate-500" />
@@ -370,7 +371,7 @@ function SelectField({ icon, label, value, options, onChange }: {
     <div class="mb-5">
       <label class="block text-[13px] font-bold mb-2 text-slate-300">{label}</label>
       <div class="relative">
-        <i class={`fa-solid ${icon} absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg`}></i>
+        <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
         <select value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
           class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer">
           {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
@@ -390,7 +391,7 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3.5">
           <div class={`w-[52px] h-[52px] rounded-2xl ${bgClass} flex items-center justify-center text-xl text-white`}>
-            <i class={`fa-solid ${icon}`}></i>
+            <Icon name={icon} />
           </div>
           <div>
             <div class="text-base font-extrabold">{label}</div>
@@ -404,7 +405,7 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
         onChange={(e) => onChange((e.target as HTMLInputElement).files?.[0] || null)} />
       {state?.preview && <img src={state.preview} class="w-full h-[160px] object-contain bg-[#020617] rounded-xl mt-[15px] border border-slate-700" alt="" />}
       <div class="mt-[15px] p-3 bg-[#020617] rounded-xl text-xs text-slate-400 break-all">{state?.name || t('apply.file_none')}</div>
-      {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><i class="fa-solid fa-circle-exclamation mr-1"></i>Gagal! Ukuran file melebihi 2 MB.</div>}
+      {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><Icon name="circle-exclamation" class="mr-1" />Gagal! Ukuran file melebihi 2 MB.</div>}
     </div>
   );
 }

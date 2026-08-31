@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { showToast } from './Toast';
+import Icon from './ui/Icon';
 
 interface Props {
   title?: string;
@@ -116,10 +117,10 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
         {/* Header */}
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
           <h3 class="text-sm font-bold text-white">
-            <i class="fas fa-pen-fancy mr-2 text-amber-400"></i>{title}
+            <Icon name="pen-fancy" class="mr-2 text-amber-400" />{title}
           </h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white transition">
-            <i class="fas fa-times text-xl"></i>
+            <Icon name="times" class="text-xl" />
           </button>
         </div>
         {/* Canvas */}
@@ -133,11 +134,11 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
         <div class="flex gap-3 px-4 py-3 border-t border-slate-700 shrink-0">
           <button onClick={handleClear}
                   class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-sm transition">
-            <i class="fas fa-eraser mr-2"></i>Hapus & Ulangi
+            <Icon name="eraser" class="mr-2" />Hapus & Ulangi
           </button>
           <button onClick={handleSave}
                   class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm transition shadow-lg">
-            <i class="fas fa-save mr-2"></i>Simpan TTD
+            <Icon name="save" class="mr-2" />Simpan TTD
           </button>
         </div>
       </div>

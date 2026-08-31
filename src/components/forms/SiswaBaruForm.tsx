@@ -9,6 +9,7 @@ import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
+import Icon from '../ui/Icon';
 
 interface ChatMessage {
   role: 'assistant' | 'user';
@@ -174,10 +175,10 @@ export default function SiswaBaruForm() {
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
         <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
-          <i class="fas fa-crown mr-2"></i>Chat Jeklin
+          <Icon name="crown" class="mr-2" />Chat Jeklin
         </button>
         <button onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
-          <i class="fas fa-file-alt mr-2"></i>Form Siswa
+          <Icon name="file-alt" class="mr-2" />Form Siswa
         </button>
       </div>
 
@@ -219,7 +220,7 @@ export default function SiswaBaruForm() {
           <button onClick={handleSend} disabled={sending}
             class="bg-amber-600 hover:bg-amber-500 text-wh
 ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
-            <i class="fas fa-paper-plane"></i>
+            <Icon name="paper-plane" />
           </button>
         </div>
       </div>
@@ -236,17 +237,17 @@ ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)]
               </div>
             </div>
             <button onClick={handleSubmit} class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-bold px-5 py-2.5 rounded-lg transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-2">
-              <i class="fas fa-paper-plane"></i>SUBMIT DATA
+              <Icon name="paper-plane" />SUBMIT DATA
             </button>
           </div>
           {sending && (
             <div class="text-[10px] text-amber-400 font-bold mb-4 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
-              <i class="fas fa-magic fa-spin mr-2"></i>Jeklin sedang menganalisis datamu...
+              <Icon spin name="magic" class="mr-2" />Jeklin sedang menganalisis datamu...
             </div>
           )}
           <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-5 mb-5">
             <h2 class="text-xs font-bold text-sky-400 mb-4 uppercase tracking-wider border-b border-slate-800 pb-2">
-              <i class="fas fa-address-card mr-1"></i>Data Pribadi
+              <Icon name="address-card" class="mr-1" />Data Pribadi
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {BIODATA_FIELDS.map(f => (
@@ -262,13 +263,13 @@ ite px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)]
             {DOC_FIELDS.map(d => (
               <div key={d.type} class="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center gap-3">
                 <div class={`w-12 h-12 rounded-lg ${d.bg} flex items-center justify-center text-white text-xl flex-shrink-0`}>
-                  <i class={`fas ${d.icon}`}></i>
+                  <Icon name={d.icon} />
                 </div>
                 <div class="flex-1 overflow-hidden">
                   <label class="block text-[10px] font-bold text-sky-400 mb-1">{d.label}</label>
                   <input type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
                     class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
-                  {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><i class="fas fa-check mr-0.5"></i>{docStatus[d.type]}</div>}
+                  {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><Icon name="check" class="mr-0.5" />{docStatus[d.type]}</div>}
                 </div>
               </div>
             ))}

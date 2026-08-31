@@ -91,7 +91,14 @@ async function countCandidatesForJob(code) {
 //  - query jalan tapi tidak ada yang cocok → null / []
 //  - kolom/tabel tidak dikenal → undefined (caller fallback ke scan penuh)
 
+// Kolom job yang dibaca mapJob — pengganti SELECT * di findJobByCodeFiltered.
+const JOB_MAP_COLS =
+  'code_job,tsk,kategori,pekerjaan,lokasi,gender,kuota,jumlah_kandidat,' +
+  'status,syarat,keterangan,tahapan,format_cv,link_pamflet,' +
+  'total_biaya,rincian_biaya,dokumen_share';
+
 // Cari baris job per kode (code_job / code) — 1 baris, bukan scan semua loker.
+// OPTIMIZED: pakai JOB_MAP_COLS alih-alih SELECT *; fallback SELECT *.
 async function findJobByCodeFiltered(code) {
   const want = String(code || '').trim();
   if (!want) return undefined;
@@ -99,12 +106,21 @@ async function findJobByCodeFiltered(code) {
   for (const col of ['code_job', 'code']) {
     try {
       const rows = await supabaseJson('GET', 'job_database', {
-        query: { select: '*', limit: '1', [col]: 'eq.' + want },
+        query: { select: JOB_MAP_COLS, limit: '1', [col]: 'eq.' + want },
       });
       anyOk = true;
       if (Array.isArray(rows) && rows.length) return rows[0];
     } catch {
-      /* kolom tidak ada — coba kolom berikutnya */
+      // Proyeksi mungkin gagal — coba SELECT *
+      try {
+        const rows = await supabaseJson('GET', 'job_database', {
+          query: { select: '*', limit: '1', [col]: 'eq.' + want },
+        });
+        anyOk = true;
+        if (Array.isArray(rows) && rows.length) return rows[0];
+      } catch {
+        /* kolom tidak ada — coba kolom berikutnya */
+      }
     }
   }
   return anyOk ? null : undefined;

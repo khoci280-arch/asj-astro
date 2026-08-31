@@ -3,6 +3,7 @@ import { useState } from "preact/hooks";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { uploadToCloudinary } from "../../lib/cloudinary";
+import Icon from '../ui/Icon';
 
 interface Props { isOpen: boolean; onClose: () => void; waTarget: string; namaTarget: string; }
 
@@ -98,7 +99,7 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
     h("div", { class: `bg-black/40 border ${color}/40 rounded-[2rem] overflow-hidden text-left shadow-lg` },
       h("button", { onClick: onToggle, class: `w-full p-5 flex justify-between items-center ${color.replace("border", "bg")}-900/40 font-bold ${color.replace("border", "text")}-400 hover:${color.replace("border", "bg")}-900/60 transition-colors` },
         h("span", { class: "text-sm md:text-base" }, h("i", { class: `fas ${icon} mr-2` }), title),
-        h("i", { class: `fas fa-chevron-down transition-transform duration-300 ${open ? "rotate-180" : ""}` })),
+        h(Icon, { name: "chevron-down", class: `transition-transform duration-300 ${open ? "rotate-180" : ""}` })),
       open ? h("div", { class: "p-6 border-t border-slate-700/50 space-y-4" }, children) : null);
 
   const Input = ({ label, field, type = "text" }: { label: string; field: string; type?: string }) =>
@@ -119,21 +120,21 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
 
   return h("div", { class: "fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4", onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) onClose(); } },
     h("div", { class: "glass-panel p-6 md:p-8 rounded-[2.5rem] w-full max-w-4xl shadow-[0_0_40px_rgba(0,0,0,0.8)] relative max-h-[90vh] overflow-y-auto custom-scrollbar" },
-      h("button", { onClick: onClose, class: "absolute top-6 right-6 text-slate-400 hover:text-white transition z-[100]" }, h("i", { class: "fas fa-times text-2xl" })),
+      h("button", { onClick: onClose, class: "absolute top-6 right-6 text-slate-400 hover:text-white transition z-[100]" }, h(Icon, { name: "times", class: "text-2xl" })),
       h("h3", { class: "text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide border-b border-slate-700/50 pb-4" },
-        h("i", { class: "fas fa-folder-open text-emerald-400 mr-2" }), t("ui.berkas_center")),
+        h(Icon, { name: "folder-open", class: "text-emerald-400 mr-2" }), t("ui.berkas_center")),
       h("p", { class: "text-sm text-emerald-400 font-bold mb-6" }, t("ui.candidate_label"), " ", h("span", { class: "text-white bg-slate-800 px-2 py-0.5 rounded" }, namaTarget)),
       h("div", { class: "space-y-4" },
         h(Panel, { title: t("ui.stage1_short"), icon: "fa-file-alt", color: "border-emerald-500", isOpen: t1Open, onToggle: () => setT1Open(!t1Open) },
           h("div", { class: "grid grid-cols-1 md:grid-cols-2 gap-5" },
             ...TAHAP1.map(f => h(FileInput, { key: f.id, id: f.id, label: f.label, accept: f.accept, amber: f.amber }))),
           h("button", { onClick: () => handleUpload(1), disabled: uploading, class: "w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition mt-4 disabled:opacity-50" },
-            h("i", { class: "fas fa-cloud-upload-alt mr-1" }), uploading ? t("ui.uploading") : t("ui.upload_berkas_tahap_1"))),
+            h(Icon, { name: "cloud-upload-alt", class: "mr-1" }), uploading ? t("ui.uploading") : t("ui.upload_berkas_tahap_1"))),
         h(Panel, { title: t("ui.stage2_short"), icon: "fa-plane-departure", color: "border-sky-500", isOpen: t2Open, onToggle: () => setT2Open(!t2Open) },
           h("div", { class: "grid grid-cols-1 md:grid-cols-2 gap-5" },
             ...TAHAP2.map(f => h(FileInput, { key: f.id, id: f.id, label: f.label, accept: f.accept }))),
           h("button", { onClick: () => handleUpload(2), disabled: uploading, class: "w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg transition mt-4 disabled:opacity-50" },
-            h("i", { class: "fas fa-cloud-upload-alt mr-1" }), uploading ? t("ui.uploading") : t("ui.upload_berkas_tahap_2"))),
+            h(Icon, { name: "cloud-upload-alt", class: "mr-1" }), uploading ? t("ui.uploading") : t("ui.upload_berkas_tahap_2"))),
         h(Panel, { title: t("candidate.biodata_title"), icon: "fa-user-edit", color: "border-amber-500", isOpen: bioOpen, onToggle: () => setBioOpen(!bioOpen) },
           h("div", { class: "grid grid-cols-1 md:grid-cols-2 gap-4" },
             h(Section, { title: "candidate.bio_personal" }),
@@ -159,7 +160,7 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
             h(Input, { label: "candidate.bio_comp_web", field: "web_perusahaan" }),
             h(Textarea, { label: "candidate.bio_comp_address", field: "alamat_perusahaan" })),
           h("button", { onClick: handleSaveBio, disabled: uploading, class: "w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold shadow-lg transition mt-4 text-sm disabled:opacity-50" },
-            h("i", { class: "fas fa-save mr-1" }), uploading ? t("ui.saving") : t("ui.save_biodata"))))));
+            h(Icon, { name: "save", class: "mr-1" }), uploading ? t("ui.saving") : t("ui.save_biodata"))))));
 }
 
 declare function showToast(msg: string, type: string): void;

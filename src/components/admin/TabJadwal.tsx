@@ -7,6 +7,7 @@ import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
 
 import type { Jadwal } from '../../types/api';
+import Icon from '../ui/Icon';
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
@@ -39,12 +40,12 @@ export default function TabJadwal() {
 
   const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
 
-  if (loading) return <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-amber-400"></i><p class="text-slate-500 mt-2 text-sm">Memuat jadwal...</p></div>;
+  if (loading) return <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-amber-400" /><p class="text-slate-500 mt-2 text-sm">Memuat jadwal...</p></div>;
 
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>
-      <h2 class='text-amber-400 font-bold text-lg'><i class='fas fa-calendar-alt mr-2'></i> Jadwal Agenda</h2>
-      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><i class='fas fa-plus mr-1'></i> {showForm ? 'Tutup' : 'Buat Jadwal'}</button>
+      <h2 class='text-amber-400 font-bold text-lg'><Icon name="calendar-alt" class="mr-2" /> Jadwal Agenda</h2>
+      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><Icon name="plus" class="mr-1" /> {showForm ? 'Tutup' : 'Buat Jadwal'}</button>
     </div>
 
     {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
@@ -55,7 +56,7 @@ export default function TabJadwal() {
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>LOKASI / MEDIA ZOOM</label><input type='text' value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>PENGURUS (TSK)</label><select value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>LINK TAUTAN ZOOM (Opsional)</label><input type='url' value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
-        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><i class='fas fa-save mr-2'></i> Simpan Jadwal</button></div>
+        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> Simpan Jadwal</button></div>
       </form>
     </div>}
 
@@ -71,7 +72,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[10px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>Link Zoom</a>}</td>
-            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-edit"></i> Edit</button><button onClick={async () => { if(!confirm("Hapus jadwal ini?")) return; try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"hapusJadwal", args:[j.id]}) }); const d = await r.json(); if(d.success){showToast("Jadwal dihapus","success"); location.reload();} else showToast(d.error||"Gagal","error"); } catch(e){showToast("Error","error");} }} class="ml-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-trash"></i></button></td>
+            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm("Hapus jadwal ini?")) return; try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"hapusJadwal", args:[j.id]}) }); const d = await r.json(); if(d.success){showToast("Jadwal dihapus","success"); location.reload();} else showToast(d.error||"Gagal","error"); } catch(e){showToast("Error","error");} }} class="ml-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="trash" /></button></td>
           </tr>))}
       </tbody>
     </table>

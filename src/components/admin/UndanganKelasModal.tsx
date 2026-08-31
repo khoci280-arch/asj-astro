@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useState, useCallback } from "preact/hooks";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
+import Icon from '../ui/Icon';
 
 interface Props { isOpen: boolean; onClose: () => void; }
 
@@ -71,30 +72,30 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
 
   return h("div", { class: "fixed inset-0 bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4", onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) onClose(); } },
     h("div", { class: "glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col border border-emerald-500/50" },
-      h("button", { onClick: onClose, class: "absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]" }, h("i", { class: "fas fa-times text-2xl" })),
-      h("h3", { class: "text-xl font-black text-white mb-2 border-b border-emerald-900/50 pb-3" }, h("i", { class: "fab fa-whatsapp text-emerald-400 mr-2" }), t("ui.invite_class_title")),
+      h("button", { onClick: onClose, class: "absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]" }, h(Icon, { name: "times", class: "text-2xl" })),
+      h("h3", { class: "text-xl font-black text-white mb-2 border-b border-emerald-900/50 pb-3" }, h(Icon, { name: "whatsapp", class: "text-emerald-400 mr-2" }), t("ui.invite_class_title")),
       h("p", { class: "text-xs text-slate-400 mb-4 leading-relaxed" }, t("ui.invite_class_desc")),
       h("div", { class: "space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1" },
         h("div", null,
-          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h("i", { class: "fas fa-users mr-1" }), t("ui.paste_list_label")),
+          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "users", class: "mr-1" }), t("ui.paste_list_label")),
           h("textarea", { rows: 6, value: daftar, onInput: (e: Event) => setDaftar((e.target as HTMLTextAreaElement).value), placeholder: "Nama Orang Tua/Wali|628xxxxxxxxxx", class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500 placeholder:text-slate-500" }),
           h("p", { class: "text-[9px] text-slate-500 mt-1" }, t("ui.paste_list_hint"), " ", h("b", null, "Nama|628xxxxxxxxxx"), " ", t("ui.paste_list_hint2"))),
         h("div", null,
-          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h("i", { class: "fas fa-link mr-1" }), t("ui.group_link_label")),
+          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "link", class: "mr-1" }), t("ui.group_link_label")),
           h("input", { type: "text", value: linkGrup, onInput: (e: Event) => setLinkGrup((e.target as HTMLInputElement).value), placeholder: "https://chat.whatsapp.com/...", class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500 placeholder:text-slate-500" })),
         h("div", { class: "grid grid-cols-1 md:grid-cols-2 gap-3" },
           h("div", null,
-            h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h("i", { class: "fas fa-stopwatch mr-1" }), t("ui.interval_label")),
+            h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "stopwatch", class: "mr-1" }), t("ui.interval_label")),
             h("input", { type: "number", value: String(interval), onInput: (e: Event) => setInterval_(parseInt((e.target as HTMLInputElement).value) || 10), min: "1", class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" })),
           h("div", { class: "flex flex-col items-end justify-end gap-0.5" },
             h("span", { class: "text-xs font-bold text-emerald-400" }, t("ui.list_preview_n").replace("{n}", String(list.length))),
             variants.length > 1 ? h("span", { class: "text-[9px] font-bold text-amber-400" }, " • " + t("ui.variant_count_n").replace("{n}", String(variants.length))) : null)),
         h("div", null,
-          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h("i", { class: "fas fa-comment-dots mr-1" }), t("ui.message_label")),
+          h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "comment-dots", class: "mr-1" }), t("ui.message_label")),
           h("textarea", { rows: 9, value: pesan, onInput: (e: Event) => setPesan((e.target as HTMLTextAreaElement).value), class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500 leading-relaxed" }),
           h("p", { class: "text-[9px] text-slate-500 mt-1" }, t("ui.message_hint"), " ", h("b", null, "{nama}"), " ", t("ui.message_hint2"), " ", h("b", null, "{link_grup}"), " ", t("ui.message_hint3"))),
         h("div", { class: "bg-black/40 border border-slate-700 rounded-xl p-3" },
-          h("p", { class: "text-[9px] font-bold text-slate-400 mb-1 uppercase" }, h("i", { class: "fas fa-eye mr-1" }), t("ui.message_preview")),
+          h("p", { class: "text-[9px] font-bold text-slate-400 mb-1 uppercase" }, h(Icon, { name: "eye", class: "mr-1" }), t("ui.message_preview")),
           h("div", { class: "text-xs text-slate-300 whitespace-pre-wrap leading-relaxed" }, preview))),
       h("button", { onClick: handleSend, disabled: sending, class: "w-full mt-4 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.4)] transition disabled:opacity-50 disabled:cursor-not-allowed" },
         sending ? t("ui.sending") : t("ui.start_send_invite"))));

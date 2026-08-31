@@ -11,6 +11,7 @@ import { validate, waSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 
 import type { ChatMessage } from '../../types/api';
+import Icon from '../ui/Icon';
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -176,10 +177,10 @@ export default function AiCvForm() {
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
         <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
-          <i class="fas fa-crown mr-2"></i>{t('form.ai_cv_chat')}
+          <Icon name="crown" class="mr-2" />{t('form.ai_cv_chat')}
         </button>
         <button onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 py-3 text-xs font-bold text-slate-400'}>
-          <i class="fas fa-file-alt mr-2"></i>{t('form.preview_cv')}
+          <Icon name="file-alt" class="mr-2" />{t('form.preview_cv')}
         </button>
       </div>
 
@@ -240,7 +241,7 @@ export default function AiCvForm() {
             placeholder={t('form.placeholder_chat')} />
           <button onClick={() => handleSend()} disabled={sending}
             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
-            <i class="fas fa-paper-plane"></i>
+            <Icon name="paper-plane" />
           </button>
         </div>
       </div>
@@ -258,17 +259,17 @@ export default function AiCvForm() {
             </div>
             <div class="flex gap-2">
               <button onClick={saveToDatabase} class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2">
-                <i class="fas fa-cloud-upload-alt"></i>{t('button.save_db')}
+                <Icon name="cloud-upload-alt" />{t('button.save_db')}
               </button>
               <button onClick={() => setFormLang(l => l === 'id' ? 'jp' : 'id')} class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
-                <i class="fas fa-language mr-1"></i>{formLang === 'id' ? 'JP' : 'ID'}
+                <Icon name="language" class="mr-1" />{formLang === 'id' ? 'JP' : 'ID'}
               </button>
             </div>
           </div>
 
           {sending && (
             <div class="text-[10px] text-amber-400 font-bold mb-3 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
-              <i class="fas fa-magic fa-spin mr-2"></i>{t('form.ai_analyzing')}
+              <Icon spin name="magic" class="mr-2" />{t('form.ai_analyzing')}
             </div>
           )}
 
@@ -417,7 +418,7 @@ function Section({ title, icon, color, borderLeft, children }: {
   return (
     <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
       <h2 class={`text-[13px] font-bold uppercase tracking-wide mb-2 border-b border-slate-800/50 pb-1 text-${color}-400`}>
-        <i class={`fas ${icon} mr-1`}></i> {title}
+        <Icon name={icon} class="mr-1" /> {title}
       </h2>
       {children}
     </div>
@@ -466,12 +467,12 @@ function UploadRow({ type, label, icon, bg, accept, status, onUpload }: {
   return (
     <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
       <div class={`w-10 h-10 rounded ${bg} flex items-center justify-center text-white text-lg flex-shrink-0`}>
-        <i class={`fas ${icon}`}></i>
+        <Icon name={icon} />
       </div>
       <div class="flex-1 overflow-hidden">
         <div class="flex items-center gap-2">
           <label class="block text-xs font-bold text-white mb-0.5">{label}</label>
-          {status && <span class="text-[9px] text-emerald-400 font-medium"><i class="fas fa-check mr-0.5"></i>{status}</span>}
+          {status && <span class="text-[9px] text-emerald-400 font-medium"><Icon name="check" class="mr-0.5" />{status}</span>}
         </div>
         <input type="file" accept={accept}
           onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}

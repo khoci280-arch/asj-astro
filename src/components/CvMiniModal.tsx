@@ -8,6 +8,7 @@ import { authStore } from '../store/authReactive';
 import { showToast } from './Toast';
 import { t } from '../store/i18n';
 import { uploadToCloudinary } from '../lib/cloudinary';
+import Icon from './ui/Icon';
 
 interface Props { onClose: () => void; }
 
@@ -59,8 +60,8 @@ export default function CvMiniModal({ onClose }: Props) {
     <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onClose}>
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
         <div class="flex items-center justify-between mb-5">
-          <h3 class="text-lg font-bold text-emerald-400"><i class="fas fa-user-edit mr-2"></i>Update CV</h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+          <h3 class="text-lg font-bold text-emerald-400"><Icon name="user-edit" class="mr-2" />Update CV</h3>
+          <button onClick={onClose} class="text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="space-y-3">
           <div>

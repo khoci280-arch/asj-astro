@@ -5,6 +5,7 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import type { Job } from '../../types/api';
+import Icon from '../ui/Icon';
 
 // Job type imported from shared types
 interface Props { job: Job; onClose: () => void; onSave?: (data: Job) => void; }
@@ -38,8 +39,8 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" onClick={onClose}>
       <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
-          <h3 class="text-sm font-bold text-white"><i class="fas fa-edit mr-2 text-red-400"></i>{t('ui.modal_edit_job_title')}</h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><i class="fas fa-times text-xl"></i></button>
+          <h3 class="text-sm font-bold text-white"><Icon name="edit" class="mr-2 text-red-400" />{t('ui.modal_edit_job_title')}</h3>
+          <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5 space-y-3">
           <div class="text-xs text-slate-500 mb-2">Kode: <span class="text-sky-400 font-mono font-bold">{job.code}</span></div>

@@ -8,6 +8,7 @@ import { useStore } from '@nanostores/preact';
 import { inputModalOpen, closeInputModal, addKandidat } from '../../store/adminStore';
 // t() dipakai di baris ~146 tetapi tidak diimpor → ReferenceError saat render.
 import { t } from '../../store/i18n';
+import Icon from '../ui/Icon';
 
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
@@ -138,8 +139,8 @@ export default function InputManualModal() {
       <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
-            <h3 class="text-xl font-bold text-sky-400"><i class="fas fa-user-plus mr-2"></i> Input Kandidat Manual</h3>
-            <button onClick={onClose} class="text-slate-400 hover:text-white transition"><i class="fas fa-times text-2xl"></i></button>
+            <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> Input Kandidat Manual</h3>
+            <button onClick={onClose} class="text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
           </div>
           <form onSubmit={handleSubmit} class="space-y-4">
             {/* Search existing candidate */}
@@ -206,7 +207,7 @@ export default function InputManualModal() {
 
             {/* Extra docs — legacy layout with column headers + +/- buttons */}
             <div class="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl space-y-2">
-              <label class="block text-xs font-bold text-emerald-400 mb-2"><i class="fas fa-folder-plus mr-1"></i> UPLOAD DOKUMEN LAINNYA (Opsional)</label>
+              <label class="block text-xs font-bold text-emerald-400 mb-2"><Icon name="folder-plus" class="mr-1" /> UPLOAD DOKUMEN LAINNYA (Opsional)</label>
               <div class="flex gap-2 items-center text-[10px] font-bold text-slate-400 px-1">
                 <span class="w-40">JENIS DOKUMEN</span>
                 <span class="flex-1">FILE (PDF/Gambar)</span>
@@ -220,7 +221,7 @@ export default function InputManualModal() {
                   </select>
                   <div class="flex-1 flex items-center gap-2">
                     <label class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded cursor-pointer transition">
-                      <i class="fas fa-upload text-[10px]"></i> Choose File
+                      <Icon name="upload" class="text-[10px]" /> Choose File
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
                         onChange={(e) => updateExtraDocFile(i, (e.target as HTMLInputElement).files?.[0] || null)} />
                     </label>
@@ -228,25 +229,25 @@ export default function InputManualModal() {
                   </div>
                   <button type="button" onClick={() => removeExtraDoc(i)}
                     class="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">
-                    <i class="fas fa-minus"></i>
+                    <Icon name="minus" />
                   </button>
                 </div>
               ))}
               <div class="flex items-center gap-2 pt-1">
                 <button type="button" onClick={addExtraDoc}
                   class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
-                  <i class="fas fa-plus mr-1"></i> Tambah
+                  <Icon name="plus" class="mr-1" /> Tambah
                 </button>
                 <button type="button" onClick={() => removeExtraDoc(extraDocs.length - 1)}
                   class="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition">
-                  <i class="fas fa-minus mr-1"></i> Hapus
+                  <Icon name="minus" class="mr-1" /> Hapus
                 </button>
               </div>
             </div>
 
             <button type="submit" disabled={saving}
               class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg transition mt-2 disabled:opacity-50">
-              {saving ? <><i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...</> : <><i class="fas fa-save mr-1"></i> Simpan & Upload</>}
+              {saving ? <><Icon spin name="spinner" class="mr-1" /> Menyimpan...</> : <><Icon name="save" class="mr-1" /> Simpan & Upload</>}
             </button>
           </form>
         </div>
