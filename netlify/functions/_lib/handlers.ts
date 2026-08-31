@@ -1,5 +1,5 @@
 import * as session from './session';
-import * as rateLimit from './rate-limit';
+import * as rateLimit from './kernel/rate-limit';
 import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './action-registry';
 import * as shareActions from './actions-share';
 import { toErrorResponse } from './kernel/errors';
@@ -137,7 +137,7 @@ async function handleAction(action, payload, sessionToken, meta) {
 
   const checks = rateLimitChecks(action, meta, sessionToken);
   for (const c of checks) {
-    const r = rateLimit.check(c.key, c.opts);
+    const r = await rateLimit.check(c.key, c.opts);
     if (!r.ok) {
       return {
         success: false,
@@ -154,7 +154,7 @@ async function handleAction(action, payload, sessionToken, meta) {
   if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
     for (const c of checks) {
       // @ts-expect-error JS→TS migration
-      if (c.opts.lockoutAfter) rateLimit.fail(c.key, c.opts);
+      if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
     }
   }
   return out;
