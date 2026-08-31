@@ -4,6 +4,7 @@ import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './ac
 import * as shareActions from './actions-share';
 import { toErrorResponse } from './kernel/errors';
 import { log, runWithContext } from './kernel/log';
+import { SURFACE_HANDLERS } from '../surfaces/index';
 // handlers.js — dispatcher pusat backend rebuild.
 //
 // Frontend mengirim { action, payload, sessionToken } ke /.netlify/functions/*
@@ -162,6 +163,16 @@ async function handleAction(action, payload, sessionToken, meta) {
 }
 
 async function dispatchAction(action, payload, sessionToken) {
+  // Try surface registry first (new architecture), fall back to old registry
+  const surfaceHandler = SURFACE_HANDLERS[action];
+  if (surfaceHandler) {
+    try {
+      return await surfaceHandler(payload, sessionToken);
+    } catch (err) {
+      log.error('surface.error', { action, err: String(err) });
+      return toErrorResponse(err);
+    }
+  }
   const handler = ACTION_HANDLERS[action];
   if (!handler) {
     return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };

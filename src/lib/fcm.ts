@@ -5,12 +5,16 @@
  * Mirrors legacy js/fcm-client.ts exactly.
  */
 
-const FCM_CONFIG = {
-  apiKey: 'AIzaSyDQVyjXmiF1M5bnwJciIptZTWn8RcnyViE',
-  projectId: 'khoci-7a81c',
-  messagingSenderId: '1090676733378',
-  appId: '1:1090676733378:web:3c0aa57a7ef133fc34925b',
-};
+function getFcmConfig() {
+  // Config from PUBLIC_ env vars (Astro) with hardcoded fallbacks
+  const g = typeof import.meta !== 'undefined' ? (import.meta as any).env : {};
+  return {
+    apiKey: g?.PUBLIC_FIREBASE_API_KEY || 'AIzaSyDQVyjXmiF1M5bnwJciIptZTWn8RcnyViE',
+    projectId: g?.PUBLIC_FIREBASE_PROJECT_ID || 'khoci-7a81c',
+    messagingSenderId: g?.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '1090676733378',
+    appId: g?.PUBLIC_FIREBASE_APP_ID || '1:1090676733378:web:3c0aa57a7ef133fc34925b',
+  };
+}
 
 let messaging: unknown = null;
 
@@ -42,7 +46,7 @@ export async function initFCM(): Promise<void> {
     const fb = w.firebase as FirebaseCompat;
     const apps = fb.apps || [];
     if (!apps.length) {
-      fb.initializeApp(FCM_CONFIG);
+      fb.initializeApp(getFcmConfig());
     }
 
     messaging = fb.messaging();

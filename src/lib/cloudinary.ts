@@ -4,8 +4,8 @@
  * Cloud: ybzzbw9i, Preset: asjportal
  */
 
-const CLOUDINARY_CLOUD_NAME = 'ybzzbw9i';
-const CLOUDINARY_UPLOAD_PRESET = 'asjportal';
+const CLOUDINARY_CLOUD_NAME = import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME || '' || 'ybzzbw9i';
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.PUBLIC_CLOUDINARY_UPLOAD_PRESET || '' || 'asjportal';
 
 export function cloudinaryEndpoint(): string {
   return 'https://api.cloudinary.com/v1_1/' + encodeURIComponent(CLOUDINARY_CLOUD_NAME) + '/upload';
