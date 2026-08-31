@@ -1,3 +1,4 @@
+import { validatePayload, schemas } from './kernel/validate';
 import bcrypt from 'bcryptjs';
 import { env } from './env';
 import { normalizeWa, isValidWaFormat } from '../shared/wa-rules';
@@ -32,7 +33,7 @@ function masterPins() {
 }
 
 async function handleCheckAdminMaster(payload) {
-  const pin = String((payload && payload[0]) || '');
+  const [pin] = validatePayload(payload, schemas.adminMasterPin);
   const pins = masterPins();
   if (pins.length === 0) {
     return {
@@ -46,8 +47,7 @@ async function handleCheckAdminMaster(payload) {
 }
 
 async function handleCheckAdminPersonal(payload) {
-  const name = String((payload && payload[0]) || '').trim();
-  const pin = String((payload && payload[1]) || '');
+  const [name, pin] = validatePayload(payload, schemas.adminPersonalPin);
   if (!name || !pin) return { success: false, error: 'Nama dan PIN wajib diisi.' };
 
   let ok = false;
@@ -116,8 +116,8 @@ async function handleRefreshAdminSession(payload) {
 // shared/wa-rules.js — lihat komentar import di atas.
 
 async function handleLoginKandidat(payload) {
-  const wa = normalizeWa(String((payload && payload[0]) || ''));
-  const password = String((payload && payload[1]) || '');
+  const [rawWa, password] = validatePayload(payload, schemas.kandidatLogin);
+  const wa = normalizeWa(rawWa);
   if (!wa || !password) return { success: false, error: 'Nomor WA dan password wajib diisi.' };
   if (!isValidWaFormat(wa)) {
     return {
@@ -250,9 +250,8 @@ async function handleDaftarKandidat(payload) {
 }
 
 async function handleGantiPasswordKandidat(payload, sessionToken) {
-  const wa = normalizeWa(String((payload && payload[0]) || ''));
-  const lama = String((payload && payload[1]) || '');
-  const baru = String((payload && payload[2]) || '');
+  const [rawWa, lama, baru] = validatePayload(payload, schemas.gantiPassword);
+  const wa = normalizeWa(rawWa);
   if (!wa || !lama || !baru) return { success: false, error: 'Data tidak lengkap.' };
   if (baru.length < 6 || baru.length > 20 || /\s/.test(baru)) {
     return { success: false, error: 'Password baru 6-20 karakter tanpa spasi.' };
