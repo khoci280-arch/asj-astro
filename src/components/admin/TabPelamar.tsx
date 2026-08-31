@@ -19,6 +19,7 @@ import RirekishoBuilder from './RirekishoBuilder';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 
 import type { Kandidat } from "../../store/adminStore";
+import { t } from '../../store/i18n';
 
 export default function TabPelamar() {
                         

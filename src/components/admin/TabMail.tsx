@@ -9,6 +9,7 @@ import {
   mailFilterStatus, mailSearchText, mailList,
   setMailFilterStatus, setMailSearchText, fetchMailFromAPI,
 } from '../../store/adminStore';
+import { t } from '../../store/i18n';
 
 const STATUSES = ['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 

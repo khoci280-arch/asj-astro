@@ -24,7 +24,7 @@ export default defineConfig({
     },
     resolve: {
       alias: { "react": "preact/compat", "react-dom": "preact/compat" },
-      dedupe: ["preact", "preact/compat", "preact/hooks", "react", "react-dom"],
+      dedupe: ["preact", "preact/compat", "preact/hooks", "@nanostores/preact", "react", "react-dom"],
     },
     build: {
       rollupOptions: {
@@ -37,3 +37,4 @@ export default defineConfig({
     },
   },
 });
+

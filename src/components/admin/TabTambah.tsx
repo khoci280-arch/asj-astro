@@ -2,6 +2,7 @@
  * TabTambah.tsx - Form Input Loker Baru
  */
 import { useState, useEffect } from 'preact/hooks';
+import { authStore } from '../../store/authReactive';
 
 // DropdownData type imported from shared types
 // Note: DD alias used for backward compatibility
@@ -31,7 +32,7 @@ export default function TabTambah() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }) });
         const d = await r.json();
         if (d.success && d.dropdowns) setDd(d.dropdowns);
       } catch (e) { console.error(e); } finally { setLoading(false); }

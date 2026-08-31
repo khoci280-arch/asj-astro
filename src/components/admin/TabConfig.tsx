@@ -3,6 +3,8 @@
  * Source: legacy admin.html admin-config (lines 802-861)
  */
 import { useState, useEffect } from 'preact/hooks';
+import { authStore } from '../../store/authReactive';
+import { t } from '../../store/i18n';
 
 // ConfigGroup type imported from shared types
 
@@ -30,7 +32,7 @@ export default function TabConfig() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }) });
         const d = await r.json();
         if (d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
       } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }

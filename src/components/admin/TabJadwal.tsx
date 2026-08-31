@@ -3,6 +3,7 @@
  * Source: legacy admin.html admin-jadwal (lines 668-697)
  */
 import { useState, useEffect } from 'preact/hooks';
+import { authStore } from '../../store/authReactive';
 
 // Jadwal type imported from shared types
 
@@ -21,7 +22,7 @@ export default function TabJadwal() {
   useEffect(() => {
     async function load() {
       try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'getAppData', args: ['admin'] }) });
+        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }) });
         const d = await r.json();
         if (d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
       } catch (e) { console.error(e); } finally { setLoading(false); }

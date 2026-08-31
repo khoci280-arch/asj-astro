@@ -8,6 +8,7 @@
  * reactive updates trigger auto re-render in all subscribers.
  */
 import { atom } from 'nanostores';
+import { authStore } from './authReactive';
 
 export interface Kandidat {
   id: string;
@@ -119,7 +120,7 @@ export async function fetchKandidatFromAPI() {
     const res = await fetch('/.netlify/functions/get-app-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+      body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
     });
     const data = await res.json();
     if (data.success) {
@@ -154,7 +155,7 @@ export async function fetchMailFromAPI() {
     const res = await fetch('/.netlify/functions/get-app-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+      body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
     });
     const data = await res.json();
     if (data.success) {

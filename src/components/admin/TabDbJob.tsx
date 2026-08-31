@@ -3,6 +3,8 @@
  * Source: legacy/index.html page-admin → admin-dbjob
  */
 import { useState, useEffect } from 'preact/hooks';
+import { authStore } from '../../store/authReactive';
+import { t } from '../../store/i18n';
 
 interface DbJob {
   code: string; tsk: string; pekerjaan: string; kategori: string;
@@ -31,11 +33,11 @@ export default function TabDbJob() {
       const res = await fetch('/.netlify/functions/get-app-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+        body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
       });
       const data = await res.json();
       if (data.success) {
-        setJobs(data.dbJobs || []);
+        setJobs(data.dbJobs || data.jobs || []);
       }
     } catch (err) {
       console.error('[TabDbJob] Failed:', err);
