@@ -3,9 +3,11 @@
  * Migrated from legacy render/admin.ts share modal
  */
 import { useState } from 'preact/hooks';
+import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 
 // Job type imported from shared types
+interface Job { code: string; pekerjaan: string; [key: string]: any; }
 interface Props { job: Job; onClose: () => void; }
 
 export default function AdminShareModal({ job, onClose }: Props) {

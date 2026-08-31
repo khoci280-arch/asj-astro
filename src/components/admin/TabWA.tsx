@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
+import { showToast } from '../Toast';
 
 // WaTemplate type imported from shared types
 
@@ -55,7 +56,7 @@ export default function TabWA() {
         <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-widest mb-1"><i class="fab fa-whatsapp text-emerald-400 mr-1"></i> Undangan Grup WhatsApp Kelas (Orang Tua/Wali)</h3>
         <p class="text-xs text-slate-300 leading-relaxed">Kirim undangan Grup WA ke Orang Tua/Wali secara massal</p>
       </div>
-      <button class="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl shadow-lg shadow-emerald-900/60 transition hover:-translate-y-0.5 shrink-0"><i class="fab fa-whatsapp text-white text-lg mr-1"></i> Mulai Kirim Undangan</button>
+      <button onClick={() => { window.dispatchEvent(new CustomEvent("openUndanganKelas")); }} class="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl shadow-lg shadow-emerald-900/60 transition hover:-translate-y-0.5 shrink-0 cursor-pointer"><i class="fab fa-whatsapp text-white text-lg mr-1"></i> Mulai Kirim Undangan</button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

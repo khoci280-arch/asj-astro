@@ -2,7 +2,7 @@
 
 > **Tujuan:** Dokumen ini agar AI coding di kantor bisa langsung lanjut tanpa bertanya.
 > **Terakhir update:** 2026-08-31
-> **Commit terakhir:** af91ca7
+> **Commit terakhir:** 01db6a1 (latest)
 
 ---
 
@@ -26,9 +26,9 @@
 
 | Item | Status | Priority |
 |------|--------|----------|
-| Admin modal actions (CV Mini save, E-Sign submit) | Belum wired | HIGH |
-| Candidate document upload flow | Belum migrate | HIGH |
-| AI Copilot functional | Belum migrate | MEDIUM |
+| Admin modal actions (CV Mini save, E-Sign submit) | ✅ Fixed (Cloudinary) | HIGH |
+| Candidate document upload flow | ✅ Fixed (Cloudinary) | HIGH |
+| AI Copilot functional | ✅ Fixed (AdminAiCopilot wired) | MEDIUM |
 | Email notifications | Belum migrate | MEDIUM |
 | __H error di dev mode (Vite) | Dev-only, production OK | LOW |
 

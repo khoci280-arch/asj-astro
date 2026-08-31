@@ -7,6 +7,8 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, emailSchema } from '../../lib/schemas';
+import { uploadToCloudinary } from '../../lib/cloudinary';
+import { validateFile } from '../../lib/uploadGuard';
 import { t } from '../../store/i18n';
 
 interface FormData {
@@ -108,7 +110,15 @@ export default function ApplyFullForm() {
 
   const handleUpload = (docType: string, file: File | null) => {
     if (!file) return;
-    const MAX_FILE_SIZE = 2 * 1024 * 1024; /* 2MB */
+    // Validate file (format + size) — ported from legacy upload-guard
+    const acceptMap: Record<string, string> = {
+      photo: '.jpg,.jpeg,.png',
+      cv: '.pdf,.xls,.xlsx,.doc,.docx',
+      jft: '.pdf',
+      ssw: '.pdf',
+    };
+    const v = validateFile(file, { accept: acceptMap[docType] || '', maxMb: 2 });
+    if (!v.valid) { showToast(v.error!, 'error'); return; }
     const isImage = file.type.startsWith('image/');
     const preview = isImage ? URL.createObjectURL(file) : null;
     setUploads(prev => ({
@@ -116,8 +126,8 @@ export default function ApplyFullForm() {
       [docType]: {
         file,
         preview,
-        name: `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`,
-        warn: file.size > MAX_FILE_SIZE
+        name: file.name + " (" + (file.size / 1024 / 1024).toFixed(2) + " MB)",
+        warn: false
       }
     }));
   };
@@ -134,16 +144,21 @@ export default function ApplyFullForm() {
     if (form.email) { var ve = validate(emailSchema, form.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     setLoading(true);
     try {
+      // 1) Upload all files to Cloudinary first (pipeline: validate -> Cloudinary -> send URL)
+      const fileUrls: Record<string, string> = {};
+      for (const [key, u] of Object.entries(uploads)) {
+        if (u.file) {
+          showToast('Mengunggah ' + key.toUpperCase() + '...', 'info');
+          fileUrls[key] = await uploadToCloudinary(u.file);
+        }
+      }
+      // 2) Send URLs to backend
       const token = authStore.get().token;
-      const fd = new FormData();
-      fd.append('formData', JSON.stringify(form));
-      Object.entries(uploads).forEach(([key, u]) => {
-        if (u.file) fd.append(key, u.file);
-      });
-      const res = await fetch('/.netlify/functions/apply', {
+      const payload = { ...form, fileUrls };
+      const res = await fetch('/.netlify/functions/bridge-links', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: fd
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'submitFormPelamar', payload: [payload] }),
       });
       if (res.ok) {
         setSuccess(true);

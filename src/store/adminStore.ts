@@ -159,7 +159,7 @@ export async function fetchMailFromAPI() {
     });
     const data = await res.json();
     if (data.success) {
-      setMailList(data.formInbox || []);
+      mailList.set(data.formInbox || []);
     }
   } catch (err) {
     console.error('[adminStore] fetchMail failed:', err);

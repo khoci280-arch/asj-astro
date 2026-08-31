@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useState } from "preact/hooks";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 
 interface Props { isOpen: boolean; onClose: () => void; waTarget: string; namaTarget: string; }
 
@@ -69,7 +70,8 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
       let ok = 0;
       for (const f of files) {
         try {
-          const res = await apiClient.call("simpanBerkasTahapan", [{ wa: waTarget, nama: namaTarget, jenisBerkas: f.jenisBerkas, fileUrl: URL.createObjectURL(f.fileObj) }]);
+          const cloudinaryUrl = await uploadToCloudinary(f.fileObj);
+          const res = await apiClient.call("simpanBerkasTahapan", [{ wa: waTarget, nama: namaTarget, jenisBerkas: f.jenisBerkas, fileUrl: cloudinaryUrl }]);
           if (res?.success) ok++;
         } catch {}
       }

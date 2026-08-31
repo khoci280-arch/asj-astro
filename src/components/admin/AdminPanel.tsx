@@ -12,14 +12,16 @@ import { useState, useEffect } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
-import TabMail from './TabMail.tsx';
+
 import TabDbJob from './TabDbJob.tsx';
 import TabTambah from './TabTambah.tsx';
+import TabMail from './TabMail.tsx';
 import TabJadwal from './TabJadwal.tsx';
 import TabWA from './TabWA.tsx';
 import PemberkasanModal from "./PemberkasanModal";
 import UndanganKelasModal from "./UndanganKelasModal";
 import TabConfig from './TabConfig.tsx';
+import AdminAiCopilot from "./AdminAiCopilot";
 
 /**
  * Named constants — replace magic numbers
@@ -56,14 +58,28 @@ export default function AdminPanel() {
     return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
   });
   useEffect(() => {
-    function onHash() {
-      var h = window.location.hash.replace('#', '');
-      if (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h)) {
-        setActiveTab(h as Tab);
-      }
-    }
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    const handleOpenAiCopilot = (e) => {
+      setAiCopilotTarget(e.detail);
+      setShowAiCopilot(true);
+    };
+    const handleOpenEdit = (e) => {
+      // TODO: Open edit modal with e.detail.wa
+      showToast('Edit kandidat: ' + e.detail.nama, 'info');
+    };
+    const handleShowHistory = (e) => {
+      // TODO: Open history modal with e.detail.wa
+      showToast('Riwayat: ' + e.detail.nama, 'info');
+    };
+    window.addEventListener('openAdminAiCopilot', handleOpenAiCopilot);
+    window.addEventListener('openUndanganKelas', () => setShowUndanganKelas(true));
+    window.addEventListener('openCandidateEdit', handleOpenEdit);
+    window.addEventListener('showCandidateHistory', handleShowHistory);
+    return () => {
+      window.removeEventListener('openAdminAiCopilot', handleOpenAiCopilot);
+      window.removeEventListener('openUndanganKelas', () => setShowUndanganKelas(true));
+      window.removeEventListener('openCandidateEdit', handleOpenEdit);
+      window.removeEventListener('showCandidateHistory', handleShowHistory);
+    };
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
@@ -74,6 +90,8 @@ export default function AdminPanel() {
     return () => window.removeEventListener("asj-toggle-sidebar", handler);
   }, []);
   const [showUndanganKelas, setShowUndanganKelas] = useState(false);
+  const [showAiCopilot, setShowAiCopilot] = useState(false);
+  const [aiCopilotTarget, setAiCopilotTarget] = useState<{wa: string; nama: string} | null>(null);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [pemberkasanTarget, setPemberkasanTarget] = useState({ wa: "", nama: "" });
 
@@ -157,7 +175,7 @@ export default function AdminPanel() {
           </button>
         ))}
         <div class="flex-1"></div>
-        <button onClick={() => {}} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
+        <button onClick={() => setShowAiCopilot(true)} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
           <i class="fas fa-robot w-5 text-center"></i> <span>AI HR</span>
         </button>
         <button onClick={() => setActiveTab('config')} class={`w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${
@@ -175,6 +193,11 @@ export default function AdminPanel() {
           <TabContent tab={activeTab} />
         </div>
       </div>
+
+      {/* ── Global Modals ── */}
+      {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={pemberkasanTarget.wa} namaTarget={pemberkasanTarget.nama} />}
+      {showUndanganKelas && <UndanganKelasModal isOpen={showUndanganKelas} onClose={() => setShowUndanganKelas(false)} />}
+      {showAiCopilot && <AdminAiCopilot candidateWa={aiCopilotTarget?.wa} candidateId={aiCopilotTarget?.nama} onClose={() => { setShowAiCopilot(false); setAiCopilotTarget(null); }} />}
     </div>
   );
 }
@@ -182,8 +205,9 @@ export default function AdminPanel() {
 function TabContent({ tab }: { tab: Tab }) {
   if (tab === "kelola")  return <TabKelola />;
   if (tab === "pelamar") return <TabPelamar />;
-  if (tab === "mail")    return <TabMail />;
+  
   if (tab === "jadwal")  return <TabJadwal />;
+  if (tab === "mail")    return <TabMail />;
   if (tab === "tambah")  return <TabTambah />;
   if (tab === "dbjob")   return <TabDbJob />;
   if (tab === "wa")      return <TabWA />;
@@ -196,8 +220,6 @@ function TabPlaceholder({ tab }: { tab: string }) {
     <div class="text-center py-8">
       <i class="fas fa-tools text-3xl text-slate-600 mb-3"></i>
       <p class="text-slate-500">Tab "{tab}" sedang dalam migrasi.</p>
-          {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={pemberkasanTarget.wa} namaTarget={pemberkasanTarget.nama} />}
-      {showUndanganKelas && <UndanganKelasModal isOpen={showUndanganKelas} onClose={() => setShowUndanganKelas(false)} />}
-</div>
+    </div>
   );
 }

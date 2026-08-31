@@ -6,6 +6,8 @@ import { useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import { showToast } from './Toast';
+import { t } from '../store/i18n';
+import { uploadToCloudinary } from '../lib/cloudinary';
 
 interface Props { onClose: () => void; }
 
@@ -30,18 +32,11 @@ export default function CvMiniModal({ onClose }: Props) {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      let photoBase64 = '';
-      if (photo) {
-        const reader = new FileReader();
-        photoBase64 = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(photo);
-        });
-      }
+      // Photo will be uploaded to Cloudinary below
       const payload = {
         wa: user.wa, nama: user.name, gender, usia, tb, bb,
         pendidikan, jft_text: jftText, ssw_text: sswText,
-        photo: photoBase64
+        photo: photo ? await uploadToCloudinary(photo) : ""
       };
       const res = await fetch('/.netlify/functions/bridge-links', {
         method: 'POST',
@@ -53,7 +48,7 @@ export default function CvMiniModal({ onClose }: Props) {
         showToast(t('toast.saved'), 'success');
         onClose();
       } else {
-        showToast(data.error || t('toast.failed'), 'error');
+        showToast(data.error || t('toast.upload_failed'), 'error');
       }
     } catch (e: unknown) {
       showToast('Error: ' + ((e as Error).message || 'Unknown'), 'error');

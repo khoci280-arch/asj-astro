@@ -33,6 +33,9 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
+  const [showCekSiswa, setShowCekSiswa] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   // Theme backgrounds
   const HEADER_BGS: Record<string, string> = {
     SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp',
@@ -75,6 +78,12 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
     setIsDark(prev => !prev);
     window.dispatchEvent(new Event('asj-theme-change'));
   }
+  useEffect(() => {
+    const handler = () => setShowCekSiswa(true);
+    window.addEventListener("openCekSiswaModal", handler);
+    return () => window.removeEventListener("openCekSiswaModal", handler);
+  }, []);
+
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
   return (
@@ -83,25 +92,25 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
         <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
         <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
           <div class="flex items-center gap-5">
-            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
+            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
             <div>
               <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">日本への挑戦</div>
-              <h1 class="text-2xl md:text-4xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
+              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
             </div>
           </div>
           <div class="flex flex-col items-end gap-3">
-          <div class="flex absolute top-4 right-4 z-30">
+          <div class="md:hidden absolute top-4 right-4 z-30">
             <button onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg" aria-label="Toggle Menu">
               <i class={menuOpen ? "fas fa-times text-lg" : "fas fa-bars text-lg"}></i>
             </button>
           </div>
-          {/* ─── Desktop Nav ─── */}
-          <div class="flex flex-col items-end gap-3">
-            <div class="hidden md:flex items-center gap-3">
+          {/* ─── Desktop Nav (hidden on mobile) ─── */}
+          <div class="hidden md:flex items-end gap-3">
+            <div class="flex items-center gap-3">
               <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><i class="fas fa-mobile-alt mr-1.5"></i> {t("ui.install_app")}</button>
               <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><i class="fas fa-language"></i> {lang === "id" ? "ID" : "JP"}</button>
             </div>
-            <div class="hidden md:flex flex-wrap justify-end gap-2 mt-1">
+            <div class="flex flex-wrap items-center justify-end gap-1.5">
               {!u.isLoggedIn && (<>
                 <button onClick={openLogin} class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg">{t("header.login")}</button>
                 <button onClick={openRegister} class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors">{t("header.register")}</button>
@@ -139,7 +148,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><i class="fas fa-mobile-alt mr-2"></i> {t("ui.install_app")}</button>
             <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fas fa-language"></i> Bahasa <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
-          {!u.isLoggedIn && (<div class="space-y-3">
+          {hydrated && !u.isLoggedIn && (<div class="space-y-3">
             <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
             <button onClick={openRegister} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition">{t("header.register")}</button>
             <button onClick={openAdminLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><i class="fas fa-shield-alt mr-2"></i> {t("header.admin_login")}</button>
@@ -159,7 +168,8 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
       </nav>
 
       {showAiCopilot && <AdminAiCopilot onClose={() => setShowAiCopilot(false)} />}
-      <LoginModal mode={modalMode} onClose={closeModal} onSwitchMode={setModalMode} />
+      {showCekSiswa && <CekSiswaModal onClose={() => setShowCekSiswa(false)} />}
+      {hydrated && <LoginModal mode={modalMode} onClose={closeModal} onSwitchMode={setModalMode} />}
     </>
   );
 }

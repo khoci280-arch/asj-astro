@@ -12,6 +12,8 @@ import CvMiniModal from '../CvMiniModal';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import WAPintarModal from '../WAPintarModal';
 import ESignatureModal from '../ESignatureModal';
+import PemberkasanModal from '../admin/PemberkasanModal';
+import { uploadToCloudinary } from "../../lib/cloudinary";
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -82,6 +84,7 @@ export default function CandidateDash() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCvMiniModal, setShowCvMiniModal] = useState(false);
   const [showESign, setShowESign] = useState(false);
+  const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [showDocPreview, setShowDocPreview] = useState(false);
   const [docPreviewUrl, setDocPreviewUrl] = useState("");
   const [docPreviewTitle, setDocPreviewTitle] = useState("");
@@ -235,7 +238,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Digital CV button ── */}
         <div class="mb-6 md:mb-8 flex justify-center">
-          <button class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><i class="fas fa-user-circle mr-2 text-sky-400"></i> {t('button.view_cv')}</button>
+          <button onClick={() => { setDocPreviewUrl(user?.cvUrl || ""); setDocPreviewTitle("CV Preview"); setShowDocPreview(true); }} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><i class="fas fa-user-circle mr-2 text-sky-400"></i> {t('button.view_cv')}</button>
         </div>
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
@@ -316,7 +319,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <h3 class="text-red-400 font-bold mb-2 text-lg"><i class="fas fa-exclamation-triangle mr-2"></i> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <input type="file" accept=".pdf,.xls,.xlsx,.jpg,.png" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:font-bold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/40 cursor-pointer mb-4 transition-colors" />
-            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); /* TODO: upload to Supabase storage */ }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><i class="fas fa-upload mr-2"></i>{t('button.upload_revise')}</button>
+            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); try { const payload = { wa: user?.wa || '', nama: user?.name || '', jenisBerkas: 'REVISI', fileUrl: await uploadToCloudinary(file) }; const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanBerkasTahapan', args: [payload] }) }); const data = await res.json(); if (data.success) { showToast('File revisi berhasil diupload!', 'success'); loadDashboard(); } else { showToast(data.error || 'Gagal upload', 'error'); } } catch (err) { showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error'); } }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><i class="fas fa-upload mr-2"></i>{t('button.upload_revise')}</button>
           </div>
         )}
 
@@ -342,7 +345,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 ))}
               </div>
             </div>
-            <button class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
+            <button onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
               <i class="fas fa-folder-open mr-2"></i>{t('ui.complete_berkas_biodata')}
             </button>
             <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><i class="fas fa-info-circle mr-1"></i> {t('ui.berkas_stage_hint')}</p>
@@ -357,6 +360,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
       {showDocPreview && <DocumentPreviewModal url={docPreviewUrl} title={docPreviewTitle} onClose={() => setShowDocPreview(false)} />}
       {showESign && <ESignatureModal onSave={handleSaveSignature} onClose={() => setShowESign(false)} />}
+      {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} />}
     </div>
   );
 }

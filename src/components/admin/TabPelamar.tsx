@@ -20,6 +20,7 @@ import LaporanBulananModal from './LaporanBulananModal.tsx';
 
 import type { Kandidat } from "../../store/adminStore";
 import { t } from '../../store/i18n';
+import { showToast } from '../Toast';
 
 export default function TabPelamar() {
                         
@@ -119,7 +120,7 @@ export default function TabPelamar() {
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
-                <button class="w-7 h-7 flex items-center justify-center bg-emerald-600 text-white rounded text-xs"><i class="fab fa-whatsapp"></i></button>
+                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><i class="fab fa-whatsapp"></i></button>
               </div>
             </div>
           ))}
@@ -154,11 +155,11 @@ te-800">
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition"><i class="fas fa-clock"></i></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><i class="fas fa-clock"></i></button>
                       <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-file-alt mr-1"></i> CV</button>
-                      <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-edit mr-1"></i> Edit</button>
-                      <button class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition"><i class="fas fa-robot mr-1"></i> AI CV</button>
-                      <button class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition"><i class="fab fa-whatsapp"></i></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><i class="fas fa-edit mr-1"></i> Edit</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><i class="fas fa-robot mr-1"></i> AI CV</button>
+                      <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><i class="fab fa-whatsapp"></i></button>
                     </div>
                   </td>
                 </tr>

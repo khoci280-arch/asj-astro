@@ -2,10 +2,14 @@
  * TabTambah.tsx - Form Input Loker Baru
  */
 import { useState, useEffect } from 'preact/hooks';
+import { showToast } from '../Toast';
+import { validateFile } from '../../lib/uploadGuard';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 import { authStore } from '../../store/authReactive';
 
 // DropdownData type imported from shared types
 // Note: DD alias used for backward compatibility
+interface DD { tsk: string[]; tahapan: string[]; kategori: string[]; gender: string[]; lokasi: string[]; syarat: string[]; }
 const RF = ['CV', 'JFT', 'SSW'];
 
 export default function TabTambah() {

@@ -8,7 +8,7 @@
    - Broadcast ASJ_FORCE_RELOAD → auto-refresh all tabs
 */
 
-const VERSION = 'asj-astro-v1';
+const VERSION = 'asj-astro-v5-1788149736';
 const SHELL = [
   '/',
   '/index.html',

@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
+import { showToast } from '../Toast';
 
 // Jadwal type imported from shared types
 
@@ -70,7 +71,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[10px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>Link Zoom</a>}</td>
-            <td class='p-4 text-center'><button class='px-3 py-1.5 bg-amber-600 text-white rounded font-bold shadow text-[10px]'><i class='fas fa-edit'></i> Edit</button><button class='ml-2 px-3 py-1.5 bg-red-600 text-white rounded font-bold shadow text-[10px]'><i class='fas fa-trash'></i></button></td>
+            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-edit"></i> Edit</button><button onClick={async () => { if(!confirm("Hapus jadwal ini?")) return; try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"hapusJadwal", args:[j.id]}) }); const d = await r.json(); if(d.success){showToast("Jadwal dihapus","success"); location.reload();} else showToast(d.error||"Gagal","error"); } catch(e){showToast("Error","error");} }} class="ml-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-trash"></i></button></td>
           </tr>))}
       </tbody>
     </table>
