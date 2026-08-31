@@ -4,6 +4,7 @@
  */
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
+import type { Job } from '../../types/api';
 
 // Job type imported from shared types
 interface Props { job: Job; onClose: () => void; onSave?: (data: Job) => void; }
@@ -13,7 +14,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     pekerjaan: job.pekerjaan || '', status: job.status || 'OPEN',
     kategori: job.kategori || '', kuota: job.kuota || '',
     gender: job.gender || '', lokasi: job.lokasi || '',
-    syarat: job.syarat || '', keterangan: job.keterangan || '',
+    syRat: job.syRat || '', keterangan: job.keterangan || '',
   });
   const [loading, setLoading] = useState(false);
   /** Update single field in edit form */
@@ -27,7 +28,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
         body: JSON.stringify({ action: 'editLokerFull', args: [job.code, form] }),
       });
       const data = await res.json();
-      if (data.success) { onSave?.(form); onClose(); }
+      if (data.success) { onSave?.(form as any); onClose(); }
       else { console.error(data.error); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -52,7 +53,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
             <div><label class="block text-xs font-bold text-slate-400 mb-1">Kategori</label><input value={form.kategori} onInput={e => upd('kategori', (e.target as HTMLInputElement).value)} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none" placeholder="🏭 MANUFAKTUR" /></div>
           </div>
           <div><label class="block text-xs font-bold text-slate-400 mb-1">{t('admin.form_location_short')}</label><input value={form.lokasi} onInput={e => upd('lokasi', (e.target as HTMLInputElement).value)} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none" placeholder="Tokyo, Jepang" /></div>
-          <div><label class="block text-xs font-bold text-slate-400 mb-1">{t('admin.form_req_short')}</label><textarea value={form.syarat} onInput={e => upd('syarat', (e.target as HTMLTextAreaElement).value)} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none resize-none h-16" placeholder="Usia 18-30, Minimal SMA..." /></div>
+          <div><label class="block text-xs font-bold text-slate-400 mb-1">{t('admin.form_req_short')}</label><textarea value={form.syRat} onInput={e => upd('syRat', (e.target as HTMLTextAreaElement).value)} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none resize-none h-16" placeholder="Usia 18-30, Minimal SMA..." /></div>
           <div><label class="block text-xs font-bold text-slate-400 mb-1">{t('admin.form_note_short')}</label><textarea value={form.keterangan} onInput={e => upd('keterangan', (e.target as HTMLTextAreaElement).value)} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none resize-none h-16" placeholder="Keterangan publik..." /></div>
           <button onClick={handleSave} disabled={loading} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 transition">
             {loading ? 'Menyimpan...' : t('ui.save_publish')}

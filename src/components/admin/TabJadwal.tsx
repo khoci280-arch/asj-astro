@@ -6,7 +6,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
 
-// Jadwal type imported from shared types
+import type { Jadwal } from '../../types/api';
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);

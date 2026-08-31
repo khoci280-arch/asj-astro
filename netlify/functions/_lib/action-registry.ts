@@ -127,6 +127,14 @@ const ACTION_HANDLERS = {
   downloadJobDocs: download.handleDownloadJobDocs,
   submitDataAsj: aiCv.handleSubmitDataAsj,
   simpanDataTtdNaitei: aiCv.handleSimpanDataTtdNaitei,
+  // ─── Alias nama yang dipakai frontend Astro ───────────────────────────────
+  // Kedua action ini dipanggil dari src/ tapi TIDAK ada di tabel ini, jadi
+  // dispatcher mengembalikan "not implemented" dan fitur gagal diam-diam:
+  //   - ApplyFullForm.tsx mengirim 'submitFormPelamar' (bukan 'submitApply').
+  //   - CandidateDash.tsx mengirim 'saveSignature' (tanda tangan kandidat).
+  // Jangan hapus baris ini — test kontrak action-registry.test.ts mengeceknya.
+  submitFormPelamar: upload.handleSubmitApply,
+  saveSignature: aiCv.handleSaveSignature,
 };
 
 // Grup rate limit (REVIEW.md M3) — dipakai handlers.js (rateLimitChecks &

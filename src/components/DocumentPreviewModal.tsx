@@ -1,6 +1,11 @@
 /**
  * DocumentPreviewModal.tsx - Universal document preview modal
  * Migrated from legacy/js/03_candidate.ts bukaPreviewDokumen()
+ * Enhanced with legacy/js/init/preview.ts patterns:
+ * - Excel/CSV client-side rendering via SheetJS (lazy loaded)
+ * - Google Docs Viewer for PDFs (better mobile compatibility)
+ * - Cloudinary URL detection for images
+ * - 8-second timeout fallback for failed loads
  * Handles: images, PDFs, Excel/CSV, PPTX, Office docs, fallback
  * previewOnly: hides download button (for candidates; admin can still download)
  */
@@ -13,8 +18,42 @@ interface Props {
   previewOnly?: boolean;
 }
 
+// Lazy-loaded SheetJS vendor for Excel/CSV rendering
+let xlsxVendorLoaded = false;
+let xlsxVendorPromise: Promise<void> | null = null;
+
+async function loadXlsxVendor(): Promise<boolean> {
+  if (typeof (window as any).XLSX !== 'undefined') return true;
+  if (xlsxVendorLoaded) return typeof (window as any).XLSX !== 'undefined';
+  
+  if (!xlsxVendorPromise) {
+    xlsxVendorPromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+      script.onload = () => {
+        xlsxVendorLoaded = true;
+        resolve();
+      };
+      script.onerror = () => {
+        xlsxVendorPromise = null;
+        resolve();
+      };
+      document.head.appendChild(script);
+    });
+  }
+  await xlsxVendorPromise;
+  return typeof (window as any).XLSX !== 'undefined';
+}
+
+// Check if URL is an image (including Cloudinary URLs)
 function isImage(url: string): boolean {
-  return /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(url);
+  const lower = url.toLowerCase();
+  return (
+    /\.(jpeg|jpg|gif|png|webp|bmp|svg)([?#].*)?$/i.test(lower) ||
+    lower.includes('pas_photo') ||
+    /image\/upload\//i.test(url) ||
+    url.includes('res.cloudinary.com')
+  );
 }
 
 function isPdf(url: string): boolean {
@@ -25,21 +64,71 @@ function isExcel(url: string): boolean {
   return /\.(csv|xls|xlsx|xlsm)(\?.*)?$/i.test(url);
 }
 
-function isPptx(url: string): boolean {
-  return /\.pptx(\?.*)?$/i.test(url);
-}
-
 function isOffice(url: string): boolean {
   return /\.(doc|docx|ppt|pptx|odt|ods|odp)(\?.*)?$/i.test(url);
 }
 
+// Google Docs Viewer for PDFs (better mobile compatibility than native iframe)
+function getPdfViewerUrl(url: string): string {
+  return 'https://docs.google.com/gview?url=' + encodeURIComponent(url) + '&embedded=true';
+}
+
+// MS Office Viewer for Office docs
 function getOfficeViewerUrl(url: string): string {
   return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
+}
+
+// Client-side Excel/CSV rendering via SheetJS
+async function renderExcelToHtml(url: string): Promise<string | null> {
+  try {
+    const loaded = await loadXlsxVendor();
+    if (!loaded) return null;
+    
+    const XLSX = (window as any).XLSX;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    if (!wb || !wb.SheetNames || !wb.SheetNames.length) return null;
+    
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet) return null;
+    
+    const html = XLSX.utils.sheet_to_html(sheet);
+    const nama = decodeURIComponent(url.split('/').pop() || 'spreadsheet');
+    
+    return `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${nama}</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 16px; font-size: 13px; }
+          table { border-collapse: collapse; background: #fff; color: #0f172a; min-width: 60%; }
+          td, th { border: 1px solid #cbd5e1; padding: 6px 10px; white-space: nowrap; }
+          th { background: #e2e8f0; position: sticky; top: 0; font-weight: 700; }
+          tr:nth-child(even) td { background: #f8fafc; }
+          td[data-t] { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div style="margin-bottom:10px;color:#94a3b8;font-size:12px">📊 ${nama}</div>
+        ${html}
+      </body>
+      </html>
+    `;
+  } catch (e) {
+    console.error('[Preview] Excel render failed:', e);
+    return null;
+  }
 }
 
 export default function DocumentPreviewModal({ url, title, onClose, previewOnly }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [excelHtml, setExcelHtml] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -47,6 +136,34 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
+
+  // 8-second timeout fallback (from legacy preview.ts)
+  useEffect(() => {
+    if (!loading) return;
+    const timeout = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError(true);
+      }
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
+  // Excel/CSV client-side rendering (from legacy preview.ts)
+  useEffect(() => {
+    if (isExcel(url)) {
+      setLoading(true);
+      renderExcelToHtml(url).then((html) => {
+        if (html) {
+          setExcelHtml(html);
+          setLoading(false);
+        } else {
+          // Fallback to iframe if client-side render fails
+          setError(false);
+        }
+      });
+    }
+  }, [url]);
 
   const handleLoad = () => setLoading(false);
   const handleError = () => { setLoading(false); setError(true); };
@@ -67,10 +184,25 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     }
 
     if (isPdf(url)) {
+      // Use Google Docs Viewer for better mobile compatibility (from legacy preview.ts)
       return (
         <iframe
           ref={iframeRef}
-          src={url}
+          src={getPdfViewerUrl(url)}
+          class="w-full h-full border-0 rounded-lg"
+          onLoad={handleLoad}
+          onError={handleError}
+          title={title}
+        />
+      );
+    }
+
+    if (isExcel(url) && excelHtml) {
+      // Client-side rendered Excel (from legacy preview.ts)
+      return (
+        <iframe
+          ref={iframeRef}
+          srcDoc={excelHtml}
           class="w-full h-full border-0 rounded-lg"
           onLoad={handleLoad}
           onError={handleError}
@@ -80,6 +212,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     }
 
     if (isExcel(url)) {
+      // Fallback to iframe if client-side render failed
       return (
         <iframe
           ref={iframeRef}
@@ -105,29 +238,15 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
       );
     }
 
-    if (isPptx(url)) {
-      return (
-        <div class="flex items-center justify-center h-full">
-          <div class="text-center space-y-4">
-            <i class="fas fa-file-powerpoint text-5xl text-orange-400"></i>
-            <p class="text-sm text-slate-300">Preview PPTX tidak tersedia di browser</p>
-            {!previewOnly && (
-              <a href={url} target="_blank" rel="noopener"
-                 class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-                <i class="fas fa-download mr-2"></i>Unduh File
-              </a>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // Fallback: unsupported file type
+    // Fallback: unsupported file type (from legacy preview.ts)
+    const ext = url.match(/\.([a-z0-9]+)([?#].*)?$/i)?.[1] || '';
     return (
       <div class="flex items-center justify-center h-full">
         <div class="text-center space-y-4">
           <i class="fas fa-file text-5xl text-slate-400"></i>
-          <p class="text-sm text-slate-300 font-bold">Tidak bisa dipratinjau</p>
+          <p class="text-sm text-slate-300 font-bold">
+            Tidak bisa dipratinjau {ext && <span class="opacity-60">(.{ext})</span>}
+          </p>
           <p class="text-xs text-slate-500">Tipe file ini tidak bisa ditampilkan di preview browser</p>
           {!previewOnly ? (
             <a href={url} target="_blank" rel="noopener"

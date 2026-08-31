@@ -122,7 +122,7 @@ export default function TabKelola() {
       )}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} loker</p>
 
-      {editJob && <AdminJobEditModal job={editJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
+      {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
     </div>
   );

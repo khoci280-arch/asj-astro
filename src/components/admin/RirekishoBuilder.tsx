@@ -26,11 +26,11 @@ body *{visibility:hidden!important}
 .cv-excel tr{page-break-inside:avoid}}
 `;
 const keyOf = {
-  pendidikan: (e) => String((e.tingkat||"")+(e.sekolah||e.sekolah_id||e.nama_sekolah||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
-  pekerjaan: (e) => String((e.perusahaan||e.perusahaan_id||e.nama_perusahaan||"")+(e.jabatan||e.jabatan_id||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
-  keluarga: (e) => String(e.nama||"").toLowerCase().replace(/[^a-z0-9]/g,""),
+  pendidikan: (e: Record<string, string>) => String((e.tingkat||"")+(e.sekolah||e.sekolah_id||e.nama_sekolah||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
+  pekerjaan: (e: Record<string, string>) => String((e.perusahaan||e.perusahaan_id||e.nama_perusahaan||"")+(e.jabatan||e.jabatan_id||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
+  keluarga: (e: Record<string, string>) => String(e.nama||"").toLowerCase().replace(/[^a-z0-9]/g,""),
 };
-function buildEduRows(eduList, v) {
+function buildEduRows(eduList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
   for (let i = 1; i <= 5; i++) {
     const p = {...(eduList[i-1]||{})};
@@ -52,7 +52,7 @@ function buildEduRows(eduList, v) {
   }
   return html;
 }
-function buildJobRows(jobList, v) {
+function buildJobRows(jobList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
   for (let i = 1; i <= 3; i++) {
     const p = {...(jobList[i-1]||{})};
@@ -76,7 +76,7 @@ function buildJobRows(jobList, v) {
   return html;
 }
 
-function buildFamRows(famList, v) {
+function buildFamRows(famList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
   for (let i = 1; i <= 6; i++) {
     const p = {...(famList[i-1]||{})};
@@ -95,7 +95,7 @@ function buildFamRows(famList, v) {
   }
   return html;
 }
-function buildCvIdentitas(v) {
+function buildCvIdentitas(v: (...keys: string[]) => string) {
   const gen = String(v("GENDER","JENISKELAMIN","identitas.gender")).toUpperCase();
   const gStr = (gen.includes("PEREMPUAN")||gen.includes("WANITA")||gen.includes("CEWEK")||gen.includes("女")||gen==="W")?"PEREMPUAN (女)":gen==="-"?"":"LAKI LAKI (男)";
   const nik = String(v("STATUSPERNIKAHAN","STATUSNIKAH","PASANGAN","identitas.status_nikah","identitas.status_nikah_id")).toUpperCase();
@@ -111,16 +111,16 @@ function buildCvIdentitas(v) {
   if(nr!=="-"){const m=String(nr).match(/(d{3,})$/);nr=m?"P - "+m[1]:nr;}else{nr="";}
   return {gStr,nStr,jStr,pStr,tStr,gd,nr};
 }
-function buildKertasA4(p) {
+function buildKertasA4(p: Record<string, any>) {
   const {v,foto,btn,tgl,wa,gS,nS,jS,pS,tS,gd,nr,edu,job,fam} = p;
-  const E = (s) => esc(s);
-  const tr = (cells) => "<tr>" + cells.map(c => c).join("") + "</tr>";
-  const td = (txt, cls, span) => {let h="<td";if(cls)h+=" class=\""+cls+"\"";if(span)h+=" colspan=\""+span+"\"";return h+">"+txt+"</td>";};
-  const amber = (txt, span) => td(txt,"bg-amber val-center",span);
-  const center = (txt, span) => td(txt,"val-center",span);
-  const left = (txt, span) => td(txt,"val-left",span);
-  const r = (txt) => td(txt,"val-right pr-1");
-  const rs11 = (txt) => "<td colspan=\"3\" rowspan=\"11\" style=\"padding:0;vertical-align:top;\">"+txt+"</td>";
+  const E = (s: string) => esc(s);
+  const tr = (cells: string[]) => "<tr>" + cells.map(c => c).join("") + "</tr>";
+  const td = (txt: string, cls?: string, span?: number|string) => {let h="<td";if(cls)h+=" class=\""+cls+"\"";if(span)h+=" colspan=\""+span+"\"";return h+">"+txt+"</td>";};
+  const amber = (txt: string, span?: number|string) => td(txt,"bg-amber val-center",span);
+  const center = (txt: string, span?: number|string) => td(txt,"val-center",span);
+  const left = (txt: string, span?: number|string) => td(txt,"val-left",span);
+  const r = (txt: string) => td(txt,"val-right pr-1");
+  const rs11 = (txt: string) => "<td colspan=\"3\" rowspan=\"11\" style=\"padding:0;vertical-align:top;\">"+txt+"</td>";
   let h = "<style>"+CSS+"</style>";
   h+="<div style=\"text-align:center;font-weight:bold;font-size:22px;letter-spacing:2px;\">実習生経歴書</div>";
   h+="<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">DAFTAR RIWAYAT HIDUP</div>";
@@ -192,15 +192,15 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose}:Props) {
     async function load() {
       setLoading(true); setError("");
       try {
-        const d = await apiClient.call("getDrafCvMaster",[waTarget]);
+        const d = await apiClient.call<Record<string, any>>("getDrafCvMaster",[waTarget]);
         if(cancelled) return;
         if(!d||d.error) { setError(d?.error||t("ui.toast_master_incomplete")); return; }
         let ai={}; try{if(d.AIDATAJSON&&d.AIDATAJSON!=="-")ai=JSON.parse(d.AIDATAJSON);}catch{}
         const v = makeV(d,ai);
-        const getArr = (key) => mergeArrRiwayat(getPath(d,key),getPath(ai,key),keyOf[key]);
+        const getArr = (key: string) => mergeArrRiwayat(getPath(d,key),getPath(ai,key),(keyOf as any)[key]);
         const edu=getArr("pendidikan"),job=getArr("pekerjaan"),fam=getArr("keluarga");
         let tglAsli=v("TGLLAHIR","TANGGALLAHIR","identitas.tgl_lahir");let tglFmt="-";
-        if(tglAsli!=="-"){const dt=new Date(tglAsli);if(!isNaN(dt.getTime()))tglFmt=dt.getFullYear()+"年"+String(dt.getMonth()+1).padStart(2,"0")+"月"+String(dt.getDate()).padStart(2,0)+"日";else tglFmt=tglAsli;}
+        if(tglAsli!=="-"){const dt=new Date(tglAsli);if(!isNaN(dt.getTime()))tglFmt=dt.getFullYear()+"年"+String(dt.getMonth()+1).padStart(2,"0")+"月"+String(dt.getDate()).padStart(2,"0")+"日";else tglFmt=tglAsli;}
         const photo = d.uploads?.photo||"";
         const foto = photo ? "<img src=\""+photo+"\" style=\"width:100%;height:100%;min-height:195px;object-fit:cover;object-position:top center;display:block;\">" : "<div style=\"width:100%;min-height:195px;display:flex;align-items:center;justify-content:center;font-size:10px;color:gray;\">FOTO</div>";
         const btn = isAdmin ? "<div class=\"flex flex-wrap items-center gap-2 mb-3 print:hidden z-50 relative\"><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-all hover:scale-105 border border-emerald-500\"><i class=\"fas fa-print mr-2\"></i> Cetak Rirekisho</button><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-all hover:scale-105 border border-sky-500\"><i class=\"fas fa-file-pdf mr-2\"></i> Simpan PDF</button></div>" : "<div class=\"text-center mb-3 print:hidden z-50 relative\"><span class=\"inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/80 text-slate-300 text-[10px] font-bold rounded-full border border-slate-500/50\"><i class=\"fas fa-eye mr-1\"></i> MODE PREVIEW — Hanya bisa dicetak oleh Admin</span></div>";

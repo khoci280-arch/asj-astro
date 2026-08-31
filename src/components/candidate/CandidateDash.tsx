@@ -14,6 +14,7 @@ import WAPintarModal from '../WAPintarModal';
 import ESignatureModal from '../ESignatureModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadToCloudinary } from "../../lib/cloudinary";
+import { showToast } from "../Toast";
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -310,7 +311,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-robot mr-1.5"></i> AI CV Master Assistant</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
               
-                            <button onClick={() => { setDocPreviewUrl(user?.cvUrl || ''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> {t('candidate.btn_preview_cv')}</button>
+                            <button onClick={() => { setDocPreviewUrl(''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> {t('candidate.btn_preview_cv')}</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-key mr-1.5"></i> {t('ui.change_password')}</button>
             </div>
           </div>

@@ -1,44 +1,58 @@
 // ==========================================
 // TESTS: action-registry — kontrak action backend.
-// Registry (action-registry.js) adalah SATU-SATUNYA sumber kebenaran nama
+// Registry (action-registry.ts) adalah SATU-SATUNYA sumber kebenaran nama
 // action. Test ini menjaga:
 //   1. setiap handler terdaftar benar-benar fungsi;
 //   2. grup rate limit hanya berisi action yang terdaftar;
-//   3. SETIAP action yang dipanggil frontend (callAPI('x', ...)) ada di
-//      registry — typo nama action gagal di sini, bukan di runtime produksi.
-//   4. [REGRESSION 2026-08-22] Backend requireAdmin actions ada di frontend ADMIN_ACTIONS.
+//   3. SETIAP action yang dipanggil frontend (src/) ADA di registry —
+//      typo nama action gagal di sini, bukan di runtime produksi.
+//
+// MIGRASI 2026-08-31: test ini sebelumnya memindai direktori `js/` dan file
+// `api-client.ts` di root (layout pra-Astro) sehingga SELALU gagal ENOENT dan
+// tidak pernah berjalan. Sekarang memindai `src/` sesuai arsitektur baru.
+//
+// Pengecekan ADMIN_ACTIONS / NETLIFY_FUNCTIONS dihapus: keduanya sudah tidak
+// ada di src/lib/apiClient.ts. Dulu diperlukan karena tiap action dipetakan ke
+// function Netlify terpisah; sekarang SEMUA action lewat satu dispatcher
+// (/.netlify/functions/bridge-links) dan sessionToken dikirim untuk setiap
+// action secara default (requireAuth: true), jadi regresi yang dijaga test itu
+// tidak mungkin terjadi lagi.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './action-registry';
 
 const ROOT = process.cwd();
-const CALL_RE = /callAPI\(\s*['"]([^'"]+)['"]/g;
+const SRC_DIR = join(ROOT, 'src');
 
-function walkJs(dir, out = []) {
+// Pola 1: lewat apiClient terpusat — apiClient.call("x") / api.get("x") / api.secure("x")
+const API_RE = /\b(?:apiClient|api)\s*(?:\.\s*(?:call|get|secure)\s*)?\(\s*["']([A-Za-z][A-Za-z0-9_]*)["']/g;
+// Pola 2: fetch mentah ke bridge-links — body: JSON.stringify({ action: "x", ... })
+const RAW_RE = /action\s*:\s*["']([A-Za-z][A-Za-z0-9_]*)["']/g;
+
+function walkSrc(dir: string, out: string[] = []): string[] {
   for (const f of readdirSync(dir)) {
     const abs = join(dir, f);
-    if (f.endsWith('.ts') && !f.includes('.test.')) out.push(abs);
-    else if (!f.includes('.')) walkJs(abs, out);
+    if (statSync(abs).isDirectory()) {
+      if (!/node_modules|dist|\.netlify-built/.test(abs)) walkSrc(abs, out);
+    } else if (/\.(ts|tsx|astro)$/.test(f) && !f.includes('.test.')) {
+      out.push(abs);
+    }
   }
   return out;
 }
 
-// Semua literal action yang dipanggil frontend via callAPI.
-function frontendActions() {
-  const files = [
-    ...walkJs(join(ROOT, 'js')),
-    join(ROOT, 'api-client.ts'),
-    join(ROOT, 'partials/modals-shared.html'),
-  ];
-  const found = new Set();
-  for (const f of files) {
-    if (!existsSync(f)) continue;
+/** Semua literal nama action yang dipanggil frontend, dari dua pola pemanggilan. */
+function frontendActions(): string[] {
+  const found = new Set<string>();
+  for (const f of walkSrc(SRC_DIR)) {
     const src = readFileSync(f, 'utf8');
-    CALL_RE.lastIndex = 0;
-    let m;
-    while ((m = CALL_RE.exec(src)) !== null) found.add(m[1]);
+    for (const re of [API_RE, RAW_RE]) {
+      re.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src)) !== null) found.add(m[1]);
+    }
   }
   return [...found].sort();
 }
@@ -71,127 +85,33 @@ describe('grup rate limit ⊆ registry', () => {
   }
 });
 
-// Kunci-kunci literal di peta NETLIFY_FUNCTIONS (api-client.js) — routing
-// action → nama function Netlify. Dari sumber karena peta ini PRIVATE.
-function netlifyFunctionRoutes() {
-  const src = readFileSync(join(ROOT, 'api-client.ts'), 'utf8');
-  const block = src.match(/const NETLIFY_FUNCTIONS = \{([\s\S]*?)\n\};/);
-  if (!block) return [];
-  const keys = [];
-  const re = /^\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*:/gm;
-  let m;
-  while ((m = re.exec(block[1])) !== null) keys.push(m[1]);
-  return keys;
-}
-
 describe('kontrak frontend → registry', () => {
   const front = frontendActions();
+
   it('menemukan action yang dipanggil frontend (sanity)', () => {
-    expect(front.length).toBeGreaterThan(30);
+    expect(front.length).toBeGreaterThan(15);
   });
 
-  it('setiap callAPI frontend ADA di registry backend', () => {
-    // @ts-expect-error JS→TS migration
+  it('setiap action yang dipanggil frontend ADA di registry backend', () => {
     const missing = front.filter((a) => !(a in ACTION_HANDLERS));
     expect(
       missing,
-      'action dipanggil frontend tapi tidak terdaftar: ' + missing.join(', '),
-    ).toEqual([]);
-  });
-
-  it('setiap callAPI frontend ADA di peta routing NETLIFY_FUNCTIONS', () => {
-    const routes = new Set(netlifyFunctionRoutes());
-    const missing = front.filter((a) => !routes.has(a));
-    expect(
-      missing,
-      'action dipanggil frontend tapi tidak punya route NETLIFY_FUNCTIONS: ' + missing.join(', '),
+      'action dipanggil frontend tapi tidak terdaftar — fitur akan gagal diam-diam ' +
+        '(dispatcher mengembalikan "not implemented"): ' +
+        missing.join(', '),
     ).toEqual([]);
   });
 });
 
-// ─── REGRESSION: getMonthlyReport bug (2026-08-22) ──────────────────────
-// Backend action yang pakai requireAdmin / requireRole(session, 'admin')
-// WAJIB ada di ADMIN_ACTIONS (frontend) supaya session token dikirim.
-// Kalau tidak, callAPI tanpa sessionToken → backend reject "Sesi tidak valid".
-
-/** Parse ADMIN_ACTIONS from api-client.ts source (file-based, no TS import). */
-function parseAdminActionsFromClient(): Set<string> {
-  const src = readFileSync(join(ROOT, 'api-client.ts'), 'utf8');
-  const block = src.match(/const ADMIN_ACTIONS = new Set\(\[([\s\S]*?)\]\);/);
-  if (!block) return new Set();
-  const names = new Set<string>();
-  const re = /'([A-Za-z]+)'/g;
-  let m;
-  while ((m = re.exec(block[1])) !== null) names.add(m[1]);
-  return names;
-}
-
-/**
- * Scan backend actions-*.ts for handler functions that use requireAdmin.
- * Simple approach: find "export async function handle..." lines,
- * then check if the next 80 lines contain requireAdmin/requireRole.
- */
-function backendAdminActions(): string[] {
-  const actionsDir = join(ROOT, 'netlify', 'functions', '_lib');
-  const adminGuarded = new Set<string>();
-  const files = readdirSync(actionsDir).filter(
-    (f) => f.startsWith('actions-') && f.endsWith('.ts') && !f.includes('.test.'),
-  );
-  for (const f of files) {
-    const src = readFileSync(join(actionsDir, f), 'utf8');
-    // Find all handler function declarations
-    const handlerRe = /(?:export\s+)?(?:async\s+)?function\s+(handle\w+)/g;
-    let m;
-    while ((m = handlerRe.exec(src)) !== null) {
-      const handlerName = m[1];
-      // Extract function body: from opening { to closing } at depth 0
-      const afterFn = src.slice(m.index + m[0].length);
-      const openIdx = afterFn.indexOf('{');
-      if (openIdx < 0) continue;
-      let depth = 0;
-      let bodyEnd = -1;
-      for (let i = openIdx; i < afterFn.length && i < openIdx + 5000; i++) {
-        if (afterFn[i] === '{') depth++;
-        if (afterFn[i] === '}') depth--;
-        if (depth === 0) {
-          bodyEnd = i;
-          break;
-        }
-      }
-      const body = bodyEnd > 0 ? afterFn.slice(0, bodyEnd) : afterFn.slice(0, 3000);
-      if (body.includes('requireAdmin') || body.includes("requireRole(sessionToken, 'admin')")) {
-        const actionName = handlerName.startsWith('handle')
-          ? handlerName.slice(6, 7).toLowerCase() + handlerName.slice(7)
-          : handlerName;
-        adminGuarded.add(actionName);
-      }
-    }
-  }
-  return [...adminGuarded];
-}
-
-describe('ADMIN_ACTIONS ⊇ backend admin-gated actions', () => {
-  it('every backend requireAdmin action is in frontend ADMIN_ACTIONS', () => {
-    const frontendAdmin = parseAdminActionsFromClient();
-    expect(frontendAdmin.size).toBeGreaterThan(30); // sanity
-    const backendAdmin = backendAdminActions();
-    expect(backendAdmin.length).toBeGreaterThan(5); // sanity — there are many admin actions
-    const missing = backendAdmin.filter((a) => !frontendAdmin.has(a));
-    expect(
-      missing,
-      'Backend action requires admin session but frontend ADMIN_ACTIONS is missing: ' +
-        missing.join(', ') +
-        '. Without these, callAPI will NOT send sessionToken → backend rejects "Sesi tidak valid".',
-    ).toEqual([]);
+// ─── REGRESI: action frontend yang pernah hilang dari registry ─────────────
+// Kedua action ini dipanggil dari src/ tetapi tidak terdaftar, sehingga
+// dispatcher menolaknya. Test ini mengunci perbaikannya.
+describe('regresi — action yang pernah tidak terdaftar', () => {
+  it('submitFormPelamar (ApplyFullForm) terdaftar', () => {
+    expect(typeof ACTION_HANDLERS.submitFormPelamar).toBe('function');
   });
 
-  it('ADMIN_ACTIONS only contains actions that exist in ACTION_HANDLERS', () => {
-    const frontendAdmin = parseAdminActionsFromClient();
-    for (const a of frontendAdmin) {
-      expect(
-        ACTION_HANDLERS[a],
-        `'${a}' is in ADMIN_ACTIONS but not in ACTION_HANDLERS — typo or removed handler?`,
-      ).toBeDefined();
-    }
+  it('saveSignature (CandidateDash) terdaftar', () => {
+    expect(typeof ACTION_HANDLERS.saveSignature).toBe('function');
   });
 });

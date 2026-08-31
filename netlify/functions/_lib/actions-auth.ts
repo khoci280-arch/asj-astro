@@ -122,7 +122,7 @@ async function handleLoginKandidat(payload) {
   if (!isValidWaFormat(wa)) {
     return {
       success: false,
-      error: 'Nomor WA tidak valid. Gunakan format 08xx atau 628xx (12-13 digit).',
+      error: 'Nomor WA tidak valid. Gunakan format 08xx, 628xx, atau +81xx (10-15 digit).',
     };
   }
   if (!hasBackend()) {
@@ -202,7 +202,7 @@ async function handleDaftarKandidat(payload) {
       error:
         'Nomor WA tidak valid (' +
         wa +
-        '). Gunakan format 08xx atau 628xx (12-13 digit). Periksa nomor kembali.',
+        '). Gunakan format 08xx, 628xx, atau +81xx (10-15 digit). Periksa nomor kembali.',
     };
   }
   if (!hasBackend()) {

@@ -140,7 +140,7 @@ export default function SiswaBaruForm() {
     formData.append('biodata', JSON.stringify(biodata));
     Object.entries(docs).forEach(([k, f]) => { if (f) formData.append(k, f); });
     try {
-      const token = authStore.get().token;
+      const token = authStore.get().sessionToken;
       const res = await fetch('/.netlify/functions/ai-form-submit', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },

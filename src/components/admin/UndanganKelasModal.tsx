@@ -57,7 +57,7 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
     setSending(true);
     try {
       const res = await apiClient.call("kirimTawaranMassal", [{ candidates: list, jobCode: "", linkGrup, interval, customMessage: pesan }]);
-      const ok = ((res && res.results) || []).filter((r: { success: boolean }) => r.success).length;
+      const ok = (Array.isArray(res?.results) ? res.results : []).filter((r: { success: boolean }) => r.success).length;
       try { localStorage.setItem("asj_link_grup_kelas", linkGrup); } catch {}
       showToast(t("ui.toast_invites_done_n").replace("{n}", String(ok)), "success");
       onClose();

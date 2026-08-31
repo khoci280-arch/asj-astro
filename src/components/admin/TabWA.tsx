@@ -6,7 +6,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
 
-// WaTemplate type imported from shared types
+import type { WaTemplate } from '../../types/api';
 
 export default function TabWA() {
   const [templates, setTemplates] = useState<WaTemplate[]>([]);

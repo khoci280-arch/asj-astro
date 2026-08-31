@@ -153,7 +153,7 @@ export default function ApplyFullForm() {
         }
       }
       // 2) Send URLs to backend
-      const token = authStore.get().token;
+      const token = authStore.get().sessionToken;
       const payload = { ...form, fileUrls };
       const res = await fetch('/.netlify/functions/bridge-links', {
         method: 'POST',

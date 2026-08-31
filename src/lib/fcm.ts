@@ -14,6 +14,13 @@ const FCM_CONFIG = {
 
 let messaging: unknown = null;
 
+/** Firebase app instance (loaded from CDN) */
+interface FirebaseCompat {
+  apps: unknown[];
+  initializeApp: (config: Record<string, string>) => void;
+  messaging: () => unknown;
+}
+
 /**
  * Initialize Firebase App & Messaging.
  * Called asynchronously when PWA loads.
@@ -25,19 +32,20 @@ export async function initFCM(): Promise<void> {
   }
 
   try {
-    const w = window as Record<string, unknown>;
+    const w = window as unknown as Record<string, unknown>;
     if (!w.firebase) {
-      await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
-      await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
+      // Firebase CDN imports — these set window.firebase as a side effect
+      await (globalThis as any).__firebase_import_app || ((globalThis as any).__firebase_import_app = await import(/* @vite-ignore */ 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js'));
+      await (globalThis as any).__firebase_import_msg || ((globalThis as any).__firebase_import_msg = await import(/* @vite-ignore */ 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js'));
     }
 
-    const fb = w.firebase as Record<string, unknown>;
-    const apps = (fb.apps as unknown[]) || [];
+    const fb = w.firebase as FirebaseCompat;
+    const apps = fb.apps || [];
     if (!apps.length) {
       fb.initializeApp(FCM_CONFIG);
     }
 
-    messaging = (fb.messaging as () => unknown)();
+    messaging = fb.messaging();
 
     // Capture notifications when app is in foreground
     const m = messaging as Record<string, unknown>;
@@ -47,8 +55,8 @@ export async function initFCM(): Promise<void> {
       const notif = (payload.notification || {}) as Record<string, string>;
       const title = data.title || notif.title || 'Notifikasi Baru';
       const body = data.body || notif.body || '';
-      if (typeof window !== 'undefined' && typeof (window as Record<string, unknown>).showToast === 'function') {
-        ((window as Record<string, unknown>).showToast as (msg: string, type: string) => void)(`${title}: ${body}`, 'info');
+      if (typeof window !== 'undefined' && typeof (window as unknown as Record<string, unknown>).showToast === 'function') {
+        ((window as unknown as Record<string, unknown>).showToast as (msg: string, type: string) => void)(`${title}: ${body}`, 'info');
       }
     });
 
@@ -79,20 +87,21 @@ export async function requestNotificationPermission(userId: string): Promise<voi
       reg = navigator.serviceWorker.getRegistration();
     }
 
-    if (!reg) {
+    const registration = await reg;
+    if (!registration) {
       console.warn('[FCM] Service Worker not registered — skipping token.');
       return;
     }
 
     const m = messaging as Record<string, unknown>;
     const getToken = m.getToken as (opts: { serviceWorkerRegistration: ServiceWorkerRegistration }) => Promise<string>;
-    const token = await getToken({ serviceWorkerRegistration: await reg });
+    const token = await getToken({ serviceWorkerRegistration: registration });
 
     if (token) {
       console.log('[FCM] Token obtained:', token);
       // Register token with backend via apiClient
-      const { callAPI } = await import('./apiClient');
-      await callAPI('registerFcmToken', [userId, token, navigator.userAgent]);
+      const { apiClient } = await import('./apiClient');
+      await apiClient('registerFcmToken', [userId, token, navigator.userAgent]);
       console.log('[FCM] Token registered with backend.');
     } else {
       console.warn('[FCM] Failed to get registration token.');

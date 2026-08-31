@@ -8,18 +8,47 @@ import { env } from './env';
 
 /** @typedef {{ role: string, wa?: string, name?: string, kind?: string }} SessionPayload */
 
+/** Memoized secret — computed once per process lifetime. */
+let _secret: string | null = null;
+
 /** @returns {string} */
 function secret() {
-  return (
+  if (_secret) return _secret;
+
+  const s =
     env('SESSION_SECRET') ||
     env('ADMIN_PASSWORD') ||
     env('ASJ_ADMIN_PASSWORD') ||
     env('ADMIN_MASTER_PIN') ||
     env('PIN_KHOCI') ||
-    // Fallback lokal — DI PRODUKSI pastikan SESSION_SECRET / ADMIN_* di-set
-    // supaya token tidak bisa dipalsukan dengan nilai yang ada di repo.
-    'asj-portal-local-secret'
+    '';
+
+  if (s) {
+    _secret = s;
+    return _secret;
+  }
+
+  // Production: throw — no forged tokens allowed.
+  const isProd =
+    process.env.NETLIFY === 'true' ||
+    process.env.CONTEXT === 'production' ||
+    process.env.NODE_ENV === 'production';
+
+  if (isProd) {
+    throw new Error(
+      'SESSION_SECRET (or ADMIN_PASSWORD / ADMIN_MASTER_PIN) is not set. ' +
+      'Token signing is impossible — refusing to start with a guessable secret.'
+    );
+  }
+
+  // Local dev fallback: use a random ephemeral secret for the process lifetime
+  // so tokens from a previous dev session don't carry over.
+  console.warn(
+    '[session] ⚠️  No SESSION_SECRET set — using random ephemeral secret. ' +
+    'Admin tokens will NOT survive a server restart. Set SESSION_SECRET in .env.local.'
   );
+  _secret = crypto.randomBytes(32).toString('hex');
+  return _secret;
 }
 
 /** @param {SessionPayload} payload @returns {string} */

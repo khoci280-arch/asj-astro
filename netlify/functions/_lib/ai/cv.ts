@@ -1,5 +1,5 @@
 import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
-import { requireRole } from '../actions-auth.ts';
+import { requireRole, isOwnerOrAdmin } from '../actions-auth.ts';
 import { buildMasterNested } from '../actions-master.ts';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../actions-mail.ts';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
@@ -215,8 +215,11 @@ async function handleSubmitDataAsj(payload, sessionToken) {
   if (!isAdmin && !isKandidat) {
     return { success: false, message: 'Sesi tidak valid. Silakan login ulang.' };
   }
+  // IDOR fix: kandidat hanya boleh submit data untuk dirinya sendiri.
+  if (isKandidat && !isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
   const submittedBy = isAdmin ? 'admin:' + (adminGuard.token?.name || 'unknown') : 'kandidat';
-  const guard = kandidatGuard;
   try {
     const aiData = {
       identitas: d.identitas || {},
@@ -477,22 +480,12 @@ async function handleSubmitDataAsj(payload, sessionToken) {
 }
 
 // ---------------------------------------------------------------------------
-// simpanDataTtdNaitei — simpan tanda tangan / esignature kandidat
+// simpanEsignature — tulis/perbarui baris tanda tangan kandidat.
+// Dipakai bersama oleh simpanDataTtdNaitei (bentuk objek) dan saveSignature
+// (bentuk array [wa, dataUrl] dari CandidateDash) supaya hanya ada satu jalur
+// penulisan ke tabel esignatures / fallback ai_form_submissions.
 // ---------------------------------------------------------------------------
-async function handleSimpanDataTtdNaitei(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
-  if (guard.error) return guard.error;
-  const d = payload || {};
-  const wa = normalizeWa(String(d.wa || ''));
-  if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
-  try {
-    const data = {
-      wa,
-      ttd1: d.ttd1 || '',
-      nama1: d.nama1 || '',
-      ttd2: d.ttd2 || '',
-      nama2: d.nama2 || '',
-    };
+async function simpanEsignature(wa, data) {
     try {
       const rows = await supabaseJson('GET', 'esignatures', {
         query: { select: '*', wa: 'eq.' + wa, limit: '10' },
@@ -529,6 +522,62 @@ async function handleSimpanDataTtdNaitei(payload, sessionToken) {
       });
     }
     return { success: true };
+}
+
+/**
+ * simpanDataTtdNaitei — simpan tanda tangan / esignature kandidat.
+ * Bentuk payload: objek { wa, ttd1, nama1, ttd2, nama2 }.
+ * Hanya kandidat yang bersangkutan (atau admin) yang boleh menulis.
+ */
+async function handleSimpanDataTtdNaitei(payload, sessionToken) {
+  const guard = requireRole(sessionToken, 'kandidat');
+  if (guard.error) return guard.error;
+  const d = payload || {};
+  const wa = normalizeWa(String(d.wa || ''));
+  if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
+  // Cegah IDOR: kandidat hanya boleh menandatangani atas nama dirinya sendiri.
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
+  try {
+    const data = {
+      wa,
+      ttd1: d.ttd1 || '',
+      nama1: d.nama1 || '',
+      ttd2: d.ttd2 || '',
+      nama2: d.nama2 || '',
+    };
+    return await simpanEsignature(wa, data);
+  } catch (e) {
+    return { success: false, error: 'Terjadi kesalahan saat menyimpan tanda tangan.' };
+  }
+}
+
+/**
+ * saveSignature — dipanggil CandidateDash saat kandidat menggambar tanda tangan.
+ * Bentuk payload: array [wa, dataUrl].
+ *
+ * Action ini sebelumnya TIDAK terdaftar di action-registry, jadi setiap
+ * penyimpanan tanda tangan gagal diam-diam ("action not implemented").
+ * Sekarang didelegasikan ke jalur penulisan yang sama dengan
+ * simpanDataTtdNaitei, lengkap dengan pengecekan kepemilikan.
+ */
+async function handleSaveSignature(payload, sessionToken) {
+  const guard = requireRole(sessionToken, 'kandidat');
+  if (guard.error) return guard.error;
+  const arr = Array.isArray(payload) ? payload : [];
+  const wa = normalizeWa(String(arr[0] || ''));
+  const dataUrl = String(arr[1] || '');
+  if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
+  if (!dataUrl.startsWith('data:image/')) {
+    return { success: false, error: 'Format tanda tangan tidak valid.' };
+  }
+  // Cegah IDOR — kandidat tidak boleh menimpa tanda tangan kandidat lain.
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
+  try {
+    return await simpanEsignature(wa, { wa, ttd1: dataUrl, nama1: '', ttd2: '', nama2: '' });
   } catch (e) {
     return { success: false, error: 'Terjadi kesalahan saat menyimpan tanda tangan.' };
   }
@@ -544,4 +593,6 @@ export {
   handleBuildAdminAiCandidateSummary,
   handleSubmitDataAsj,
   handleSimpanDataTtdNaitei,
+  handleSaveSignature,
+  simpanEsignature,
 };

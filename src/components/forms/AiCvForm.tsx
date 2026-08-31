@@ -10,7 +10,7 @@ import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 
-// ChatMessage type imported from shared types
+import type { ChatMessage } from '../../types/api';
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -60,6 +60,16 @@ const SUGGESTIONS = [
   'Isi pengalaman kerja',
   'Lengkapi data wawancara',
 ];
+
+
+/** Strip dangerous HTML tags — prevents XSS from AI output. */
+function sanitizeAiHtml(text: string): string {
+  return text
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/<[^>]*>/g, '');
+}
 
 const JEKLIN_IMG = 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
 
@@ -145,7 +155,7 @@ export default function AiCvForm() {
   const saveToDatabase = async () => {
     if (cv.hp) { var vw = validate(waSchema, cv.hp); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
     try {
-      const token = authStore.get().token;
+      const token = authStore.get().sessionToken;
       const fd = new FormData();
       fd.append('cvData', JSON.stringify(cv));
       Object.entries(docs).forEach(([k, f]) => { if (f) fd.append(k, f); });

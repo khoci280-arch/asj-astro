@@ -21,10 +21,10 @@ const CACHEABLE_READS = new Set([
   'getAgendaAdmin', 'getApplicantDetail',
 ]);
 
-function getCacheKey(action, args) {
+function getCacheKey(action: string, args: unknown[]): string {
   return 'asj_cache_' + action + ':' + JSON.stringify(args || []);
 }
-function getCached(action, args) {
+function getCached(action: string, args: unknown[]): unknown | null {
   try {
     const hitStr = sessionStorage.getItem(getCacheKey(action, args));
     if (hitStr) {
@@ -35,12 +35,12 @@ function getCached(action, args) {
   } catch {}
   return null;
 }
-function setCache(action, args, value) {
+function setCache(action: string, args: unknown[], value: unknown): void {
   try {
     sessionStorage.setItem(getCacheKey(action, args), JSON.stringify({ at: Date.now(), value }));
   } catch {}
 }
-function invalidateCache() {
+function invalidateCache(): void {
   try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i);
@@ -150,10 +150,11 @@ export async function apiClient<T = ApiResponse>(
     return data as T;
   } catch (err: unknown) {
     // Network error
-    if (err.message === 'No valid session' || err.message === 'Session expired') {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'No valid session' || message === 'Session expired') {
       throw err;
     }
-    showToast('Network error: ' + (err.message || 'Unknown'), 'error');
+    showToast('Network error: ' + (message || 'Unknown'), 'error');
     throw err;
   }
 }
@@ -166,12 +167,12 @@ export const api = {
   call: apiClient,
 
   /** Get with optional auth (for public data) */
-  get(action: string, args: any[] = []) {
+  get(action: string, args: unknown[] = []) {
     return apiClient(action, args, { requireAuth: false });
   },
 
   /** Require auth for protected actions */
-  secure(action: string, args: any[] = []) {
+  secure(action: string, args: unknown[] = []) {
     return apiClient(action, args, { requireAuth: true });
   },
 };

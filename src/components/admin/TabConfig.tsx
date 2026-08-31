@@ -6,7 +6,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
 import { t } from '../../store/i18n';
 
-// ConfigGroup type imported from shared types
+import type { ConfigGroup } from '../../types/api';
 
 export default function TabConfig() {
   const [configs, setConfigs] = useState<ConfigGroup[]>([

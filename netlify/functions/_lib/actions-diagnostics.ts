@@ -16,7 +16,7 @@ import {
   toText,
 } from './db/client';
 
-async function handleGetAppConfig(sessionToken) {
+async function handleGetAppConfig(_payload, sessionToken) {
   // Endpoint ini mengembalikan info SENSITIF (skema DB, klasifikasi hash
   // password kandidat, daftar env key yang terpasang) — wajib sesi admin.
   // Tidak ada halaman publik yang memanggilnya; frontend mengirim token admin.

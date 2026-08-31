@@ -19,7 +19,7 @@ export default function Header({ onLogin, onRegister }: Props) {
       <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
       <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-5">
         <div class="flex items-center gap-3 md:gap-5">
-          <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-20 md:h-20 object-contain drop-shadow-2xl shrink-0" onerror="this.onerror=null;this.style.display='none';" />
+          <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-20 md:h-20 object-contain drop-shadow-2xl shrink-0" onError={(e: Event) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           <div>
             <div class="text-pink-300 text-[10px] md:text-sm font-bold tracking-[2px] md:tracking-[4px] mb-0.5 md:mb-1">{'\u65E5\u672C\u3078\u306E\u6311\u6226'}</div>
             <h1 class="text-lg md:text-4xl font-black italic tracking-wide drop-shadow-lg leading-tight">PT AMANAH SAKURA JAPAN</h1>
@@ -38,7 +38,7 @@ export default function Header({ onLogin, onRegister }: Props) {
           </button>
 
           {/* Mobile: hamburger menu for extra buttons */}
-          <button id="asj-mobile-menu-btn" class="md:hidden w-9 h-9 flex items-center justify-center bg-black/50 hover:bg-black/70 border border-white/30 rounded-full text-sm transition-colors shrink-0" onclick="document.getElementById('asj-mobile-dropdown')?.classList.toggle('hidden')">
+          <button id="asj-mobile-menu-btn" class="md:hidden w-9 h-9 flex items-center justify-center bg-black/50 hover:bg-black/70 border border-white/30 rounded-full text-sm transition-colors shrink-0" onClick={() => document.getElementById('asj-mobile-dropdown')?.classList.toggle('hidden')}>
             <i class="fas fa-bars"></i>
           </button>
           
@@ -75,7 +75,7 @@ export default function Header({ onLogin, onRegister }: Props) {
       <div id="asj-mobile-dropdown" class="hidden absolute top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm border-b border-white/20 p-4 flex flex-col gap-3">
         <div class="flex justify-between items-center mb-2">
           <span class="text-white font-bold text-sm">Menu</span>
-          <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-white/70 hover:text-white">
+          <button onClick={(e: Event) => { (e.target as HTMLElement).parentElement?.parentElement?.classList.add('hidden'); }} class="text-white/70 hover:text-white">
             <i class="fas fa-times text-lg"></i>
           </button>
         </div>

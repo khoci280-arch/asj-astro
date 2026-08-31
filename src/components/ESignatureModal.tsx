@@ -47,7 +47,7 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
   const getPos = (e: MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
-    const touch = e.touches?.[0] || e;
+    const touch = ("touches" in e && e.touches?.[0]) ? e.touches[0] : (e as MouseEvent);
     return {
       x: (touch.clientX - rect.left),
       y: (touch.clientY - rect.top),

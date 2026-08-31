@@ -153,6 +153,11 @@ const AI_FORM_DATA_INSTRUCTION =
   'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n';
 
 async function handleProcessAIChat(payload, sessionToken) {
+  // H4 FIX: require valid session for ALL flows — prevents free Gemini quota burn.
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   const p = payload || {};
   const flow = String(p.flow || 'master');
   // LOCK VIP (AGENTS.md §6): AI CV Master (flow=master) hanya untuk admin ATAU

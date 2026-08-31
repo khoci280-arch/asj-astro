@@ -94,7 +94,7 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
 
   if (!isOpen) return null;
 
-  const Panel = ({ title, icon, color, isOpen: open, onToggle, children }: { title: string; icon: string; color: string; isOpen: boolean; onToggle: () => void; children: any }) =>
+  const Panel = ({ title, icon, color, isOpen: open, onToggle, children }: { title: string; icon: string; color: string; isOpen: boolean; onToggle: () => void; children?: any }) =>
     h("div", { class: `bg-black/40 border ${color}/40 rounded-[2rem] overflow-hidden text-left shadow-lg` },
       h("button", { onClick: onToggle, class: `w-full p-5 flex justify-between items-center ${color.replace("border", "bg")}-900/40 font-bold ${color.replace("border", "text")}-400 hover:${color.replace("border", "bg")}-900/60 transition-colors` },
         h("span", { class: "text-sm md:text-base" }, h("i", { class: `fas ${icon} mr-2` }), title),

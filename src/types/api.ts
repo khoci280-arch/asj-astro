@@ -1,223 +1,232 @@
-*/
-* Shared TypeScript types for API responses and domain models
+/**
+ * Shared TypeScript types for API responses and domain models
  * Source: inferred from legacy backend + Astro frontend usage
+ *
+ * PERBAIKAN 2026-08-31: file ini sebelumnya rusak (karakter acak di awal
+ * `export`, kurung kurawal hilang, header seksi berantakan) sehingga
+ * menghasilkan 50 error sintaks. TypeScript melewat seluruh pemeriksaan
+ * semantik bila ada error sintaks — jadi SATU file yang rusak ini membuat
+ * SELURUH `src/` tidak pernah dicek tipenya meski tsconfig memakai `strict`.
+ * Jangan biarkan file ini rusak lagi: kalau `npx tsc --noEmit` mengeluarkan
+ * error TS1xxx (sintaks), perbaiki di sini dulu sebelum yang lain.
  */
 
-~// ── APResponse Evelope ── |
+// ── API Response Envelope ──
 
-nexport interface ApiOk
-    success: true;
-    [key: string]: unknown;
+export interface ApiOk {
+  success: true;
+  [key: string]: unknown;
 }
 
-nexport interface ApiErr
-    success: false;
-    error: string;
+export interface ApiErr {
+  success: false;
+  error: string;
 }
 
-nexport type APResponse = ApiOk | ApiErr;
+export type ApiResponse = ApiOk | ApiErr;
 
-~/// ── Auth Types ── }
+// ── Auth Types ──
 
-nexport interface LoginPayload {
-    wa: string;
-    password: string;
+export interface LoginPayload {
+  wa: string;
+  password: string;
 }
 
-nexport interface LoginResponse {
-    success: true;
-    token: string;
-    user: string;
-    wa: string;
-    nama?: string;
+export interface LoginResponse {
+  success: true;
+  /** Nama field SESUAI authReactive.ts — bukan `token`. */
+  sessionToken: string;
+  user: string;
+  wa: string;
+  nama?: string;
 }
 
-nexport interface AdminLoginStep1 {
-    success: true;
-    challenge: string;
+export interface AdminLoginStep1 {
+  success: true;
+  challenge: string;
 }
 
-nexport interface AdminLoginStep2 {
-    success: true;
-    token: string;
-    user: 'admin';
+export interface AdminLoginStep2 {
+  success: true;
+  sessionToken: string;
+  user: 'admin';
 }
 
-~// ── Job / Loker Types ── }
+// ── Job / Loker Types ──
 
-nexport interface Job {
-    code: string;
-    pekerjaan: string;
-    status: string;
-    kategori: string;
-    kuota: string;
-    gender: string;
-    lokasi: string;
-    syRat: string;
-    keterangan: string;
-    templateCv?: string;
-    pamflet?: string;
-    createdAt?: string;
-    bidang?: string;
-    rincianBiaya?: string;
-    totalBiaya?: string;
-    tahapan?: string[]};
-
-nexport interface AppDataResponse {
-    success: true;
-    jobs: Job[];
-    config?: ConfigData;
-    admin?: AdminData;
-    mail?: MailItem[];
-    kandidat?: KandidatData[];
-    driveLinks?: DriveLink[];
+export interface Job {
+  code: string;
+  pekerjaan: string;
+  status: string;
+  kategori: string;
+  kuota: string;
+  gender: string;
+  lokasi: string;
+  syRat: string;
+  keterangan: string;
+  templateCv?: string;
+  pamflet?: string;
+  createdAt?: string;
+  bidang?: string;
+  rincianBiaya?: string;
+  totalBiaya?: string;
+  tahapan?: string[];
 }
 
-/// ── Config Types ── }
-
-nexport interface ConfigGroup {
-    id: string;
-    label: string;
-    options: string[];
+export interface AppDataResponse {
+  success: true;
+  jobs: Job[];
+  config?: ConfigData;
+  admin?: AdminData;
+  mail?: MailItem[];
+  kandidat?: KandidatData[];
+  driveLinks?: DriveLink[];
 }
 
-nexport interface ConfigData {
-    tsk?: string[];
-    tahapan?: string[];
-    kategori?: string[];
-    gender?: string[];
-    lokasi?: string[];
-    syRat?: string[];
-    penguman?: string;
-    socialLinks?: SocialLink[];
+// ── Config Types ──
+
+export interface ConfigGroup {
+  id: string;
+  label: string;
+  options: string[];
 }
 
-nexport interface SocialLink {
-    platform: string;
-    url: string;
-    icon: string;
+export interface ConfigData {
+  tsk?: string[];
+  tahapan?: string[];
+  kategori?: string[];
+  gender?: string[];
+  lokasi?: string[];
+  syRat?: string[];
+  pengumuman?: string;
+  socialLinks?: SocialLink[];
 }
 
-/// ── Admin Data Types ── }
-
-nexport interface AdminData {
-    totalJobs?: number;
-    totalKandidat?: number;
-    totalMail?: number;
-    pendingMail?: number;
+export interface SocialLink {
+  platform: string;
+  url: string;
+  icon: string;
 }
 
-~// ── Mail / Intbox Types ── }
+// ── Admin Data Types ──
 
-nexport interface MailItem {
-    id: string;
-    wa: string;
-    nama: string;
-    status: string;
-    tahapan: string;
-    jobCode: string;
-    jobName?: string;
-    kategori?: string;
-    tanggal: string;
-    dokumen?: Record<string, string>;
+export interface AdminData {
+  totalJobs?: number;
+  totalKandidat?: number;
+  totalMail?: number;
+  pendingMail?: number;
 }
 
-/// ─━
-andidat / Candidate Types ── }
+// ── Mail / Inbox Types ──
 
-nexport interface KandidatData {
-    id: string;
-    wa: string;
-    nama: string;
-    gender?: string;
-    usia?: string;
-    pendidikan?: string;
-    jobCode?: string;
-    tahapan?: string;
-    status?: string;
-    createdAt?: string;
-    applications?: ApplicationData[];
+export interface MailItem {
+  id: string;
+  wa: string;
+  nama: string;
+  status: string;
+  tahapan: string;
+  jobCode: string;
+  jobName?: string;
+  kategori?: string;
+  tanggal: string;
+  dokumen?: Record<string, string>;
 }
 
-nexport interface ApplicationData {
-    jobCode: string;
-    jobName?: string;
-    tahapan: string;
-    status: string;
-    tanggal: string;
-    kategori?: string;
+// ── Kandidat / Candidate Types ──
+
+export interface KandidatData {
+  id: string;
+  wa: string;
+  nama: string;
+  gender?: string;
+  usia?: string;
+  pendidikan?: string;
+  jobCode?: string;
+  tahapan?: string;
+  status?: string;
+  createdAt?: string;
+  applications?: ApplicationData[];
 }
 
-/// ── Jadwal/ Schedule Types ── }
-
-nexport interface Jadwal {
-    id: string;
-    nama: string;
-    loker: string;
-    wakubla: string;
-    lokasi: string;
-    tsk: string;
-    link: string;
+export interface ApplicationData {
+  jobCode: string;
+  jobName?: string;
+  tahapan: string;
+  status: string;
+  tanggal: string;
+  kategori?: string;
 }
 
-~// ── Drive Links }
+// ── Jadwal / Schedule Types ──
 
-nexport interface DriveLink {
-    id: string;
-    nama: string;
-    url: string;
-    kategori?: string;
+export interface Jadwal {
+  id: string;
+  nama: string;
+  loker: string;
+  waktu: string;
+  lokasi: string;
+  tsk: string;
+  link: string;
 }
 
-/// ── WA Template }
+// ── Drive Links ──
 
-nexport interface WaTemplate {
-    id: string;
-    nama: string;
-    isi: string;
+export interface DriveLink {
+  id: string;
+  nama: string;
+  url: string;
+  kategori?: string;
 }
 
-/// ── DbJob (Admin histori) }
+// ── WA Template ──
 
-nexport interface DbJob {
-    code: string;
-    pekerjaan: string;
-    status: string;
-    kategori: string;
-    kuota: string;
-    gender: string;
-    lokasi: string;
-    syRat: string;
-    keterangan: string;
-    tahapan?: string[];
-    createdAt: string;
+export interface WaTemplate {
+  id: string;
+  nama: string;
+  isi: string;
 }
 
-/// ── Dropdown Data Tabularada (Tabtamath) }
+// ── DbJob (Admin histori) ──
 
-nexport interface DropdownData {
-    tsk: string[];
-    tahapan: string[];
-    kategori: string[];
-    gender: string[];
-    lokasi: string[];
-    syRat: string[];
+export interface DbJob {
+  code: string;
+  pekerjaan: string;
+  status: string;
+  kategori: string;
+  kuota: string;
+  gender: string;
+  lokasi: string;
+  syRat: string;
+  keterangan: string;
+  tahapan?: string[];
+  createdAt: string;
 }
 
-~// ── Chat Message }
+// ── Dropdown Data (TabTambah) ──
 
-nexport interface ChatMessage {
-    role: 'assistant' | 'user';
-    text: string;
-    time: string;
+export interface DropdownData {
+  tsk: string[];
+  tahapan: string[];
+  kategori: string[];
+  gender: string[];
+  lokasi: string[];
+  syRat: string[];
 }
 
-/// ── Toast }
+// ── Chat Message ──
 
-nexport type ToastType = 'success' | 'error' | 'info' |'warning';
+export interface ChatMessage {
+  role: 'assistant' | 'user';
+  text: string;
+  time: string;
+}
 
-nexport interface ToastMessage {
-    id: number;
-    text: string;
-    type: ToastType;
+// ── Toast ──
+
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+export interface ToastMessage {
+  id: number;
+  text: string;
+  type: ToastType;
 }

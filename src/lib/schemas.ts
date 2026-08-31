@@ -16,7 +16,17 @@ import { z } from 'zod';
  * - Internasional lain: 10-15 digit (tanpa spasi/simbol)
  */
 export const waSchema = z.string()
-  .regex(/^(\+?62|\+?81|0\d{9,14}|\+?\d{1,3}\d{8,13})$/, 'Nomor WA tidak valid. Gunakan format 08xx, 628xx, atau +81xx');
+  .refine((val) => {
+    const digits = val.replace(/[^0-9]/g, '');
+    if (!digits) return false;
+    // Indonesia: 08xx/628xx/bare 8xx → 12-14 digits
+    if (/^(08|628)/.test(digits) && digits.length >= 12 && digits.length <= 15) return true;
+    if (/^8d{10,12}$/.test(digits)) return true;
+    // Japan: 090/070/080 or 81xx → 10-15 digits
+    if (/^(090|070|080)/.test(digits) && digits.length >= 10 && digits.length <= 15) return true;
+    if (/^81[890]d{7,11}$/.test(digits)) return true;
+    return false;
+  }, 'Nomor WA tidak valid. Gunakan format 08xx, 628xx, atau +81xx');
 
 /** Email (optional) */
 export const emailSchema = z.string()

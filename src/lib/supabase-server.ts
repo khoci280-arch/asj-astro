@@ -8,7 +8,8 @@
  *   import { supabaseServer } from '../lib/supabase-server';
  *   const { data, error } = await supabaseServer(Astro).from('table').select('*');
  */
-import { createClient, type SupabaseClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AstroGlobal } from 'astro';
 
 /**
@@ -19,7 +20,7 @@ import type { AstroGlobal } from 'astro';
  * @returns SupabaseClient configured for server-side auth
  */
 export function supabaseServer(astro: AstroGlobal): SupabaseClient {
-  return createClient(
+  return createServerClient(
     import.meta.env.PUBLIC_SUPABASE_URL || '',
     import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '',
     {
@@ -29,14 +30,14 @@ export function supabaseServer(astro: AstroGlobal): SupabaseClient {
         },
         set(name: string, value: string, options: Record<string, unknown>) {
           try {
-            astro.cookies.set(name, value, options);
+            astro.cookies.set(name, value, options as any);
           } catch {
             // Cookie setting may fail in some SSR contexts
           }
         },
         remove(name: string, options: Record<string, unknown>) {
           try {
-            astro.cookies.set(name, '', { ...options, maxAge: 0 });
+            astro.cookies.set(name, '', { ...options, maxAge: 0 } as any);
           } catch {
             // Ignore
           }

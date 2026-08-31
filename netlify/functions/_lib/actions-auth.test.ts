@@ -88,7 +88,8 @@ describe('isValidWaFormat — gate login/daftar kandidat', () => {
   it('menolak nomor terlalu pendek / terlalu panjang', () => {
     expect(isValidWaFormat('081234')).toBe(false);
     expect(isValidWaFormat('0812345678')).toBe(false); // 628 + 8 digit → kurang
-    expect(isValidWaFormat('628123456789012')).toBe(false); // 15 digit
+    expect(isValidWaFormat('628123456789012')).toBe(true); // 15 digit — now accepted
+    expect(isValidWaFormat('6281234567890123')).toBe(false); // 16 digit — too long
   });
 
   it('menolak kosong / non-digit / awalan bukan 62', () => {

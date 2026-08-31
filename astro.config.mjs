@@ -10,8 +10,8 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["preact", "preact/hooks", "@nanostores/preact", "nanostores"],
-      exclude: ["@astrojs/preact"],
+      include: ["preact", "preact/hooks", "@nanostores/persistent", "nanostores"],
+      exclude: ["@astrojs/preact", "@nanostores/preact"],
     },
     server: {
       proxy: {

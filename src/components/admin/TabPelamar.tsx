@@ -10,7 +10,7 @@ import {
   adminSearch, adminFilterGender, adminFilterAge, adminFilterJft,
   adminPage, adminSimpleView, PAGE_SIZE,
   setAdminSearch, setAdminFilterGender, setAdminFilterAge, setAdminFilterJft,
-  nextPage, toggleSimpleView,
+  nextPage, toggleSimpleView, resetPage,
   openInputModal, openReportModal,
   fetchKandidatFromAPI,
 } from '../../store/adminStore';
@@ -74,7 +74,7 @@ export default function TabPelamar() {
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
           <div class="relative flex-1 md:w-64">
             <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-            <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); setPage(0); }}
+            <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); resetPage(); }}
               placeholder={t("pelamar.placeholder_search")}
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>

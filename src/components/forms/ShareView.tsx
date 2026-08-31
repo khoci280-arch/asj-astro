@@ -1,10 +1,11 @@
 /**
  * ShareView.tsx - Candidate Viewer (share.html)
  * Source: legacy/share.html (1:1 match)
- * Features: grid cards, filters, doc preview, selection bar, lang toggle
+ * Features: grid cards, filters, doc preview (via DocumentPreviewModal), selection bar, lang toggle
  */
 import { useState, useEffect } from 'preact/hooks';
 import { apiClient } from '../../lib/apiClient';
+import DocumentPreviewModal from '../DocumentPreviewModal';
 
 interface Candidate {
   id: string; nama: string; gender: string; usia: number;
@@ -34,7 +35,9 @@ export default function ShareView() {
   const [filterAge, setFilterAge] = useState('all');
   const [filterJft, setFilterJft] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [preview, setPreview] = useState<{ url: string; title: string; type: string } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -77,12 +80,12 @@ export default function ShareView() {
   };
 
   const openPreview = (url: string, title: string) => {
-    const ext = url.split('.').pop()?.toLowerCase() || '';
-    const type = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? 'image' : 'iframe';
-    setPreview({ url, title, type });
+    setPreviewUrl(url);
+    setPreviewTitle(title);
+    setShowPreview(true);
   };
 
-  const closePreview = () => setPreview(null);
+  const closePreview = () => setShowPreview(false);
 
   const filtered = candidates.filter(c => {
     if (filterGender === 'l' && c.gender !== 'LAKI-LAKI') return false;
@@ -271,27 +274,13 @@ export default function ShareView() {
       )}
 
       {/* Preview Modal */}
-      {preview && (
-        <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col p-2 sm:p-4 md:p-8">
-          <div class="flex justify-between items-center gap-2 mb-2 md:mb-4 text-white w-full max-w-5xl mx-auto">
-            <h3 class="font-bold text-sm md:text-xl truncate min-w-0">{preview.title}</h3>
-            <div class="flex gap-2 md:gap-4 shrink-0">
-              <a href={preview.url} target="_blank" download class="px-3 py-1.5 md:px-4 md:py-2 bg-rose-600 hover:bg-rose-500 rounded-lg font-bold text-xs md:text-sm shadow flex items-center gap-1.5">
-                <i class="fas fa-download"></i><span class="hidden sm:inline">Download</span>
-              </a>
-              <button onClick={closePreview} class="px-3 py-1.5 md:px-4 md:py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg font-bold text-xs md:text-sm shadow flex items-center gap-1.5">
-                <i class="fas fa-times"></i> <span class="hidden sm:inline">Tutup</span>
-              </button>
-            </div>
-          </div>
-          <div class="flex-1 w-full max-w-5xl mx-auto bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center min-h-0">
-            {preview.type === 'image' ? (
-              <img src={preview.url} class="max-w-full max-h-full object-contain" alt={preview.title} />
-            ) : (
-              <iframe src={preview.url} class="w-full h-full border-0 bg-white" title={preview.title} />
-            )}
-          </div>
-        </div>
+      {showPreview && (
+        <DocumentPreviewModal
+          url={previewUrl}
+          title={previewTitle}
+          onClose={closePreview}
+          previewOnly={false}
+        />
       )}
     </div>
   );

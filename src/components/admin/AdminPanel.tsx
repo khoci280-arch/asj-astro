@@ -10,6 +10,9 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { t } from '../../store/i18n';
+// showToast dipakai di penangan error (lihat TODO di bawah) — tanpa impor ini
+// kode melempar ReferenceError alih-alih menampilkan pesan gagal.
+import { showToast } from '../Toast';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
 
@@ -58,25 +61,26 @@ export default function AdminPanel() {
     return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
   });
   useEffect(() => {
-    const handleOpenAiCopilot = (e) => {
-      setAiCopilotTarget(e.detail);
+    const handleOpenAiCopilot = (e: Event) => {
+      setAiCopilotTarget((e as CustomEvent).detail);
       setShowAiCopilot(true);
     };
-    const handleOpenEdit = (e) => {
+    const handleOpenEdit = (e: Event) => {
       // TODO: Open edit modal with e.detail.wa
-      showToast('Edit kandidat: ' + e.detail.nama, 'info');
+      showToast('Edit kandidat: ' + (e as CustomEvent).detail.nama, 'info');
     };
-    const handleShowHistory = (e) => {
+    const handleShowHistory = (e: Event) => {
       // TODO: Open history modal with e.detail.wa
-      showToast('Riwayat: ' + e.detail.nama, 'info');
+      showToast('Riwayat: ' + (e as any).detail.nama, 'info');
     };
     window.addEventListener('openAdminAiCopilot', handleOpenAiCopilot);
-    window.addEventListener('openUndanganKelas', () => setShowUndanganKelas(true));
+    const handleOpenUndangan = () => setShowUndanganKelas(true);
+    window.addEventListener('openUndanganKelas', handleOpenUndangan);
     window.addEventListener('openCandidateEdit', handleOpenEdit);
     window.addEventListener('showCandidateHistory', handleShowHistory);
     return () => {
       window.removeEventListener('openAdminAiCopilot', handleOpenAiCopilot);
-      window.removeEventListener('openUndanganKelas', () => setShowUndanganKelas(true));
+      window.removeEventListener('openUndanganKelas', handleOpenUndangan);
       window.removeEventListener('openCandidateEdit', handleOpenEdit);
       window.removeEventListener('showCandidateHistory', handleShowHistory);
     };
@@ -107,7 +111,7 @@ export default function AdminPanel() {
             <h3 class="text-sm font-bold text-white"><i class="fas fa-calendar-check text-amber-400 mr-2"></i> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h3>
             <span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-1 rounded-md font-bold" id="dash-admin-name">Admin</span>
           </div>
-          <div id="dash-agenda-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 style={{ maxHeight: MAX_HEIGHT.AGENDA_LIST }}">
+          <div id="dash-agenda-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: MAX_HEIGHT.AGENDA_LIST }}>
             <p class="text-xs text-slate-500">{t('ui.schedule_empty')}</p>
           </div>
           <button onClick={() => setActiveTab('jadwal')} class="mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
@@ -121,7 +125,7 @@ export default function AdminPanel() {
             <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
             <button class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><i class="fas fa-plus"></i></button>
           </div>
-          <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 style={{ maxHeight: MAX_HEIGHT.TODO_LIST }}"></div>
+          <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: MAX_HEIGHT.TODO_LIST }}></div>
         </div>
       </div>
 

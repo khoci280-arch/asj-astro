@@ -137,7 +137,7 @@ export default function TabDbJob() {
                   <td class="p-4 text-center">
                     <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-edit"></i> Edit</button>
                     <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-share-alt"></i> Share</button>
-                    <button onClick={async () => { try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e){showToast("Error: "+e.message,"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-download"></i> Docs</button>
+                    <button onClick={async () => { try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><i class="fas fa-download"></i> Docs</button>
                   </td>
                 </tr>
               ))}
@@ -145,7 +145,7 @@ export default function TabDbJob() {
           </table>
         </div>
       )}
-      {editJob && <AdminJobEditModal job={editJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
+      {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} job internal</p>
     </div>

@@ -14,6 +14,9 @@ import { langStore, t, translateDataLang } from '../store/i18n';
 const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
 
 import LoginModal from './LoginModal';
+// CekSiswaModal dipakai saat render (flag showCekSiswa) tetapi impornya hilang
+// → ReferenceError begitu modal dibuka. Jangan hapus baris ini.
+import CekSiswaModal from './CekSiswaModal';
 import AdminAiCopilot from './admin/AdminAiCopilot';
 import { showToast } from './Toast';
 

@@ -13,6 +13,27 @@ function clientIp(event) {
   return h['client-ip'] || h['x-real-ip'] || null;
 }
 
+/**
+ * Ambil session token dari request.
+ *
+ * Secara historis backend HANYA membaca `body.sessionToken`. Padahal banyak
+ * pemanggil di src/ mengirim token lewat header `Authorization: Bearer <token>`
+ * (lihat apiClient.ts dan puluhan fetch mentah di komponen admin). Akibatnya
+ * token itu diabaikan dan handler yang dijaga requireAdmin/requireRole menolak
+ * permintaan yang sebenarnya sah.
+ *
+ * Urutan prioritas: body.sessionToken → header Authorization → query string.
+ */
+function sessionTokenFrom(event, body) {
+  if (body && body.sessionToken) return body.sessionToken;
+  const h = (event && event.headers) || {};
+  const auth = h.authorization || h.Authorization || '';
+  const m = /^Bearer\s+(.+)$/i.exec(String(auth).trim());
+  if (m) return m[1];
+  const q = (event && event.queryStringParameters) || {};
+  return q.sessionToken || undefined;
+}
+
 function makeHandler() {
   return async (event) => {
     let body: Record<string, any> = {};
@@ -32,7 +53,7 @@ function makeHandler() {
     }
     let out;
     try {
-      out = await handleAction(body.action, body.payload || body.args, body.sessionToken, {
+      out = await handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
         ip: clientIp(event),
       });
     } catch (e) {

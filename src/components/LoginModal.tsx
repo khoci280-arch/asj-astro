@@ -103,7 +103,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const r = await api("checkAdminMaster", [masterPin, tk]);
       if (r.success) setAdminStep(2);
       else showToast(r.error || t('login.pin_salah'), "error");
-    } catch (e: unknown) { showToast(e.message, "error"); }
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : String(e), "error"); }
     finally { setLoading(false); }
   }
 
@@ -125,7 +125,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       } else {
         showToast(r.error || t('login.pin_salah'), "error");
       }
-    } catch (e: unknown) { showToast(e.message, "error"); }
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : String(e), "error"); }
     finally { setLoading(false); }
   }
 

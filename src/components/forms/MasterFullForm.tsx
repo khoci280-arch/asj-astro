@@ -84,7 +84,7 @@ export default function MasterFullForm() {
     if (saved) { try { setData({ ...EMPTY, ...JSON.parse(saved) }); } catch {} }
     // Check auth
     const auth = authStore.get();
-    if (auth.token && auth.wa) { setLoginGate(false); setData(d => ({ ...d, wa: auth.wa || '' })); }
+    if (auth.sessionToken && auth.wa) { setLoginGate(false); setData(d => ({ ...d, wa: auth.wa || '' })); }
   }, []);
 
   const gateLogin = async () => {
@@ -93,7 +93,7 @@ export default function MasterFullForm() {
       const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
       if (res.ok) {
         const d = await res.json();
-        authStore.set({ token: d.token, wa: gateWa, user: d.user || 'kandidat' });
+        authStore.set({...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa: gateWa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
         setData(prev => ({ ...prev, wa: gateWa }));
         setLoginGate(false);
       } else {
@@ -126,7 +126,7 @@ export default function MasterFullForm() {
       fd.append('kenalan', JSON.stringify(kenalan));
       fd.append('isDraft', String(isDraft));
       Object.entries(files).forEach(([k, f]) => { if (f) fd.append(k, f); });
-      const token = authStore.get().token;
+      const token = authStore.get().sessionToken;
       const res = await fetch('/.netlify/functions/master-data', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },

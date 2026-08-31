@@ -709,6 +709,10 @@ async function handleGetMasterDataByWa(payload, sessionToken) {
   const guard = requireRole(sessionToken, 'kandidat');
   if (guard.error) return guard.error;
   if (!wa) return { error: 'Nomor WA wajib diisi.' };
+  // IDOR fix: kandidat hanya boleh baca data sendiri.
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
   try {
     const row = await findMasterByWa(wa);
     if (!row) return { error: 'Data Master belum ada. Silakan isi form Master dulu.' };
@@ -924,6 +928,10 @@ async function handleSubmitMasterForm(payload, sessionToken) {
     return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
   }
   if (!wa) return { success: false, message: 'Nomor WA wajib diisi.' };
+  // IDOR fix: kandidat hanya boleh tulis data sendiri.
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
   try {
     let row = await findMasterByWa(wa);
     const nama =

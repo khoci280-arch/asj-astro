@@ -6,7 +6,7 @@
  */
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
-import { ComponentChildren } from 'preact';
+import type { ComponentChildren } from 'preact';
 
 interface Props {
   children: ComponentChildren;
@@ -15,10 +15,10 @@ interface Props {
 }
 
 export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: Props) {
-  const  = useStore(authStore);
+  const auth = useStore(authStore);
 
   // Not logged in → redirect
-  if (!.isLoggedIn) {
+  if (!auth.isLoggedIn) {
     if (typeof window !== 'undefined') {
       window.location.href = redirectTo;
     }
@@ -33,7 +33,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
   }
 
   // Wrong role → redirect
-  if (requiredRole && .role !== requiredRole) {
+  if (requiredRole && auth.role !== requiredRole) {
     if (typeof window !== 'undefined') {
       window.location.href = redirectTo;
     }

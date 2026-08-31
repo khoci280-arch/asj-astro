@@ -3,12 +3,12 @@ dist/
 .astro/
 .env
 .env.*
-!.env.example
 *.log
 .DS_Store
 .env.server
-
 .netlify/
 deploy.zip
-*.env
 superbase.env
+netlify/functions/.netlify-built/
+.agents/
+.freebuff/

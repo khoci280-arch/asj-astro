@@ -1,4 +1,5 @@
 import { normalizeGender, supabaseJson } from './db/client';
+import * as session from './session';
 import { env } from './env';
 import { cacheClear } from './cache';
 // actions-register.js — daftar siswa baru (respon_siswa_baru) + link & bridge
@@ -9,6 +10,11 @@ import { cacheClear } from './cache';
 // Siswa baru (respon_siswa_baru)
 // ---------------------------------------------------------------------------
 async function handleGetDaftarSiswaBaru(payload, sessionToken) {
+  // C4 FIX: require authenticated session — this endpoint returns candidate names/addresses.
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   // Endpoint PUBLIK: tombol "Cek Data" ada di landing publik (index.html),
   // bukan hanya admin. Dulu butuh role admin → pengunjung publik dapat
   // sessionInvalid → halaman reload dan tombol terasa "mati".

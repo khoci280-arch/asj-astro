@@ -68,15 +68,22 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     // ─── Auth managed by Nanostores (authReactive.ts) ───
     // ─── Fase 5: Service Worker + Auto-Reload ───
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        setInterval(() => { reg.update().catch(() => {}); }, 5 * 60 * 1000);
-      }).catch(() => {});
-      navigator.serviceWorker.addEventListener('message', (e) => {
-        if (e.data?.type === 'ASJ_FORCE_RELOAD') {
-          console.log('[SW] New version — reloading...');
-          window.location.reload();
-        }
-      });
+      if (location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+          caches.keys().then(function(ks) { ks.forEach(function(k) { caches.delete(k); }); });
+        });
+      } else {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          setInterval(() => { reg.update().catch(() => {}); }, 5 * 60 * 1000);
+        }).catch(() => {});
+        navigator.serviceWorker.addEventListener('message', (e) => {
+          if (e.data?.type === 'ASJ_FORCE_RELOAD') {
+            console.log('[SW] New version — reloading...');
+            window.location.reload();
+          }
+        });
+      }
     }
   </script>
 <script>

@@ -7,6 +7,7 @@ import { langStore, t } from '../../store/i18n';
 import { useState } from 'preact/hooks';
 
 interface Props {
+  titleKey?: string;
   title?: string;
 }
 

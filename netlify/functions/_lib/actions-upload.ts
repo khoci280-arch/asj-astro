@@ -85,10 +85,16 @@ function pickPrefill(data) {
 // uploadFilesDirectly di apply-full.html / ai_form.html / js/07_api.js).
 // ---------------------------------------------------------------------------
 async function handleGetUploadUrls(payload, sessionToken) {
+  // C3 FIX: require authenticated session for upload URLs.
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
   const body = (payload && payload[0]) || payload || {};
   const files = Array.isArray(body.files) ? body.files : [];
-  const folder = String(body.folder || 'misc').replace(/^\/+|\/+$/g, '');
+  // C3 FIX: sanitize folder — strip path traversal and restrict to safe chars.
+  const folder = String(body.folder || 'misc').split('/').filter(s => s && s !== '..' && s !== '.').join('/');
   if (files.length === 0) return { success: false, error: 'Tidak ada file untuk diupload.' };
   const urls: Record<string, any> = {};
   try {
@@ -157,9 +163,14 @@ async function findFormByWaJob(wa, code) {
 // cekDataPelamar([wa]) → { found, nama, gender, usia, tb, bb, pasPhoto,
 // jftUrl, sswUrl, applications } — applications = SEMUA lamaran WA (multi-apply),
 // dipakai apply-full.html untuk menampilkan peringatan kalau sudah LULUS job lain.
-async function handleCekDataPelamar(payload) {
+async function handleCekDataPelamar(payload, sessionToken) {
   const wa = String((payload && payload[0]) || '');
   if (!wa) return { found: false, applications: [] };
+  // C4 FIX: require authenticated session — this endpoint returns PII.
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   try {
     // Jalur cepat: tarik hanya lamaran WA ini, bukan scan 500 baris inbox.
     let rows = await findFormsByWa(wa);

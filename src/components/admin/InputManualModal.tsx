@@ -6,6 +6,8 @@
 import { useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { inputModalOpen, closeInputModal, addKandidat } from '../../store/adminStore';
+// t() dipakai di baris ~146 tetapi tidak diimpor → ReferenceError saat render.
+import { t } from '../../store/i18n';
 
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
