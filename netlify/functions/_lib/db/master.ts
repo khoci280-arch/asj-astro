@@ -1,4 +1,5 @@
 import { supabaseJson } from './client';
+import { MASTER_LIGHT_COLS } from './schema.generated';
 // db/master.js — repo master biodata/CV (master_database_candidate).
 
 // Kolom RINGAN master_database_candidate — hanya kolom yang benar-benar
@@ -6,8 +7,7 @@ import { supabaseJson } from './client';
 // Tabel master 154 kolom (±6,5 KB/baris); proyeksi ini ±16 kolom. Jalur yang
 // butuh baris PENUH master (findMasterByWa → CV builder / getDrafCvMaster /
 // ai_data_json) TETAP memakai fetchMasterByWa select *.
-const MASTER_LIGHT_COLS =
-  'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport';
+// MASTER_LIGHT_COLS imported from schema.generated.ts
 
 // Tarik master_database_candidate hanya untuk WA di daftar. Coba kolom WA
 // umum (or), lalu no_wa saja — fallback null → scan penuh.

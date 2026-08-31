@@ -11,6 +11,7 @@ import { showToast } from './Toast';
 import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
+import { useOverlay } from './ui/useOverlay';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 0 | 1 | 2 | 3;
@@ -130,7 +131,9 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     finally { setLoading(false); }
   }
 
-  // ─── Render ───
+  // ─── Render ───
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
     <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">

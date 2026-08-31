@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
+import { useOverlay } from './ui/useOverlay';
 
 interface Props {
   onClose: () => void;
@@ -41,10 +42,12 @@ export default function CekSiswaModal({ onClose }: Props) {
       setLoading(false);
     }
   }
+
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" onClick={onClose}>
-      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[80vh] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[80vh] overflow-hidden shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h3 class="text-lg font-bold text-white">
             <Icon name="users" class="text-emerald-400 mr-2" />

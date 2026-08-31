@@ -5,6 +5,7 @@
 import { useStore } from '@nanostores/preact';
 import { reportModalOpen, closeReportModal, kandidatList } from '../../store/adminStore';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 
 
@@ -35,8 +36,10 @@ export default function LaporanBulananModal() {
     byStatus[status] = (byStatus[status] || 0) + 1;
   });
 
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
-    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-blue-900/50 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <h3 class="text-xl font-bold text-blue-400 mb-4 border-b border-blue-900/50 pb-3">

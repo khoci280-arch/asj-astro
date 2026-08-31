@@ -5,6 +5,7 @@
  */
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 interface Job { code: string; pekerjaan: string; status: string; tahapan: string; keterangan: string; kategori: string; kuota: string; gender: string; lokasi: string; syarat: string; rincianBiaya?: string; totalBiaya?: string; pamflet?: string; templateCv?: string; dokumenShare?: string; }
 interface Props { job: Job; onClose: () => void; }
@@ -74,8 +75,10 @@ export default function LokerDetailModal({ job, onClose }: Props) {
     ? String(job.syarat).split(',').map(s => s.trim()).filter(Boolean) : [];
   const pamfletUrl = job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 ? job.pamflet : '';
 
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" onClick={onClose}>
+    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>

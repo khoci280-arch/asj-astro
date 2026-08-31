@@ -4,6 +4,7 @@ import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 interface Props { isOpen: boolean; onClose: () => void; waTarget: string; namaTarget: string; }
 
@@ -118,7 +119,9 @@ export default function PemberkasanModal({ isOpen, onClose, waTarget, namaTarget
     h("div", { class: "md:col-span-2 border-b border-slate-700/50 pb-1 mt-2" },
       h("h4", { class: "text-sm font-bold text-amber-400" }, t(title)));
 
-  return h("div", { class: "fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4", onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) onClose(); } },
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
+  return h("div", { class: "fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4", ref: containerRef, onClick: onBackdropClick },
     h("div", { class: "glass-panel p-6 md:p-8 rounded-[2.5rem] w-full max-w-4xl shadow-[0_0_40px_rgba(0,0,0,0.8)] relative max-h-[90vh] overflow-y-auto custom-scrollbar" },
       h("button", { onClick: onClose, class: "absolute top-6 right-6 text-slate-400 hover:text-white transition z-[100]" }, h(Icon, { name: "times", class: "text-2xl" })),
       h("h3", { class: "text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide border-b border-slate-700/50 pb-4" },

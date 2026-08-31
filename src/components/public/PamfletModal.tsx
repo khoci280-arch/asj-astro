@@ -1,24 +1,20 @@
 import { h } from "preact";
 import { useState, useEffect } from "preact/hooks";
+import { useOverlay } from '../ui/useOverlay';
 
 interface Props { isOpen: boolean; url: string; onClose: () => void; }
 
 export default function PamfletModal({ isOpen, url, onClose }: Props) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { if (isOpen) setLoaded(false); }, [isOpen, url]);
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   if (!isOpen || !url || url === "-") return null;
 
   return h("div", {
     class: "fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4",
     style: "backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);",
-    onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) onClose(); },
+    ref: containerRef, onClick: onBackdropClick,
   },
     h("div", { class: "relative w-full max-w-3xl mx-auto flex flex-col items-center" },
       h("button", {

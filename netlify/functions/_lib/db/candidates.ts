@@ -1,4 +1,5 @@
-import { supabaseJson, supabasePaged, pick, toText, normalizeWa, findTable } from './client';
+import { supabaseJson, supabasePaged, pick, toText, normalizeWa } from './client';
+import { TABLE_CANDIDATE, CANDIDATE_WA_COL, CAND_LIGHT_COLS, CAND_MAP_COLS } from './schema.generated';
 // db/candidates.js — repo kandidat (database_candidate): mapCandidate, query WA/ID,
 
 // Kolom asli tabel database_candidate:
@@ -67,20 +68,8 @@ function mapCandidate(row) {
 
 // Nama tabel kandidat yang umum (urutan prioritas) — dipakai findCandidates &
 // findAllCandidatesLight supaya jalur cepat & fallback mencari tabel yang sama.
-const CAND_TABLES = [
-  'database_candidate',
-  'master_database_candidate',
-  'candidates',
-  'kandidat',
-  'calon',
-  'data_kandidat',
-  'siswa',
-  'candidate_data',
-  'master_kandidat',
-];
-
 async function findCandidates() {
-  return findTable(CAND_TABLES);
+  return { table: TABLE_CANDIDATE, rows: [] };
 }
 
 // Fetch SEMUA baris satu tabel via header Range (loop 1000/halaman) — tanpa
@@ -103,8 +92,7 @@ async function fetchPagedAll(table, select) {
 
 // Kolom RINGAN untuk daftar admin — cukup untuk dedupe by WA + filter kata
 // kunci + urut updated_at (TIDAK membawa kolom berat seperti catatan/nik/email).
-const CAND_LIGHT_COLS =
-  'id,id_kandidat,nama_lengkap,no_wa,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar';
+// CAND_LIGHT_COLS imported from schema.generated.ts
 
 // Kolom LENGKAP yang dibaca mapCandidate — pengganti SELECT * di
 // findCandidatesByIds. Kolom berat yang TIDAK dibaca (password_kandidat,
@@ -162,7 +150,7 @@ async function findCandidatesByIds(ids) {
 
 // Kolom WA yang umum di tabel kandidat (database_candidate / master) — dipakai
 // query targeted (findCandidateByWaFiltered) & filter WA-set di attachBerkasBio.
-const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
+// CANDIDATE_WA_COL imported from schema.generated.ts
 
 // Cari kandidat via query SERVER-SIDE (filter kolom WA) — bukan tarik 300 baris
 // lalu filter di JS. Return: row (ketemu) | null (tidak ketemu, query jalan) |
@@ -174,7 +162,7 @@ async function findCandidateByWaFiltered(wa) {
   // Fase 3.18: probe 3 kolom WA (no_wa / wa / whatsapp) dijalankan PARALEL —
   // dulu berurutan (sampai 3 roundtrip serial bila kolom pertama tidak cocok
   // skema). Prioritas hasil tetap no_wa → wa → whatsapp (urutan CAND_WA_COLS).
-  const cols = CAND_WA_COLS.slice(0, 3);
+  const cols = [CANDIDATE_WA_COL];
   const settled = await Promise.allSettled(
     cols.map((col) =>
       supabaseJson('GET', 'database_candidate', {
@@ -192,7 +180,7 @@ async function findCandidateByWaFiltered(wa) {
           query: { select: '*', limit: '5', [cols[i]]: 'eq.' + want },
         });
         if (Array.isArray(rows) && rows.length) {
-          const hit = rows.find((x) => normalizeWa(pick(x, CAND_WA_COLS) || '') === want);
+          const hit = rows.find((x) => normalizeWa(x[CANDIDATE_WA_COL] || '') === want);
           if (hit) return hit;
         }
         anySucceed = true;
@@ -204,7 +192,7 @@ async function findCandidateByWaFiltered(wa) {
     anySucceed = true;
     const rows = r.value;
     if (!Array.isArray(rows) || rows.length === 0) continue;
-    const hit = rows.find((x) => normalizeWa(pick(x, CAND_WA_COLS) || '') === want);
+    const hit = rows.find((x) => normalizeWa(x[CANDIDATE_WA_COL] || '') === want);
     if (hit) return hit;
   }
   return anySucceed ? null : undefined;

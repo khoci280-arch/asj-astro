@@ -1,4 +1,5 @@
 import { supabaseJson, toText, normalizeWa } from './client';
+import { FORM_LIGHT_COLS } from './schema.generated';
 // db/forms.js — repo mail inbox (database_asj_form): mapForm, findForms, query per WA.
 
 // ===== Mail inbox (database_asj_form) =====
@@ -51,8 +52,7 @@ function parseDocs(keterangan) {
 // attachApplications (lamaran per WA), parseDocs (keterangan NAMA:URL;...).
 // `select *` lama ikut kolom berat (ai_data_json, dll.) yang tidak pernah
 // dibaca dari formInbox.
-const FORM_LIGHT_COLS =
-  'id,timestamp,code_job,kategory,nama_lengkap,no_wa,status,folder_url,pas_photo,jft,ssw,file_cv,keterangan,feedback_berkas,created_at,updated_at';
+// FORM_LIGHT_COLS imported from schema.generated.ts
 
 // Urutan form konsisten (dipakai getAppData DAN handler review/approve/reject/
 // delete yang menerima rowIndex = posisi di array ini).

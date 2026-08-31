@@ -54,6 +54,50 @@ async function fetchGemini(model, key, contents) {
     : '';
 }
 
+
+// ---------------------------------------------------------------------------
+// Grok (xAI) — fallback when all Gemini models fail
+// API is OpenAI-compatible: https://api.x.ai/v1/chat/completions
+// ---------------------------------------------------------------------------
+const GROK_TIMEOUT_MS = 10000;
+
+async function fetchGrok(key, systemPrompt, history) {
+  const messages = [{ role: 'system', content: systemPrompt }];
+  for (const h of Array.isArray(history) ? history : []) {
+    const role = h && h.role === 'assistant' ? 'assistant' : 'user';
+    if (h && h.content) messages.push({ role, content: String(h.content) });
+  }
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+    },
+    body: JSON.stringify({
+      model: 'grok-3-mini',
+      messages,
+      max_tokens: 2048,
+      temperature: 0.7,
+    }),
+    signal: AbortSignal.timeout(GROK_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error('Grok HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+  }
+  const j = await res.json();
+  return j?.choices?.[0]?.message?.content || '';
+}
+
+async function grokGenerate(systemPrompt, history) {
+  const key = env('XAI_API_KEY');
+  if (!key) return null;
+  try {
+    const text = await fetchGrok(key, systemPrompt, history);
+    if (text) return { reply: text };
+  } catch { /* fallback failed */ }
+  return null;
+}
+
 async function geminiGenerate(systemPrompt, history) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
@@ -77,8 +121,11 @@ async function geminiGenerate(systemPrompt, history) {
       lastErr = e;
     }
   }
-  throw lastErr || new Error('Gemini tidak tersedia');
-}
+  // All Gemini models failed — try Grok as fallback
+    const grokResult = await grokGenerate(systemPrompt, history);
+    if (grokResult) return grokResult;
+    throw lastErr || new Error('Gemini dan Grok tidak tersedia');
+  }
 
 async function geminiParseFile(systemPrompt, file) {
   const key = env('GEMINI_API_KEY');
@@ -125,4 +172,4 @@ function parseJsonLoose(text) {
   }
 }
 
-export { geminiGenerate, geminiParseFile, parseJsonLoose };
+export { geminiGenerate, geminiParseFile, grokGenerate, parseJsonLoose };

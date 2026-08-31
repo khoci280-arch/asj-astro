@@ -1,5 +1,6 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
+import { request, requestJson, BUDGETS } from '../kernel/http.ts';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
@@ -37,7 +38,7 @@ async function supabaseJson(method, pathname, opts = {}) {
       // @ts-expect-error JS→TS migration
       new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
     : '';
-  const res = await fetch(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
+  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
     method,
     headers: {
       apikey: key,
@@ -48,6 +49,7 @@ async function supabaseJson(method, pathname, opts = {}) {
     },
     // @ts-expect-error JS→TS migration
     body: opts.body ? JSON.stringify(opts.body) : undefined,
+    budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
   });
   if (!res.ok) {
     const text = await res.text();

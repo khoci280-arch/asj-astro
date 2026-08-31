@@ -1,4 +1,5 @@
 import { supabaseJson, pick, toText, findTable } from './client';
+import { JOB_MAP_COLS } from './schema.generated';
 // db/jobs.js — repo lowongan (job_database/loker): mapJob, findJobs, lookup by kode.
 
 // Kolom asli tabel job_database (hasil introspeksi):

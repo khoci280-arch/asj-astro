@@ -9,6 +9,7 @@ import { inputModalOpen, closeInputModal, addKandidat } from '../../store/adminS
 // t() dipakai di baris ~146 tetapi tidak diimpor → ReferenceError saat render.
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
@@ -134,8 +135,10 @@ export default function InputManualModal() {
     }
   }
 
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
-    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">

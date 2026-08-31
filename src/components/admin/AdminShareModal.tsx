@@ -6,6 +6,7 @@ import { useState } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 // Job type imported from shared types
 interface Job { code: string; pekerjaan: string; [key: string]: any; }
@@ -27,9 +28,11 @@ export default function AdminShareModal({ job, onClose }: Props) {
     navigator.clipboard.writeText(msg).then(() => showToast(t('toast.wa_copied'), 'success'));
   };
 
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" onClick={onClose}>
-      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
         <div class="p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 class="text-sm font-bold text-white"><Icon name="share-alt" class="mr-2 text-pink-400" />{t('ui.share_modal_title')}</h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>

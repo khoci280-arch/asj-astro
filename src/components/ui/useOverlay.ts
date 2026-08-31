@@ -59,7 +59,7 @@ export function useOverlay<T extends HTMLElement>({
   closeOnBackdrop = true,
   restoreFocusTo,
 }: OverlayOptions) {
-  const containerRef = useRef<T | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
   /* ── Save / restore focus ────────────────────────────────────────── */

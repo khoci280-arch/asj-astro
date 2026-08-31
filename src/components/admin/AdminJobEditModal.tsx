@@ -6,6 +6,7 @@ import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import type { Job } from '../../types/api';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 // Job type imported from shared types
 interface Props { job: Job; onClose: () => void; onSave?: (data: Job) => void; }
@@ -35,9 +36,11 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     finally { setLoading(false); }
   };
 
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" onClick={onClose}>
-      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <h3 class="text-sm font-bold text-white"><Icon name="edit" class="mr-2 text-red-400" />{t('ui.modal_edit_job_title')}</h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
