@@ -236,9 +236,9 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        {/* ── Digital CV button ── */}
+        {/* ── Profil button ── */}
         <div class="mb-6 md:mb-8 flex justify-center">
-          <button onClick={() => { setDocPreviewUrl(user?.cvUrl || ""); setDocPreviewTitle("CV Preview"); setShowDocPreview(true); }} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><i class="fas fa-user-circle mr-2 text-sky-400"></i> {t('button.view_cv')}</button>
+          <button onClick={() => setShowCvMiniModal(true)} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><i class="fas fa-user-circle mr-2 text-sky-400"></i> {t('button.profil')}</button>
         </div>
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
@@ -309,7 +309,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><i class="fas fa-signature mr-1.5"></i> {t('ui.esign_naitei')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-robot mr-1.5"></i> AI CV Master Assistant</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i> {t('ui.master_full_form')}</a>
-              <button onClick={() => { setDocPreviewUrl(user?.cvUrl || ''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> Preview Desain CV</button>
+              
+                            <button onClick={() => { setDocPreviewUrl(user?.cvUrl || ''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-file-alt mr-1.5 text-red-600"></i> {t('candidate.btn_preview_cv')}</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><i class="fas fa-key mr-1.5"></i> {t('ui.change_password')}</button>
             </div>
           </div>
@@ -358,7 +359,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       {/* ── Modals ── */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
-      {showDocPreview && <DocumentPreviewModal url={docPreviewUrl} title={docPreviewTitle} onClose={() => setShowDocPreview(false)} />}
+      {showDocPreview && <DocumentPreviewModal url={docPreviewUrl} title={docPreviewTitle} previewOnly={true} onClose={() => setShowDocPreview(false)} />}
       {showESign && <ESignatureModal onSave={handleSaveSignature} onClose={() => setShowESign(false)} />}
       {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} />}
     </div>

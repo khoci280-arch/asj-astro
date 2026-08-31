@@ -2,6 +2,7 @@
  * DocumentPreviewModal.tsx - Universal document preview modal
  * Migrated from legacy/js/03_candidate.ts bukaPreviewDokumen()
  * Handles: images, PDFs, Excel/CSV, PPTX, Office docs, fallback
+ * previewOnly: hides download button (for candidates; admin can still download)
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 
@@ -9,6 +10,7 @@ interface Props {
   url: string;
   title: string;
   onClose: () => void;
+  previewOnly?: boolean;
 }
 
 function isImage(url: string): boolean {
@@ -35,7 +37,7 @@ function getOfficeViewerUrl(url: string): string {
   return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
 }
 
-export default function DocumentPreviewModal({ url, title, onClose }: Props) {
+export default function DocumentPreviewModal({ url, title, onClose, previewOnly }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -109,10 +111,12 @@ export default function DocumentPreviewModal({ url, title, onClose }: Props) {
           <div class="text-center space-y-4">
             <i class="fas fa-file-powerpoint text-5xl text-orange-400"></i>
             <p class="text-sm text-slate-300">Preview PPTX tidak tersedia di browser</p>
-            <a href={url} target="_blank" rel="noopener"
-               class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-              <i class="fas fa-download mr-2"></i>Unduh File
-            </a>
+            {!previewOnly && (
+              <a href={url} target="_blank" rel="noopener"
+                 class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
+                <i class="fas fa-download mr-2"></i>Unduh File
+              </a>
+            )}
           </div>
         </div>
       );
@@ -125,10 +129,14 @@ export default function DocumentPreviewModal({ url, title, onClose }: Props) {
           <i class="fas fa-file text-5xl text-slate-400"></i>
           <p class="text-sm text-slate-300 font-bold">Tidak bisa dipratinjau</p>
           <p class="text-xs text-slate-500">Tipe file ini tidak bisa ditampilkan di preview browser</p>
-          <a href={url} target="_blank" rel="noopener"
-             class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-            <i class="fas fa-download mr-2"></i>Unduh File
-          </a>
+          {!previewOnly ? (
+            <a href={url} target="_blank" rel="noopener"
+               class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
+              <i class="fas fa-download mr-2"></i>Unduh File
+            </a>
+          ) : (
+            <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>
+          )}
         </div>
       </div>
     );
@@ -145,11 +153,13 @@ export default function DocumentPreviewModal({ url, title, onClose }: Props) {
             <i class="fas fa-file-alt mr-2 text-sky-400"></i>{title}
           </h3>
           <div class="flex items-center gap-2 ml-3">
-            <a href={url} target="_blank" rel="noopener"
-               class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
-               title="Unduh">
-              <i class="fas fa-download"></i>
-            </a>
+            {!previewOnly && (
+              <a href={url} target="_blank" rel="noopener"
+                 class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
+                 title="Unduh">
+                <i class="fas fa-download"></i>
+              </a>
+            )}
             <button onClick={onClose}
                     class="text-slate-400 hover:text-white transition p-1">
               <i class="fas fa-times text-xl"></i>
@@ -171,10 +181,14 @@ export default function DocumentPreviewModal({ url, title, onClose }: Props) {
               <div class="text-center space-y-3">
                 <i class="fas fa-exclamation-triangle text-4xl text-amber-400"></i>
                 <p class="text-sm text-slate-300 font-bold">Gagal memuat pratinjau</p>
-                <a href={url} target="_blank" rel="noopener"
-                   class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-                  <i class="fas fa-download mr-2"></i>Unduh File
-                </a>
+                {!previewOnly ? (
+                  <a href={url} target="_blank" rel="noopener"
+                     class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
+                    <i class="fas fa-download mr-2"></i>Unduh File
+                  </a>
+                ) : (
+                  <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>
+                )}
               </div>
             </div>
           ) : renderContent()}
