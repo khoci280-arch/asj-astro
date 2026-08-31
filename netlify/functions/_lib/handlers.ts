@@ -2,6 +2,8 @@ import * as session from './session';
 import * as rateLimit from './rate-limit';
 import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './action-registry';
 import * as shareActions from './actions-share';
+import { toErrorResponse } from './kernel/errors';
+import { log, runWithContext } from './kernel/log';
 // handlers.js — dispatcher pusat backend rebuild.
 //
 // Frontend mengirim { action, payload, sessionToken } ke /.netlify/functions/*
@@ -121,6 +123,8 @@ function rateLimitChecks(action, meta, sessionToken) {
 // Dispatcher utama
 // ---------------------------------------------------------------------------
 async function handleAction(action, payload, sessionToken, meta) {
+  const requestId = (globalThis as any).__requestId || String(Date.now());
+  return runWithContext({ requestId, action }, async () => {
   // Anti cold-start / keep-warm (2026-08-17): action 'ping' dilayani PALING
   // awal — sebelum rate limit, dispatch, inisialisasi koneksi Supabase, atau
   // kerja apa pun. .github/workflows/keep-alive.yml menembak endpoint ini tiap
@@ -143,7 +147,9 @@ async function handleAction(action, payload, sessionToken, meta) {
       };
     }
   }
+  log.info('handler.start', { action, ip: meta?.ip });
   const out = await dispatchAction(action, payload, sessionToken);
+  log.info('handler.end', { action, success: out?.success });
   // Lockout login: catat kegagalan (PIN/WA/password salah) sesuai REVIEW M3.
   if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
     for (const c of checks) {
@@ -152,6 +158,7 @@ async function handleAction(action, payload, sessionToken, meta) {
     }
   }
   return out;
+  });
 }
 
 async function dispatchAction(action, payload, sessionToken) {
@@ -162,10 +169,8 @@ async function dispatchAction(action, payload, sessionToken) {
   try {
     return await handler(payload, sessionToken);
   } catch (err) {
-    console.error(
-      '[handler-error] action=' + action + ' error=' + (err && err.message ? err.message : err),
-    );
-    return { success: false, message: 'Terjadi kesalahan saat memproses permintaan.' };
+    log.error('handler.error', { action, err: String(err) });
+    return toErrorResponse(err);
   }
 }
 
