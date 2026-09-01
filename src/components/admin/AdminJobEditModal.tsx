@@ -28,7 +28,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     try {
       const res = await fetch(getEndpoint('editLokerFull'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'editLokerFull', args: [job.code, form] }),
+        body: JSON.stringify({ action: 'editLokerFull', args: [{ ...form, code: job.code, updated_at: job.updated_at }] }),
       });
       const data = await res.json();
       if (data.success) { onSave?.(form as any); onClose(); }

@@ -14,6 +14,7 @@ type Loker = {
   code: string; pekerjaan: string; status: string; kategori: string;
   gender: string; lokasi: string; kuota: string; keterangan: string;
   syarat?: string; templateCv?: string; pamflet?: string;
+  updated_at?: string;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -52,9 +53,10 @@ export default function TabKelola() {
 
   const toggleStatus = async (code: string, newStatus: string) => {
     try {
+      const job = loker.find(j => j.code === code);
       await fetch(getEndpoint('ubahStatusJob'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus] }),
+        body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus, job?.updated_at] }),
       });
       setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
     } catch (e) { console.error(e); }

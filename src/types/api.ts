@@ -71,6 +71,7 @@ export interface Job {
   rincianBiaya?: string;
   totalBiaya?: string;
   tahapan?: string[];
+  updated_at?: string;
 }
 
 export interface AppDataResponse {
