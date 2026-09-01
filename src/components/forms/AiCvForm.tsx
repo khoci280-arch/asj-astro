@@ -6,9 +6,9 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
+import { t } from '../../store/i18n';
 import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema } from '../../lib/schemas';
-import { t } from '../../store/i18n';
 
 import type { ChatMessage } from '../../types/api';
 import Icon from '../ui/Icon';
@@ -277,36 +277,36 @@ export default function AiCvForm() {
           <Section title="1. Identitas & Kontak" icon="fa-address-card" color="sky">
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
               <Field label={t("cv.field_nama")} id="nama" value={cv.nama} span={2} readonly />
-              <Field label="Katakana" id="katakana" value={cv.katakana} span={2} jp />
-              <Field label="Panggilan" id="panggilan" value={cv.panggilan} readonly />
-              <Field label="P. Katakana" id="panggilan_katakana" value={cv.panggilan_katakana} jp />
+              <Field label={t("form.mf_furigana")} id="katakana" value={cv.katakana} span={2} jp />
+              <Field label={t("form.mf_panggilan")} id="panggilan" value={cv.panggilan} readonly />
+              <Field label={t("form.mf_panggilan_ktk")} id="panggilan_katakana" value={cv.panggilan_katakana} jp />
               <Field label={t("cv.field_tmp_lahir")} id="tmplahir" value={cv.tmplahir} readonly />
               <Field label={t("cv.field_tgl_lahir")} id="tgllahir" value={cv.tgllahir} readonly />
-              <Field label="Umur" id="umur" value={cv.umur} center readonly />
-              <Field label="Gender" id="gender" value={cv.gender} center readonly />
-              <Field label="Agama" id="agama" value={cv.agama} center readonly />
-              <Field label="Gol. Darah" id="goldar" value={cv.goldar} center readonly />
+              <Field label={t("form.mf_usia")} id="umur" value={cv.umur} center readonly />
+              <Field label={t("form.mf_gender")} id="gender" value={cv.gender} center readonly />
+              <Field label={t("form.mf_agama")} id="agama" value={cv.agama} center readonly />
+              <Field label={t("form.mf_goldar")} id="goldar" value={cv.goldar} center readonly />
               <Field label={t("cv.field_status_nikah")} id="status" value={cv.status} center readonly />
-              <Field label="Anak" id="anak" value={cv.anak} center readonly />
-              <Field label="Email" id="email" value={cv.email} span={2} readonly />
+              <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center readonly />
+              <Field label={t("form.mf_email")} id="email" value={cv.email} span={2} readonly />
               <Field label={t("cv.field_alamat")} id="alamat" value={cv.alamat} span={3} spanMd={3} readonly />
-              <Field label="No. HP (WA)" id="hp" value={cv.hp} readonly />
-              <Field label="HP Darurat" id="hpdarurat" value={cv.hpdarurat} readonly />
-              <Field label="NIK KTP" id="ktp" value={cv.ktp} span={2} readonly />
-              <Field label="No. Paspor" id="paspor" value={cv.paspor} span={2} readonly />
-              <Field label="SIM" id="sim" value={cv.sim} readonly />
+              <Field label={t("form.mf_kontak")} id="hp" value={cv.hp} readonly />
+              <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat} readonly />
+              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} span={2} readonly />
+              <Field label={t("form.mf_no_paspor")} id="paspor" value={cv.paspor} span={2} readonly />
+              <Field label={t("form.mf_sim")} id="sim" value={cv.sim} readonly />
             </div>
           </Section>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
             <Section title="2. Fisik & Ukuran" icon="fa-child" color="amber">
               <div class="grid grid-cols-3 gap-2">
-                <Field label="Tinggi (cm)" id="tb" value={cv.tb} center readonly />
-                <Field label="Berat (kg)" id="bb" value={cv.bb} center readonly />
+                <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center readonly />
+                <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center readonly />
                 <Field label={t("cv.field_tgn_dominan")} id="tangan" value={cv.tangan} center readonly />
-                <Field label="Uk. Sepatu" id="sepatu" value={cv.sepatu} center readonly />
-                <Field label="Uk. Baju" id="baju" value={cv.baju} center readonly />
-                <Field label="Uk. Topi" id="topi" value={cv.topi} center readonly />
+                <Field label={t("form.mf_sepatu")} id="sepatu" value={cv.sepatu} center readonly />
+                <Field label={t("form.mf_baju")} id="baju" value={cv.baju} center readonly />
+                <Field label={t("form.mf_topi")} id="topi" value={cv.topi} center readonly />
                 <div class="col-span-3"><Field label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} readonly /></div>
               </div>
             </Section>
@@ -314,19 +314,19 @@ export default function AiCvForm() {
               <div class="grid grid-cols-4 gap-2">
                 <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center readonly />
                 <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center readonly />
-                <div class="col-span-2"><Field label="Kacamata?" id="kacamata" value={cv.kacamata} center readonly /></div>
+                <div class="col-span-2"><Field label={t("form.mf_kacamata")} id="kacamata" value={cv.kacamata} center readonly /></div>
                 <div class="col-span-2"><Field label={t("cv.field_butawarna")} id="butawarna" value={cv.butawarna} readonly /></div>
-                <div class="col-span-2"><Field label="Tato / Tindik" id="tato" value={cv.tato} readonly /></div>
-                <Field label="Rokok" id="rokok" value={cv.rokok} center readonly />
-                <Field label="Alkohol" id="alkohol" value={cv.alkohol} center readonly />
+                <div class="col-span-2"><Field label={t("form.mf_tato")} id="tato" value={cv.tato} readonly /></div>
+                <Field label={t("form.mf_merokok")} id="rokok" value={cv.rokok} center readonly />
+                <Field label={t("form.mf_alkohol")} id="alkohol" value={cv.alkohol} center readonly />
               </div>
               <div class="col-span-4 space-y-1 mt-2 p-2 bg-slate-800/40 rounded border border-slate-700/50">
                 <div class="grid grid-cols-2 gap-2">
-                  <label class="block text-[11px] text-[#e2e8f0]">Alergi</label>
+                  <label class="block text-[11px] text-[#e2e8f0]">{t("form.mf_alergi")}</label>
                   <div></div>
                 </div>
                 <TextAreaPair idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
-                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">Penyakit</label><div></div></div>
+                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">{t("form.mf_penyakit")}</label><div></div></div>
                 <TextAreaPair idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
                 <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">Kecelakaan</label><div></div></div>
                 <TextAreaPair idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
