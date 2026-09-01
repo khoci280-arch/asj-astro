@@ -23,8 +23,8 @@ const JOB_COLUMNS: Record<string, string> = {
   rincianBiaya: 'rincian_biaya', dokumenShare: 'dokumen_share',
 };
 
-export function mapJobPayloadToRow(data: any): Record<string, any> {
-  const row: Record<string, any> = {};
+export function mapJobPayloadToRow(data: Record<string, unknown>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
   for (const [from, to] of Object.entries(JOB_COLUMNS)) {
     if (data[from] !== undefined && data[from] !== null) row[to] = data[from];
   }
@@ -43,8 +43,8 @@ export async function nextJobCode(): Promise<string> {
   return 'TG' + (max + 1) + 'ASJ';
 }
 
-export async function getJobMapped(code: string): Promise<any | null> {
-  let row: any = await findJobByCodeFiltered(code);
+export async function getJobMapped(code: string): Promise<import("../../_lib/db/row-types").JobRawRow | null> {
+  let row: import("../../_lib/db/row-types").JobRawRow | undefined | null = await findJobByCodeFiltered(code);
   if (row === undefined) {
     const found = await findJobs();
     row = (found.rows || []).find((r) => String(r.code_job || r.code || '') === String(code)) || null;
@@ -53,7 +53,7 @@ export async function getJobMapped(code: string): Promise<any | null> {
   return stripRaw([mapJob(row)])[0] || null;
 }
 
-export async function patchJob(code: string, body: Record<string, any>, updatedAt?: string, sessionToken?: string): Promise<void> {
+export async function patchJob(code: string, body: Record<string, unknown>, updatedAt?: string, sessionToken?: string): Promise<void> {
   const headers: Record<string, string> = { Prefer: 'return=minimal' };
   if (updatedAt) headers['If-Match'] = '"' + updatedAt + '"';
   const client = clientFor('jobs.patchJob', sessionToken);
@@ -63,7 +63,7 @@ export async function patchJob(code: string, body: Record<string, any>, updatedA
     headers,
     overrideKey: client.apikey,
     overrideAuthKey: client.authKey,
-  } as any);
+  } as Record<string, unknown>);
 }
 
 export async function deleteJob(code: string): Promise<void> {
@@ -73,7 +73,7 @@ export async function deleteJob(code: string): Promise<void> {
   });
 }
 
-export async function postJob(body: Record<string, any>): Promise<void> {
+export async function postJob(body: Record<string, unknown>): Promise<void> {
   await supabaseJson('POST', 'job_database', {
     body,
     headers: { Prefer: 'return=minimal' },

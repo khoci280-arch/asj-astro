@@ -14,7 +14,7 @@ import {
   upsertFormRow,
 } from '../../_lib/db/forms';
 
-export async function getFormByIndex(idx: number): Promise<any | null> {
+export async function getFormByIndex(idx: number): Promise<import("../../_lib/db/row-types").FormRawRow | null> {
   let f = await findFormByIndexFiltered(idx);
   if (f === undefined) {
     const forms = await findForms();
@@ -23,7 +23,7 @@ export async function getFormByIndex(idx: number): Promise<any | null> {
   return f;
 }
 
-export async function getFormsByWa(wa: string): Promise<any[]> {
+export async function getFormsByWa(wa: string): Promise<import("../../_lib/db/row-types").FormRawRow[]> {
   let rows = await findFormsByWa(wa);
   if (rows === undefined) {
     rows = await supabaseJson('GET', 'database_asj_form', {
@@ -33,7 +33,7 @@ export async function getFormsByWa(wa: string): Promise<any[]> {
   return Array.isArray(rows) ? rows : [];
 }
 
-export async function patchForm(id: string, body: Record<string, any>, sessionToken?: string): Promise<void> {
+export async function patchForm(id: string, body: Record<string, unknown>, sessionToken?: string): Promise<void> {
   const client = clientFor('applications.patchForm', sessionToken);
   await supabaseJson('PATCH', 'database_asj_form', {
     query: { id: 'eq.' + id },
@@ -41,7 +41,7 @@ export async function patchForm(id: string, body: Record<string, any>, sessionTo
     headers: { Prefer: 'return=minimal' },
     overrideKey: client.apikey,
     overrideAuthKey: client.authKey,
-  } as any);
+  } as Record<string, unknown>);
 }
 
 export async function deleteForm(id: string, sessionToken?: string): Promise<void> {
@@ -51,10 +51,10 @@ export async function deleteForm(id: string, sessionToken?: string): Promise<voi
     headers: { Prefer: 'return=minimal' },
     overrideKey: client.apikey,
     overrideAuthKey: client.authKey,
-  } as any);
+  } as Record<string, unknown>);
 }
 
-export async function upsertForm(body: Record<string, any>): Promise<void> {
+export async function upsertForm(body: Record<string, unknown>): Promise<void> {
   await upsertFormRow(body);
 }
 

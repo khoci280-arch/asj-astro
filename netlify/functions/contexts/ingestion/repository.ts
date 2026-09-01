@@ -8,16 +8,16 @@ import {
 } from '../../_lib/db/client';
 import { cacheClear } from '../../_lib/cache';
 
-export async function findMasterByWa(wa: string): Promise<any | null> {
+export async function findMasterByWa(wa: string): Promise<import("../../_lib/db/row-types").MasterRawRow | null> {
   const want = normalizeWa(wa);
   const rows = await supabaseJson('GET', 'master_database_candidate', {
     query: { select: '*', no_wa: 'eq.' + want, limit: 1 },
   });
   const arr = Array.isArray(rows) ? rows : [];
-  return arr.find((r: any) => normalizeWa(String(r.no_wa || '')) === want) || null;
+  return arr.find((r: Record<string, unknown>) => normalizeWa(String(r.no_wa || '')) === want) || null;
 }
 
-export async function patchMaster(id: string, body: Record<string, any>): Promise<any> {
+export async function patchMaster(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   return supabaseJson('PATCH', 'master_database_candidate', {
     query: { id: 'eq.' + id },
     body,
@@ -25,7 +25,7 @@ export async function patchMaster(id: string, body: Record<string, any>): Promis
   });
 }
 
-export async function upsertMaster(body: Record<string, any>): Promise<any> {
+export async function upsertMaster(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   return supabaseUpsert('master_database_candidate', body, ['no_wa'], {
     headers: { Prefer: 'return=representation' },
   });

@@ -9,24 +9,24 @@ import { findCandidateByWaFiltered, findCandidates, findCandidatesByJobFiltered,
 import { fetchMasterByWa } from '../../_lib/db/master';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 
-export async function findFormByWa(wa: string): Promise<any | null> {
+export async function findFormByWa(wa: string): Promise<import("../../_lib/db/row-types").AnyRawRow | null> {
   const want = normalizeWa(wa);
   let rows = await findFormsByWa(wa);
   if (rows === undefined) rows = await findForms();
-  return rows.find((r: any) => normalizeWa(String(r.no_wa || r.wa || '')) === want) || null;
+  return rows.find((r: Record<string, unknown>) => normalizeWa(String(r.no_wa || r.wa || '')) === want) || null;
 }
 
-export async function findFormByWaJob(wa: string, code: string): Promise<any | null> {
+export async function findFormByWaJob(wa: string, code: string): Promise<import("../../_lib/db/row-types").AnyRawRow | null> {
   const want = normalizeWa(wa);
   let rows = await findFormsByWa(wa);
   if (rows === undefined) rows = await findForms();
-  return rows.find((r: any) =>
+  return rows.find((r: Record<string, unknown>) =>
     normalizeWa(String(r.no_wa || r.wa || '')) === want &&
     String(r.code_job || '').trim() === String(code || '').trim(),
   ) || null;
 }
 
-export async function findCandidateRow(wa: string): Promise<any | null> {
+export async function findCandidateRow(wa: string): Promise<import("../../_lib/db/row-types").AnyRawRow | null> {
   let c = await findCandidateByWaFiltered(wa);
   if (c === undefined) {
     const found = await findCandidates();
@@ -36,7 +36,7 @@ export async function findCandidateRow(wa: string): Promise<any | null> {
   return c;
 }
 
-export async function findCandidateById(id: string): Promise<any | null> {
+export async function findCandidateById(id: string): Promise<import("../../_lib/db/row-types").AnyRawRow | null> {
   const { findCandidateByIdFiltered } = await import('../../_lib/db/candidates');
   let c = await findCandidateByIdFiltered(id);
   if (c === undefined) {
@@ -46,14 +46,14 @@ export async function findCandidateById(id: string): Promise<any | null> {
   return c;
 }
 
-export async function findMasterByWa(wa: string): Promise<any | null> {
+export async function findMasterByWa(wa: string): Promise<import("../../_lib/db/row-types").AnyRawRow | null> {
   const want = normalizeWa(wa);
   const rows = await fetchMasterByWa([want]);
   if (!Array.isArray(rows)) return null;
-  return rows.find((r: any) => normalizeWa(String(r.no_wa || r.wa || r.whatsapp || '')) === want) || null;
+  return rows.find((r: Record<string, unknown>) => normalizeWa(String(r.no_wa || r.wa || r.whatsapp || '')) === want) || null;
 }
 
-export async function findCandidatesByJob(code: string): Promise<any[]> {
+export async function findCandidatesByJob(code: string): Promise<import("../../_lib/db/row-types").AnyRawRow[]> {
   let candidates = await findCandidatesByJobFiltered(code);
   if (!candidates || !candidates.length) {
     const all = await findCandidates();
@@ -62,7 +62,7 @@ export async function findCandidatesByJob(code: string): Promise<any[]> {
   return candidates || [];
 }
 
-export async function fetchAllMasters(waList: string[]): Promise<any[]> {
+export async function fetchAllMasters(waList: string[]): Promise<import("../../_lib/db/row-types").AnyRawRow[]> {
   return waList.length ? await fetchMasterByWa(waList) : [];
 }
 

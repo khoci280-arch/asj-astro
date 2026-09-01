@@ -48,7 +48,7 @@ const DROPDOWN_MAP: Record<string, string> = {
   broadcast: 'broadcast',
 };
 
-function parseConfigList(v: any): string[] {
+function parseConfigList(v: unknown): string[] {
   if (Array.isArray(v)) return v;
   const s = String(v || '').trim();
   if (s.startsWith('[') || s.startsWith('{')) {
@@ -60,16 +60,16 @@ function parseConfigList(v: any): string[] {
   return s.split(/[\n,;]+/).map((x: string) => x.trim()).filter(Boolean);
 }
 
-function stripRaw(list: any[]): any[] {
-  return (list || []).map(({ _raw, ...rest }: any) => rest);
+function stripRaw(list: Record<string, unknown>[]): Record<string, unknown>[] {
+  return (list || []).map(({ _raw, ...rest }: Record<string, unknown>) => rest);
 }
 
-async function loadSchedules(): Promise<any[]> {
+async function loadSchedules(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_schedule', {
       query: { select: '*', limit: 500, order: 'created_at.desc' },
     });
-    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+    return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       idJadwal: toText(r.id_jadwal || r.id || ''),
       namaAgenda: toText(r.nama_agenda || ''),
       idLoker: toText(r.id_loker_terkait || '-'),
@@ -82,12 +82,12 @@ async function loadSchedules(): Promise<any[]> {
   } catch { return []; }
 }
 
-async function loadTugas(): Promise<any[]> {
+async function loadTugas(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_tugas', {
       query: { select: '*', limit: 500, order: 'created_at.desc' },
     });
-    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+    return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id_tugas || r.id || ''),
       task: toText(r.nama_tugas || ''),
       status: toText(r.status || 'BARU'),
@@ -97,12 +97,12 @@ async function loadTugas(): Promise<any[]> {
   } catch { return []; }
 }
 
-async function loadWaTemplates(): Promise<any[]> {
+async function loadWaTemplates(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'wa_templates', {
       query: { select: '*', limit: 500 },
     });
-    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+    return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id || ''),
       nama: toText(r.nama || ''),
       isi: toText(r.isi || ''),
@@ -110,7 +110,7 @@ async function loadWaTemplates(): Promise<any[]> {
   } catch { return []; }
 }
 
-function saringKandidatUnik(uniq: any[], q: string): any[] {
+function saringKandidatUnik(uniq: Record<string, unknown>[], q: string): Record<string, unknown>[] {
   const needle = String(q || '').trim().toLowerCase();
   if (!needle) return uniq;
   const digit = needle.replace(/\D/g, '');
@@ -123,7 +123,7 @@ function saringKandidatUnik(uniq: any[], q: string): any[] {
 
 const CAND_CACHE_TTL_MS = 25_000;
 
-async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: number } = {}): Promise<{ rows: any[]; total: number }> {
+async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: number } = {}): Promise<{ rows: Record<string, unknown>[]; total: number }> {
   const page = Number(opts.page) || 1;
   const pageSize = Number(opts.pageSize) || 50;
   const cacheKey = 'cand:' + String(q || '') + '|p' + page + '|s' + pageSize;
@@ -131,8 +131,8 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
   if (cached) return cached;
 
   const start = (page - 1) * pageSize;
-  const tsOf = (r: any) => String(pick(r, ['updated_at', 'created_at', 'tanggal_daftar']) || '');
-  const urutkan = (u: any[]) => u.sort((a, b) => (tsOf(b) > tsOf(a) ? 1 : tsOf(b) < tsOf(a) ? -1 : 0));
+  const tsOf = (r: Record<string, unknown>) => String(pick(r, ['updated_at', 'created_at', 'tanggal_daftar']) || '');
+  const urutkan = (u: Record<string, unknown>[]) => u.sort((a, b) => (tsOf(b) > tsOf(a) ? 1 : tsOf(b) < tsOf(a) ? -1 : 0));
 
   const light = await findAllCandidatesLight();
   if (light !== undefined) {
@@ -160,7 +160,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
 
 const PUBLIC_CACHE_TTL_MS = 20_000;
 
-async function loadPublicBase(mode: string): Promise<any> {
+async function loadPublicBase(mode: string): Promise<Record<string, unknown>> {
   const cached = cacheGet('public-base');
   if (cached) return cached;
 
@@ -188,7 +188,7 @@ async function loadPublicBase(mode: string): Promise<any> {
   }
 
   const jobs = foundTable.rows.map(mapJob).filter((j) => j.pekerjaan && j.pekerjaan !== '');
-  const dropdowns: Record<string, any> = {};
+  const dropdowns: Record<string, string[]> = {};
   let pengumuman = '';
   if (settings.table) {
     for (const row of settings.rows) {

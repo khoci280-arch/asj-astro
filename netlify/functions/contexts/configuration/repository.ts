@@ -30,7 +30,7 @@ function resolveConfigType(key: string): string {
 export async function replaceConfigItems(type: string, items: string[]): Promise<void> {
   const settings = await findSettings();
   const rows = Array.isArray(settings.rows) ? settings.rows : [];
-  const toDelete = rows.filter((r: any) => String(r.config_type || '') === type).map((r: any) => r.id);
+  const toDelete = rows.filter((r: Record<string, unknown>) => String(r.config_type || '') === type).map((r: Record<string, unknown>) => r.id);
 
   for (const id of toDelete) {
     await supabaseJson('DELETE', 'sys_config', {
@@ -54,7 +54,7 @@ export async function replaceConfigItems(type: string, items: string[]): Promise
 }
 
 /** Get all rincian_presets */
-export async function getRincianPresets(): Promise<any[]> {
+export async function getRincianPresets(): Promise<import("../../_lib/db/row-types").SysConfigRawRow[]> {
   const rows = await supabaseJson('GET', 'rincian_presets', {
     query: { select: '*', limit: 500 },
   });

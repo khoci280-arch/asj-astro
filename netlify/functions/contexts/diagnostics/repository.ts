@@ -20,11 +20,11 @@ export async function getTableInfo() {
   let names: string[] = [];
   let columns: Record<string, string[]> = {};
   try {
-    const spec = await supabaseJson('GET', '', {} as any);
+    const spec = await supabaseJson('GET', '', {} as Record<string, unknown>);
     reachable = true;
     names = tablesFromSchema(spec);
     for (const name of names) columns[name] = columnsFromSchema(spec, name);
-  } catch (e: any) { error = String(e.message || e).slice(0, 300); }
+  } catch (e: unknown) { error = String((e instanceof Error ? e.message : String(e)) || e).slice(0, 300); }
   return { urlFormat, reachable, error, all: names, columns };
 }
 
