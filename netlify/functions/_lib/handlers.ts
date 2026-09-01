@@ -12,6 +12,22 @@ import { handleGetJobStatus } from './actions-job-status';
 import { initEventHandlers } from './event-handlers';
 initEventHandlers();
 
+// ── Types ──────────────────────────────────────────────────────────────────
+interface RequestMeta {
+  ip?: string;
+  [key: string]: unknown;
+}
+
+interface HandlerResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  conflict?: boolean;
+  rateLimited?: boolean;
+  retryAfter?: number;
+  [key: string]: unknown;
+}
+
 // Rate limit groups — moved from old action-registry.ts
 const LOGIN_ACTIONS = new Set([
   'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',
@@ -33,7 +49,7 @@ function sessionIdentity(sessionToken: string) {
   return t.role === 'admin' ? 'admin:' + String(t.name || '') : 'kandidat:' + String(t.wa || '');
 }
 
-function rateLimitChecks(action: string, meta: any, sessionToken: string) {
+function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string) {
   const ip = (meta && meta.ip && String(meta.ip).trim()) || 'anon';
   const ident = sessionIdentity(sessionToken);
   const adminKey = ident && ident.indexOf('admin:') === 0 ? ident : null;
@@ -59,8 +75,8 @@ function rateLimitChecks(action: string, meta: any, sessionToken: string) {
   return [];
 }
 
-async function handleAction(action: string, payload: any[], sessionToken: string, meta: any) {
-  const requestId = (globalThis as any).__requestId || String(Date.now());
+async function handleAction(action: string, payload: unknown[], sessionToken: string, meta: RequestMeta) {
+  const requestId = (globalThis as Record<string, unknown>).__requestId || String(Date.now());
   return runWithContext({ requestId, action }, async () => {
     if (action === 'ping') return { statusCode: 200, body: 'pong' };
 
@@ -85,8 +101,8 @@ async function handleAction(action: string, payload: any[], sessionToken: string
   });
 }
 
-async function dispatchAction(action: string, payload: any[], sessionToken: string) {
-  const idempotencyKey = (globalThis as any).__idempotencyKey as string | undefined;
+async function dispatchAction(action: string, payload: unknown[], sessionToken: string) {
+  const idempotencyKey = (globalThis as Record<string, unknown>).__idempotencyKey as string | undefined;
   if (idempotencyKey && isMutatingAction(action)) {
     try {
       const existing = await supabaseJson('GET', 'idempotency_keys', {
@@ -113,7 +129,7 @@ async function dispatchAction(action: string, payload: any[], sessionToken: stri
     return toErrorResponse(err);
   }
 
-  if (idempotencyKey && isMutatingAction(action) && result && (result as any).success !== false) {
+  if (idempotencyKey && isMutatingAction(action) && result && (result as HandlerResult).success !== false) {
     try {
       await supabaseJson('POST', 'idempotency_keys', {
         query: { on_conflict: 'key' },

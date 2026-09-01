@@ -15,7 +15,7 @@ const SUPER_MAIL_LABELS: Record<string, string> = {
   tb: 'tinggi', bb: 'berat', nilai_jft_text: 'JFT', bidang_ssw_text: 'SSW', id_loker_pilihan: 'loker',
 };
 
-export async function handleUpdateCatatanKandidat(payload: any[], sessionToken?: string) {
+export async function handleUpdateCatatanKandidat(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
@@ -24,16 +24,16 @@ export async function handleUpdateCatatanKandidat(payload: any[], sessionToken?:
   try {
     await patchCandidate(String(id), { catatan_internal: intNote || '', catatan_external: extNote || '' }, updatedAt, sessionToken);
     return { success: true };
-  } catch (e: any) {
-    const msg = String(e.message || e);
+  } catch (e: unknown) {
+    const msg = String(e instanceof Error ? e.message : e);
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal simpan catatan: ' + e.message };
+    return { success: false, error: 'Gagal simpan catatan: ' + msg };
   }
 }
 
-export async function handleUpdateKandidatSuper(payload: any[], sessionToken?: string) {
+export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
@@ -76,16 +76,16 @@ export async function handleUpdateKandidatSuper(payload: any[], sessionToken?: s
       }
     } catch { /* sync mail is best-effort */ }
     return { success: true };
-  } catch (e: any) {
-    const msg = String(e.message || e);
+  } catch (e: unknown) {
+    const msg = String(e instanceof Error ? e.message : e);
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal update kandidat: ' + e.message };
+    return { success: false, error: 'Gagal update kandidat: ' + msg };
   }
 }
 
-export async function handleGetCandidatesPage(payload: any[], sessionToken?: string) {
+export async function handleGetCandidatesPage(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const opts = (payload && payload[0]) || {};
@@ -96,7 +96,7 @@ export async function handleGetCandidatesPage(payload: any[], sessionToken?: str
       pageSize: Number(opts.pageSize) || 50,
     });
     return { success: true, candidates, total };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal memuat kandidat: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal memuat kandidat: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }

@@ -9,7 +9,7 @@ import {
   attachBerkasBio, countCandidatesForJob, findCandidates, supabaseJson,
 } from './repository';
 
-export async function handleSimpanJobBaru(payload: any[], sessionToken?: string) {
+export async function handleSimpanJobBaru(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const data = (payload && payload[0]) || {};
@@ -19,12 +19,12 @@ export async function handleSimpanJobBaru(payload: any[], sessionToken?: string)
     const code = await nextJobCode();
     await postJob({ code_job: code, ...mapJobPayloadToRow(data) });
     return { success: true, code };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal simpan loker: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal simpan loker: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleEditLokerFull(payload: any[], sessionToken?: string) {
+export async function handleEditLokerFull(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const data = (payload && payload[0]) || {};
@@ -37,16 +37,16 @@ export async function handleEditLokerFull(payload: any[], sessionToken?: string)
     }
     await patchJob(data.code, body, data.updated_at, sessionToken);
     return { success: true };
-  } catch (e: any) {
-    const msg = String(e.message || e);
+  } catch (e: unknown) {
+    const msg = String((e instanceof Error ? e.message : String(e)) || e);
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal edit loker: ' + e.message };
+    return { success: false, error: 'Gagal edit loker: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleUbahStatusJob(payload: any[], sessionToken?: string) {
+export async function handleUbahStatusJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [code, status, updatedAt] = payload || [];
@@ -54,16 +54,16 @@ export async function handleUbahStatusJob(payload: any[], sessionToken?: string)
   try {
     await patchJob(code, { status }, updatedAt, sessionToken);
     return { success: true, job: await getJobMapped(code) };
-  } catch (e: any) {
-    const msg = String(e.message || e);
+  } catch (e: unknown) {
+    const msg = String((e instanceof Error ? e.message : String(e)) || e);
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal ubah status: ' + e.message };
+    return { success: false, error: 'Gagal ubah status: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleHapusJobData(payload: any[], sessionToken?: string) {
+export async function handleHapusJobData(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [code] = payload || [];
@@ -80,28 +80,28 @@ export async function handleHapusJobData(payload: any[], sessionToken?: string) 
     }
     await deleteJob(code);
     return { success: true, code };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal hapus loker: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal hapus loker: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleUpdateTahapanDbJob(payload: any[], sessionToken?: string) {
+export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [code, tahapan, status] = payload || [];
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
-  const body: Record<string, any> = {};
+  const body: Record<string, unknown> = {};
   if (tahapan !== undefined && tahapan !== null) body.tahapan = tahapan;
   if (status !== undefined && status !== null) body.status = status;
   try {
     await patchJob(code, body, undefined, sessionToken);
     return { success: true, job: await getJobMapped(code) };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal update tahapan: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal update tahapan: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleUpdateDokumenShare(payload: any[], sessionToken?: string) {
+export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [code, joined] = payload || [];
@@ -109,12 +109,12 @@ export async function handleUpdateDokumenShare(payload: any[], sessionToken?: st
   try {
     await patchJob(code, { dokumen_share: joined || '' }, undefined, sessionToken);
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal update dokumen: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal update dokumen: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleTandaiGagalJob(payload: any[], sessionToken?: string) {
+export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [wa, jobCode] = payload || [];
@@ -132,7 +132,7 @@ export async function handleTandaiGagalJob(payload: any[], sessionToken?: string
       body: { status_kandidat: 'GAGAL', id_loker_pilihan: null, updated_at: new Date().toISOString() },
       headers: { Prefer: 'return=minimal' },
     });
-    let formUpdated: any = null;
+    let formUpdated: Record<string, unknown> | null = null;
     try {
       let forms = await findFormsByWa(wa);
       if (forms === undefined) forms = await findForms();
@@ -148,7 +148,7 @@ export async function handleTandaiGagalJob(payload: any[], sessionToken?: string
         formUpdated = mapForm(m, -1);
       }
     } catch { /* opsional */ }
-    let candidate: any = null;
+    let candidate: Record<string, unknown> | null = null;
     try {
       const row2 = await findCandidateByWa(wa);
       if (row2 && row2.id !== undefined) {
@@ -157,7 +157,7 @@ export async function handleTandaiGagalJob(payload: any[], sessionToken?: string
       }
     } catch { /* best-effort */ }
     return { success: true, candidate, form: formUpdated };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal tandai gagal: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal tandai gagal: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }

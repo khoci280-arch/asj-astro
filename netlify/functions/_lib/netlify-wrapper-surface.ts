@@ -18,14 +18,14 @@ import { metrics } from './kernel/metrics';
 
 // ── Shared helpers (duplicated from netlify-wrapper.ts for independence) ─────
 
-function clientIp(event: any): string | null {
+function clientIp(event: { headers?: Record<string, string> }): string | null {
   const h = (event && event.headers) || {};
   const fwd = h['x-forwarded-for'];
   if (fwd) return String(fwd).split(',')[0].trim();
   return h['client-ip'] || h['x-real-ip'] || null;
 }
 
-function sessionTokenFrom(event: any, body: any): string | undefined {
+function sessionTokenFrom(event: { headers?: Record<string, string>; queryStringParameters?: Record<string, string> }, body: Record<string, unknown>): string | undefined {
   if (body && body.sessionToken) return body.sessionToken;
   const h = (event && event.headers) || {};
   const auth = h.authorization || h.Authorization || '';
@@ -47,7 +47,7 @@ function sessionTokenFrom(event: any, body: any): string | undefined {
 export function makeSurfaceHandler(allowedActions: string[]) {
   const allowedSet = new Set(allowedActions);
 
-  return async (event: any) => {
+  return async (event: { body?: string; headers?: Record<string, string>; queryStringParameters?: Record<string, string> }) => {
     let body: Record<string, any> = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -77,30 +77,30 @@ export function makeSurfaceHandler(allowedActions: string[]) {
     const idempotencyKey = (event && event.headers)
       ? (event.headers['idempotency-key'] || event.headers['Idempotency-Key'] || undefined)
       : undefined;
-    if (idempotencyKey) (globalThis as any).__idempotencyKey = String(idempotencyKey);
-    else delete (globalThis as any).__idempotencyKey;
+    if (idempotencyKey) (globalThis as Record<string, unknown>).__idempotencyKey = String(idempotencyKey);
+    else delete (globalThis as Record<string, unknown>).__idempotencyKey;
 
     // Distributed tracing
     const traceparent = (event && event.headers)
       ? (event.headers['traceparent'] || event.headers['Traceparent'] || undefined)
       : undefined;
     const requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
-    (globalThis as any).__requestId = requestId;
-    (globalThis as any).__traceparent = traceparent;
+    (globalThis as Record<string, unknown>).__requestId = requestId;
+    (globalThis as Record<string, unknown>).__traceparent = traceparent;
 
     // Import the lazy surface loader
     const { getSurfaceHandler } = await import('../surfaces/index');
     const { handleAction } = await import('./handlers');
 
-    let out: any;
+    let out: unknown;
     try {
       out = await runWithContext({ requestId, action: body.action }, () =>
         handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
           ip: clientIp(event),
         }),
       );
-    } catch (e: any) {
-      out = { success: false, message: 'Error internal: ' + e.message };
+    } catch (e: unknown) {
+      out = { success: false, message: 'Error internal: ' + (e instanceof Error ? e.message : String(e)) };
     }
 
     const baseHeaders: Record<string, string> = {

@@ -41,14 +41,14 @@ function appendFeedback(prev: string, entry: string): string {
   return items.slice(0, 3).join(' · ');
 }
 
-async function syncCandidateDariForm(f: any, status: string): Promise<void> {
+async function syncCandidateDariForm(f: Record<string, unknown>, status: string): Promise<void> {
   const wa = normWa(String(f.no_wa || f.wa || ''));
   const codeJob = String(f.code_job || '');
   if (!wa) return;
   const row = await findCandidateByWa(wa);
   if (status === 'LULUS') {
     const now = new Date().toISOString();
-    const base: Record<string, any> = {
+    const base: Record<string, unknown> = {
       nama_lengkap: String(f.nama_lengkap || ''),
       gender: String(f.gender || ''),
       usia: String(f.usia || ''),
@@ -84,7 +84,7 @@ async function syncCandidateDariForm(f: any, status: string): Promise<void> {
       });
     }
   } else if (status === 'GAGAL' && row && row.id !== undefined) {
-    const upd: Record<string, any> = { status_kandidat: 'GAGAL', updated_at: new Date().toISOString() };
+    const upd: Record<string, unknown> = { status_kandidat: 'GAGAL', updated_at: new Date().toISOString() };
     if (codeJob && String(row['id_loker_pilihan'] || row['id_loker'] || '') === codeJob) {
       upd.id_loker_pilihan = null;
     }
@@ -104,7 +104,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
   try {
     const f = await getFormByIndex(rowIndex);
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
-    const body: Record<string, any> = { status };
+    const body: Record<string, unknown> = { status };
     if (reason !== null && reason !== undefined) body.keterangan = reason;
     await patchForm(f.id, body, sessionToken);
     try { await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
@@ -134,7 +134,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             query: { select: 'token', wa: 'eq.' + waNotify, limit: 10 },
           });
           if (Array.isArray(tokens) && tokens.length > 0) {
-            const tokenList = tokens.map((t: any) => t.token).filter(Boolean);
+            const tokenList = tokens.map((t: Record<string, unknown>) => t.token).filter(Boolean);
             if (tokenList.length > 0) await fcm.sendMulticast(tokenList, title, pushBody, '/');
           }
         }
@@ -156,31 +156,31 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
       } catch { /* best-effort */ }
     }
     return { success: true, form: mapForm(f, rowIndex), candidate };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal proses form: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal proses form: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
-export async function handleReviewForm(payload: any[], sessionToken?: string) {
+export async function handleReviewForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   return handleFormStatus((payload || [])[0], 'REVIEW ADMIN', undefined, sessionToken);
 }
 
-export async function handleApproveForm(payload: any[], sessionToken?: string) {
+export async function handleApproveForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   return handleFormStatus((payload || [])[0], 'LULUS', undefined, sessionToken);
 }
 
-export async function handleRejectForm(payload: any[], sessionToken?: string) {
+export async function handleRejectForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [, , reason] = payload || [];
   return handleFormStatus((payload || [])[0], 'GAGAL', reason || 'Lamaran ditolak', sessionToken);
 }
 
-export async function handleDeleteForm(payload: any[], sessionToken?: string) {
+export async function handleDeleteForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
@@ -193,12 +193,12 @@ export async function handleDeleteForm(payload: any[], sessionToken?: string) {
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
     await deleteForm(f.id, sessionToken);
     return { success: true, rowIndex: idx };
-  } catch (e: any) {
+  } catch (e: unknown) {
     return { success: false, error: 'Gagal menghapus form. Silakan coba lagi.' };
   }
 }
 
-export async function handleTandaiDibacaForm(payload: any[], sessionToken?: string) {
+export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const idx = Number((payload || [])[0]);
@@ -216,15 +216,15 @@ export async function handleTandaiDibacaForm(payload: any[], sessionToken?: stri
     f.status = prevStatus;
     f.feedback_berkas = newFb;
     return { success: true, form: mapForm(f, idx) };
-  } catch (e: any) {
-    return { success: false, error: 'Gagal tandai dibaca: ' + e.message };
+  } catch (e: unknown) {
+    return { success: false, error: 'Gagal tandai dibaca: ' + (e instanceof Error ? e.message : String(e)) };
   }
 }
 
 export async function syncBiodataKeMail(wa: string, nama: string, labels: string[]) {
   const want = normWa(wa);
   let rows = await getFormsByWa(wa);
-  const mine = rows.filter((r: any) => normWa(String(r.no_wa || r.wa || '')) === want);
+  const mine = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   if (!mine.length) return;
   for (const r of mine) {
     if (r.id === undefined || r.id === null) continue;
@@ -232,7 +232,7 @@ export async function syncBiodataKeMail(wa: string, nama: string, labels: string
     const entry =
       (isUpdate ? '[[PREV:' + String(r.status || '').toUpperCase() + ']] ' : '') +
       '[BIODATA] ' + (labels.length ? labels.join(', ') : 'data diperbarui');
-    const body: Record<string, any> = {
+    const body: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       feedback_berkas: appendFeedback(r.feedback_berkas, entry),
@@ -254,12 +254,12 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
   const label = String(docLabel || 'DOKUMEN').trim().toUpperCase();
   const code = String(jobCode || '').trim();
 
-  let targets: any[] = [];
+  let targets: Record<string, unknown>[] = [];
   if (label === 'CV' || label === 'CV_REVISI') {
-    if (code) targets = rows.filter((r: any) => normWa(String(r.no_wa || r.wa || '')) === want && String(r.code_job || '').trim() === code);
-    if (!targets.length) targets = rows.filter((r: any) => normWa(String(r.no_wa || r.wa || '')) === want);
+    if (code) targets = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want && String(r.code_job || '').trim() === code);
+    if (!targets.length) targets = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   } else {
-    targets = rows.filter((r: any) => normWa(String(r.no_wa || r.wa || '')) === want);
+    targets = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   }
   if (!targets.length) targets = [null];
 
@@ -277,7 +277,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
         ? '[[PREV:' + String(existing.status).toUpperCase() + ']] ' : '') +
       '[UPLOAD ' + label + ']';
     const keterangan = Object.entries(docs).filter(([, v]) => v).map(([k, v]) => k + ':' + v).join(';');
-    const body: Record<string, any> = {
+    const body: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       code_job: String((existing && existing.code_job) || code || ''),
       nama_lengkap: String(nama || (existing && existing.nama_lengkap) || 'KANDIDAT').toUpperCase(),
