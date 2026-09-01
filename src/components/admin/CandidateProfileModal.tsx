@@ -17,7 +17,6 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
-import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 
 interface Props {
@@ -43,7 +42,6 @@ interface CandidateData {
   ssw?: string;
   tahapan?: string;
   status?: string;
-  catatan?: string;
   catatanInternal?: string;
   catatanExternal?: string;
   isVIP?: boolean;
@@ -51,15 +49,6 @@ interface CandidateData {
   applications?: Array<{
     code: string;
     kategori?: string;
-    status: string;
-    tahapan?: string;
-    timestamp?: string;
-    nama?: string;
-  }>;
-  schedules?: Array<{
-    tanggal: string;
-    jam: string;
-    keterangan: string;
     status: string;
   }>;
   berkas?: Record<string, string>;
@@ -72,8 +61,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
   const [catatanInternal, setCatatanInternal] = useState('');
   const [catatanExternal, setCatatanExternal] = useState('');
   const [isVIP, setIsVIP] = useState(false);
-  const [saving, setSaving] = useState(false);
-
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   useEffect(() => {
@@ -112,13 +99,11 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
           ssw: c.ssw,
           tahapan: c.tahapan,
           status: c.status,
-          catatan: c.catatan,
-          catatanInternal: c.catatanInternal || '',
-          catatanExternal: c.catatanExternal || '',
+          catatanInternal: c.catatanInt || c.catatanInternal || '',
+          catatanExternal: c.catatanExt || c.catatanExternal || '',
           isVIP: c.isVIP,
           foto: c.berkas?.foto || c.foto,
           applications: c.applications || [],
-          schedules: c.schedules || [],
           berkas: c.berkas || {},
           bio: c.bio || {},
         });
@@ -364,10 +349,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
             <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-700/50">
               <button
                 onClick={handleSaveCatatan}
-                disabled={saving}
-                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
               >
-                {saving ? <Icon spin name="spinner" /> : <Icon name="save" />} Simpan Evaluasi Catatan
+                <Icon name="save" /> Simpan Evaluasi Catatan
               </button>
               <div class="flex gap-2">
                 <a
