@@ -45,6 +45,11 @@ function mapCandidate(row) {
     catatanInt: toText(pick(row, ['catatan_internal', 'catatan_int'])),
     catatanExt: toText(pick(row, ['catatan_external', 'catatan_ext'])),
     catatan: toText(pick(row, ['catatan_admin'])),
+    // Single source of truth for ASJ student status — checked by AI CV lock,
+    // AI Interview lock, and frontend badge system.
+    isSiswaASJ: /\[VIP\]|\[KELAS\s*[A-Z0-9]+\]/i.test(
+      toText(pick(row, ['catatan_internal', 'catatan_int']))
+    ),
     tahapan: toText(pick(row, ['tahapan_seleksi', 'tahapan'])),
     status: toText(pick(row, ['status_kandidat', 'status'])),
     idLoker: toText(pick(row, ['id_loker_pilihan', 'id_loker'])),

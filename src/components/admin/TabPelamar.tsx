@@ -116,7 +116,7 @@ export default function TabPelamar() {
             <div key={k.id || k.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 hover:bg-white/5 transition">
               <div class="flex items-center gap-3">
                 <span class="font-mono text-sky-300 font-bold text-xs">{k.id || k.wa}</span>
-                <span class="font-bold text-white text-sm">{k.nama}{k.isVIP && ' 🏆'}</span>
+                <span class="font-bold text-white text-sm">{k.nama}{k.isSiswaASJ ? ' 🎓' : k.isVIP && ' 🏆'}</span>
                 <span class="font-mono text-purple-300 text-xs">{k.idLoker}</span>
               </div>
               <div class="flex items-center gap-2">
@@ -147,7 +147,7 @@ te-800">
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-all">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">{k.nama || '-'}{k.isVIP && <span class="ml-1 text-amber-400 text-xs">🏆</span>}</td>
+                  <td class="p-4 font-bold text-white">{k.nama || '-'}{k.isSiswaASJ ? <span class="ml-1 text-emerald-400 text-xs">🎓</span> : k.isVIP && <span class="ml-1 text-amber-400 text-xs">🏆</span>}</td>
                   <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
                   <td class="p-4">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>

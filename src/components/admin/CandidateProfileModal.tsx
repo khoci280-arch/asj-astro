@@ -31,6 +31,7 @@ interface CandidateData {
   catatanInternal?: string;
   catatanExternal?: string;
   isVIP?: boolean;
+  isSiswaASJ?: boolean;
   foto?: string;
   applications?: Array<{
     code: string;
@@ -61,6 +62,7 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     catatanInternal: c.catatanInt || c.catatanInternal || '',
     catatanExternal: c.catatanExt || c.catatanExternal || '',
     isVIP: c.isVIP,
+    isSiswaASJ: c.isSiswaASJ || false,
     foto: c.berkas?.foto || c.foto,
     applications: c.applications || [],
     berkas: c.berkas || {},
@@ -99,7 +101,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
         setData(mapApiToCandidate(c, nama, wa));
         setCatatanInternal(c.catatanInt || c.catatanInternal || '');
         setCatatanExternal(c.catatanExt || c.catatanExternal || '');
-        setIsVIP(!!c.isVIP);
+        setIsVIP(!!c.isVIP || !!c.isSiswaASJ);
       })
       .catch(e => {
         if (e.name === 'AbortError') return;
@@ -179,7 +181,11 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="text-lg font-bold text-white truncate">{data.nama}</h2>
-                  {data.isVIP && <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">VIP</span>}
+                  {data.isSiswaASJ ? (
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Siswa ASJ</span>
+                  ) : (
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">Eksternal</span>
+                  )}
                 </div>
                 <p class="text-xs text-emerald-400 font-mono mt-1">📱 {data.wa}</p>
                 {data.idKandidat && (
@@ -290,7 +296,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
                     : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
                 }`}
               >
-                {isVIP ? '✅ VIP (Rencana Resmi)' : '☐ Tandai VIP (Rencana Resmi)'}
+                {isVIP ? '✅ VIP (Rencana Resmi)' : '☐ Tandai VIP'}
               </button>
             </div>
 

@@ -22,6 +22,7 @@ export interface Kandidat {
   usia: string;
   jft: string;
   isVIP?: boolean;
+  isSiswaASJ?: boolean;
 }
 
 // ── Modal State ──────────────────────────────────────────

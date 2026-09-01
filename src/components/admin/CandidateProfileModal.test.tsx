@@ -24,14 +24,14 @@ const mockCandidateData = {
   catatanInternal: 'Kekuahan/Catatan khusus admin',
   catatanExternal: 'Feedback untuk kandidat',
   isVIP: true,
+  isSiswaASJ: true,
   applications: [
-    { code: 'UMUM', kategori: 'UMUM', status: 'LULUS', tahapan: 'LIST', timestamp: '2026-09-01', nama: 'REVIN' },
+    { code: 'UMUM', kategori: 'UMUM', status: 'LULUS' },
   ],
   berkas: { foto: '' },
   bio: {},
 };
 
-// Helper: find at least 1 matching element (handles double-render)
 function expectExists(text: string | RegExp) {
   const els = typeof text === 'string' ? screen.getAllByText(text) : screen.getAllByText(text);
   expect(els.length).toBeGreaterThanOrEqual(1);
@@ -44,11 +44,11 @@ describe('CandidateProfileModal', () => {
     });
   });
 
-  it('renders candidate name and VIP badge', async () => {
+  it('renders candidate name and badge', async () => {
     render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
     await waitFor(() => {
       expectExists('REVIN ANTHONIO NOVRI ANDHI');
-      expectExists('VIP');
+      expectExists('Siswa ASJ');
     });
   });
 
