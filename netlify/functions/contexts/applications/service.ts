@@ -4,9 +4,10 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import bcrypt from 'bcryptjs';
-import { normalizeWa, mapCandidate } from '../../_lib/db/client';
+
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { requireAdmin } from '../identity';
+import { mapCandidate } from '../../_lib/db/candidates';
 import { findCandidateByWa, nextCandidateId } from '../../_lib/candidate-helpers';
 import { stripRaw } from '../catalog';
 import { cacheClear } from '../../_lib/cache';

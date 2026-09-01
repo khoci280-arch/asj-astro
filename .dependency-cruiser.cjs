@@ -24,7 +24,7 @@ module.exports = {
       from: { path: '^netlify/functions/contexts/' },
       to: {
         path: '^netlify/functions/contexts/',
-        pathNot: '^netlify/functions/contexts/[^/]+/(service|repository|index)\\.ts$',
+        pathNot: '^netlify/functions/contexts/[^/]+/(service|repository|index|download)\\.ts$',
       },
     },
     // contexts service/index should use repository pattern, not db/client.ts directly
