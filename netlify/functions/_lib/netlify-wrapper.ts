@@ -1,4 +1,5 @@
 import { handleAction } from './handlers';
+import { runWithContext } from './kernel/log';
 // netlify-wrapper.js — factory handler Netlify standar.
 //
 // Setiap file di netlify/functions/<nama>.js hanyalah:
@@ -58,11 +59,21 @@ function makeHandler() {
     if (idempotencyKey) (globalThis as any).__idempotencyKey = String(idempotencyKey);
     else delete (globalThis as any).__idempotencyKey;
 
+    // Phase 7: extract traceparent for distributed tracing (§10.3)
+    const traceparent = (event && event.headers)
+      ? (event.headers['traceparent'] || event.headers['Traceparent'] || undefined)
+      : undefined;
+    const requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
+    (globalThis as any).__requestId = requestId;
+    (globalThis as any).__traceparent = traceparent;
+
     let out;
     try {
-      out = await handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
-        ip: clientIp(event),
-      });
+      out = await runWithContext({ requestId, action: body.action }, () =>
+        handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
+          ip: clientIp(event),
+        }),
+      );
     } catch (e) {
       out = { success: false, message: 'Error internal: ' + e.message };
     }

@@ -79,6 +79,13 @@ export async function request(
     ? AbortSignal.any([fetchInit.signal, controller.signal])
     : controller.signal;
 
+  // Phase 7: propagate traceparent for distributed tracing (§10.3)
+  const traceparent = (globalThis as any).__traceparent as string | undefined;
+  const headers = new Headers(fetchInit.headers as HeadersInit | undefined);
+  if (traceparent && !headers.has('traceparent')) {
+    headers.set('traceparent', traceparent);
+  }
+
   const startTime = Date.now();
   const dep = detectDependency(url);
 
@@ -95,7 +102,7 @@ export async function request(
       checkBreaker(dep);
     }
 
-    const res = await fetch(url, { ...fetchInit, signal });
+    const res = await fetch(url, { ...fetchInit, headers, signal });
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (shouldProtect) recordBreakerSuccess(dep);

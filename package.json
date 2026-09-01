@@ -9,7 +9,9 @@
     "serve": "node server.cjs",
     "astro": "astro",
     "typecheck": "tsc --noEmit",
-    "icons": "node scripts/build-icon-sprite.mjs"
+    "icons": "node scripts/build-icon-sprite.mjs",
+    "depcruise": "depcruise netlify/functions --config .dependency-cruiser.cjs --output-type err",
+    "boundary": "depcruise netlify/functions --config .dependency-cruiser.cjs --output-type err --exit-code 1"
   },
   "dependencies": {
     "@astrojs/netlify": "^6.6.5",
@@ -38,6 +40,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.4",
+    "dependency-cruiser": "^18.2.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
     "typescript": "^5.8.0",
