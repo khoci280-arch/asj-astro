@@ -8,6 +8,7 @@ import { authStore } from "../../store/authReactive";
 import { showToast } from "../Toast";
 import { t } from "../../store/i18n";
 import Icon from '../ui/Icon';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 const JEKLIN_IMG = "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png";
 
@@ -45,7 +46,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   };
 
   const apiCall = async (action: string, payload: Record<string,unknown>[]) => {
-    const res = await fetch("/.netlify/functions/bridge-links", {
+    const res = await fetch(getEndpoint(action), {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload })
     });

@@ -12,6 +12,7 @@ import { t } from '../../store/i18n';
 
 import type { ChatMessage } from '../../types/api';
 import Icon from '../ui/Icon';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -115,7 +116,7 @@ export default function AiCvForm() {
     setShowSuggestions(false);
     try {
       const trimmedHistory = messages.slice(-20).map(m => ({ role: m.role, content: m.text }));
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('processAIChat'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'processAIChat', payload: [{ message: msg, history: trimmedHistory, cvData: cv }] })
       });

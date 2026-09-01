@@ -12,6 +12,7 @@ import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, ad
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
+import { getEndpoint } from '../lib/apiEndpoint';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 0 | 1 | 2 | 3;
@@ -47,10 +48,9 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   if ($user.isLoggedIn) { onClose(); return null; }
   if (mode === "closed") return null;
 
-  // ─── Admin API ───
-  const API = "/.netlify/functions";
+  // ─── Admin API (routes to surface-specific endpoints) ───
   async function api(action: string, args: unknown[] = []) {
-    const r = await fetch(API + "/bridge-links", {
+    const r = await fetch(getEndpoint(action), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload: args }),
@@ -131,7 +131,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     finally { setLoading(false); }
   }
 
-  // ─── Render ───
+  // ─── Render ───
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (

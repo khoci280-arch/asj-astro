@@ -9,6 +9,7 @@ import { useStore } from '@nanostores/preact';
 import PamfletModal from "./PamfletModal";
 import { t } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
+import { getEndpoint } from "../../lib/apiEndpoint";
 import LokerDetailModal from './LokerDetailModal';
 import Icon from '../ui/Icon';
 
@@ -118,7 +119,7 @@ export default function LokerTable() {
 
   /** Open application form via bridge, fallback to WhatsApp */
   async function openForm(job: Job) {
-    try { const res = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generateFormBridge", args: [job.code, job.kategori || "", "", "", job.dokumenShare || ""] }) }); const data = await res.json(); if (data.formUrl) { window.location.href = data.formUrl; } else { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); } } catch { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); }
+    try { const res = await fetch(getEndpoint('generateFormBridge'), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generateFormBridge", args: [job.code, job.kategori || "", "", "", job.dokumenShare || ""] }) }); const data = await res.json(); if (data.formUrl) { window.location.href = data.formUrl; } else { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); } } catch { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); }
     
   }
 

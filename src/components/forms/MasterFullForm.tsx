@@ -9,6 +9,7 @@ import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
+import { getEndpoint } from "../../lib/apiEndpoint";
 import Icon from '../ui/Icon';
 
 /* ── Types ── */
@@ -91,7 +92,7 @@ export default function MasterFullForm() {
   const gateLogin = async () => {
     const vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
+      const res = await fetch(getEndpoint('loginKandidat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
       if (res.ok) {
         const d = await res.json();
         authStore.set({...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa: gateWa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });

@@ -10,6 +10,7 @@ import { t } from '../store/i18n';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
+import { getEndpoint } from '../lib/apiEndpoint';
 
 interface Props { onClose: () => void; }
 
@@ -40,7 +41,7 @@ export default function CvMiniModal({ onClose }: Props) {
         pendidikan, jft_text: jftText, ssw_text: sswText,
         photo: photo ? await uploadToCloudinary(photo) : ""
       };
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('simpanUpdateMaster'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'simpanUpdateMaster', args: [payload] })
@@ -56,7 +57,7 @@ export default function CvMiniModal({ onClose }: Props) {
       showToast('Error: ' + ((e as Error).message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };
-
+
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (

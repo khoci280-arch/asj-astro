@@ -9,6 +9,7 @@ import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
+import { getEndpoint } from "../../lib/apiEndpoint";
 import Icon from '../ui/Icon';
 
 interface ChatMessage {
@@ -103,7 +104,7 @@ export default function SiswaBaruForm() {
     setInput('');
     setSending(true);
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('submitDaftarSiswa'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'processSiswaAIChat', payload: [{ message: text, history: messages.map(m => ({ role: m.role, content: m.text })), biodata }] })
       });

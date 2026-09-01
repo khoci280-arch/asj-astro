@@ -9,6 +9,7 @@ import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
+import { getEndpoint } from "../../lib/apiEndpoint";
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 
@@ -83,7 +84,7 @@ export default function ApplyFullForm() {
     setWaMsg('');
     setWaWarn('');
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cekDataPelamar', payload: [{ wa }] }) });
+      const res = await fetch(getEndpoint('cekDataPelamar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cekDataPelamar', payload: [{ wa }] }) });
       if (res.ok) {
         const data = await res.json();
         if (data.found) {
@@ -156,7 +157,7 @@ export default function ApplyFullForm() {
       // 2) Send URLs to backend
       const token = authStore.get().sessionToken;
       const payload = { ...form, fileUrls };
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('cekDataPelamar'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ action: 'submitFormPelamar', payload: [payload] }),

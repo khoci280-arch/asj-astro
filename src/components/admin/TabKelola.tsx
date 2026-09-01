@@ -8,6 +8,7 @@ import { t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 type Loker = {
   code: string; pekerjaan: string; status: string; kategori: string;
@@ -32,7 +33,7 @@ export default function TabKelola() {
 
   async function fetchLoker() {
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('getAppData'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
       });
@@ -51,7 +52,7 @@ export default function TabKelola() {
 
   const toggleStatus = async (code: string, newStatus: string) => {
     try {
-      await fetch('/.netlify/functions/bridge-links', {
+      await fetch(getEndpoint('ubahStatusJob'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus] }),
       });
@@ -62,7 +63,7 @@ export default function TabKelola() {
   const deleteJob = async (code: string) => {
     if (!confirm('Yakin hapus loker ' + code + '?')) return;
     try {
-      await fetch('/.netlify/functions/bridge-links', {
+      await fetch(getEndpoint('hapusJobData'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'hapusJobData', args: [code] }),
       });

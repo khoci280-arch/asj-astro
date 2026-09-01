@@ -1,16 +1,16 @@
 /**
  * apiClient.ts — Centralized API wrapper with auto-inject session token
  *
- * All backend requests go through bridge-links (single dispatcher).
- * Token is auto-read from nanostores and injected into Authorization header.
+ * Routes actions to surface-specific Netlify functions via apiEndpoint.ts.
+ * Unknown actions fall back to bridge-links (catch-all).
  *
- * Updated: routes ALL actions through /.netlify/functions/bridge-links
- * instead of per-action function URLs (which don't exist as separate functions).
+ * Surface-specific routing enables concurrent scaling:
+ * auth requests don't block AI processing, public reads don't contend with writes.
  */
 import { authStore, logout } from '../store/authReactive';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
-
+import { getEndpoint } from './apiEndpoint';
 
 /** SWR-lite cache — sessionStorage with TTL (matching legacy api-client.ts) */
 const READ_CACHE_TTL_MS = 30 * 1000; // 30 seconds freshness
@@ -48,8 +48,8 @@ function invalidateCache(): void {
     }
   } catch {}
 }
-/** Single backend endpoint — all actions dispatched through bridge-links */
-const API_ENDPOINT = '/.netlify/functions/bridge-links';
+
+const FALLBACK_ENDPOINT = '/.netlify/functions/bridge-links';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -62,27 +62,19 @@ interface ApiResponse<T = any> {
 
 /**
  * Get the freshest session token — checks Supabase first if configured.
- * This ensures token is always up-to-date even if local storage is stale.
  */
 async function getFreshToken(): Promise<string> {
-  // Try Supabase session first (most up-to-date)
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        return session.access_token;
-      }
-    } catch {
-      // Fall through to local store
-    }
+      if (session?.access_token) return session.access_token;
+    } catch { /* fall through */ }
   }
-
-  // Fallback to local store
   return authStore.get().sessionToken;
 }
 
 /**
- * Core fetch wrapper — sends all actions to bridge-links dispatcher
+ * Core fetch wrapper — routes actions to surface-specific endpoints
  */
 export async function apiClient<T = ApiResponse>(
   action: string,
@@ -96,15 +88,12 @@ export async function apiClient<T = ApiResponse>(
     const cached = getCached(action, args);
     if (cached) return cached as T;
   } else {
-    // Mutation -> invalidate all read cache
     invalidateCache();
   }
 
-  // Read token from nanostores (reactive, always fresh)
   const { isLoggedIn } = authStore.get();
   const sessionToken = await getFreshToken();
 
-  // Guard: require auth but no token
   if (requireAuth && (!isLoggedIn || !sessionToken)) {
     showToast('Sesi tidak valid. Silakan login kembali.', 'error');
     logout();
@@ -112,22 +101,20 @@ export async function apiClient<T = ApiResponse>(
     throw new Error('No valid session');
   }
 
-  // Build request — all actions go through bridge-links with action in body
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  // Route to surface-specific endpoint
+  const endpoint = getEndpoint(action);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionToken) headers['Authorization'] = 'Bearer ' + sessionToken;
 
-  // Auto-inject session token
-  if (sessionToken) {
-    headers['Authorization'] = 'Bearer ' + sessionToken;
-  }
+  const body = JSON.stringify({ action, payload: args, sessionToken });
 
   try {
-    const res = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ action, payload: args, sessionToken }),
-    });
+    let res = await fetch(endpoint, { method: 'POST', headers, body });
+
+    // If surface endpoint returns 404, retry with bridge-links fallback
+    if (res.status === 404 && endpoint !== FALLBACK_ENDPOINT) {
+      res = await fetch(FALLBACK_ENDPOINT, { method: 'POST', headers, body });
+    }
 
     if (!res.ok) {
       throw new Error('HTTP ' + res.status + ': ' + res.statusText);
@@ -135,7 +122,6 @@ export async function apiClient<T = ApiResponse>(
 
     const data: ApiResponse<T> = await res.json();
 
-    // Handle session invalid (backend returns 200 + sessionInvalid: true)
     if (data.sessionInvalid) {
       showToast('Sesi expired. Silakan login kembali.', 'error');
       logout();
@@ -143,17 +129,13 @@ export async function apiClient<T = ApiResponse>(
       throw new Error('Session expired');
     }
 
-    // Cache successful read responses
     if (CACHEABLE_READS.has(action)) {
       setCache(action, args, data);
     }
     return data as T;
   } catch (err: unknown) {
-    // Network error
     const message = err instanceof Error ? err.message : String(err);
-    if (message === 'No valid session' || message === 'Session expired') {
-      throw err;
-    }
+    if (message === 'No valid session' || message === 'Session expired') throw err;
     showToast('Network error: ' + (message || 'Unknown'), 'error');
     throw err;
   }
@@ -163,15 +145,10 @@ export async function apiClient<T = ApiResponse>(
  * Convenience methods for common patterns
  */
 export const api = {
-  /** Call any backend action */
   call: apiClient,
-
-  /** Get with optional auth (for public data) */
   get(action: string, args: unknown[] = []) {
     return apiClient(action, args, { requireAuth: false });
   },
-
-  /** Require auth for protected actions */
   secure(action: string, args: unknown[] = []) {
     return apiClient(action, args, { requireAuth: true });
   },

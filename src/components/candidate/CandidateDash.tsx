@@ -16,6 +16,7 @@ import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import { showToast } from "../Toast";
 import Icon from '../ui/Icon';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -99,7 +100,7 @@ export default function CandidateDash() {
       const wa = user.wa || JSON.parse(localStorage.getItem('asj_kandidat_session') || '{}').wa;
       if (!wa) { window.location.href = '/'; return; }
       const token = user.sessionToken || '';
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('getAppData'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['kandidat'], sessionToken: token }),
       });
@@ -126,7 +127,7 @@ export default function CandidateDash() {
   if (loading) return <div class="text-center py-12"><Icon spin name="spinner" class="text-3xl text-emerald-400 mb-4" /><p class="text-slate-400">{t('ui.loading')}</p></div>;
     async function handleSaveSignature(dataUrl: string) {
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('saveSignature'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'saveSignature', args: [user?.wa, dataUrl] }),
@@ -322,7 +323,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <h3 class="text-red-400 font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <input type="file" accept=".pdf,.xls,.xlsx,.jpg,.png" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:font-bold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/40 cursor-pointer mb-4 transition-colors" />
-            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); try { const payload = { wa: user?.wa || '', nama: user?.name || '', jenisBerkas: 'REVISI', fileUrl: await uploadToCloudinary(file) }; const res = await fetch('/.netlify/functions/bridge-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanBerkasTahapan', args: [payload] }) }); const data = await res.json(); if (data.success) { showToast('File revisi berhasil diupload!', 'success'); loadDashboard(); } else { showToast(data.error || 'Gagal upload', 'error'); } } catch (err) { showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error'); } }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><Icon name="upload" class="mr-2" />{t('button.upload_revise')}</button>
+            <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = async (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return; showToast('Mengupload ' + file.name + '...', 'info'); try { const payload = { wa: user?.wa || '', nama: user?.name || '', jenisBerkas: 'REVISI', fileUrl: await uploadToCloudinary(file) };                    const res = await fetch(getEndpoint('simpanBerkasTahapan'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanBerkasTahapan', args: [payload] }) }); const data = await res.json(); if (data.success) { showToast('File revisi berhasil diupload!', 'success'); loadDashboard(); } else { showToast(data.error || 'Gagal upload', 'error'); } } catch (err) { showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error'); } }; input.click(); }} class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"><Icon name="upload" class="mr-2" />{t('button.upload_revise')}</button>
           </div>
         )}
 

@@ -10,6 +10,7 @@ import { validate, passwordSchema } from '../lib/schemas';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
+import { getEndpoint } from '../lib/apiEndpoint';
 
 interface Props { onClose: () => void; }
 
@@ -28,7 +29,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
     if (!user.wa) { showToast(t('error.session_expired'), 'error'); return; }
     setLoading(true);
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('gantiPasswordKandidat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'gantiPasswordKandidat', args: [user.wa, lama, baru] })
@@ -44,7 +45,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
       showToast('Error: ' + ((e as Error).message || 'Unknown'), 'error');
     } finally { setLoading(false); }
   };
-
+
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (

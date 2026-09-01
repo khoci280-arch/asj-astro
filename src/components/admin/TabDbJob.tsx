@@ -9,6 +9,7 @@ import { showToast } from '../Toast';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 interface DbJob {
   code: string; tsk: string; pekerjaan: string; kategori: string;
@@ -36,7 +37,7 @@ export default function TabDbJob() {
 
   async function fetchLoker() {
     try {
-      const res = await fetch('/.netlify/functions/get-app-data', {
+      const res = await fetch(getEndpoint('getAppData'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
@@ -138,7 +139,7 @@ export default function TabDbJob() {
                   <td class="p-4 text-center">
                     <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button>
                     <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="share-alt" /> Share</button>
-                    <button onClick={async () => { try { const r = await fetch("/.netlify/functions/bridge-links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="download" /> Docs</button>
+                    <button onClick={async () => { try { const r = await fetch(getEndpoint('downloadJobDocs'), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
               ))}

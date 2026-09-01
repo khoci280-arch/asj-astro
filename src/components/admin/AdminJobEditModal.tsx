@@ -7,6 +7,7 @@ import { t } from '../../store/i18n';
 import type { Job } from '../../types/api';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { getEndpoint } from '../../lib/apiEndpoint';
 
 // Job type imported from shared types
 interface Props { job: Job; onClose: () => void; onSave?: (data: Job) => void; }
@@ -25,7 +26,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/.netlify/functions/bridge-links', {
+      const res = await fetch(getEndpoint('editLokerFull'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'editLokerFull', args: [job.code, form] }),
       });
