@@ -340,7 +340,7 @@ export default function MasterFullForm() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label">Jenjang</label>
                       <select class="input" value={edu.jenjang} onChange={(e) => { const v = [...eduList]; v[i].jenjang = (e.target as HTMLSelectElement).value; setEduList(v); }}>
-                        <option value="">Pilih</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">SMA/SMK</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">SMA/SMK</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label">Nama Sekolah</label>
@@ -400,14 +400,14 @@ export default function MasterFullForm() {
                       <input class="input" value={fam.nama} onInput={(e) => { const v = [...famList]; v[i].nama = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                     <div class="mb-3"><label class="label">Hubungan</label>
                       <select class="input" value={fam.hubungan} onChange={(e) => { const v = [...famList]; v[i].hubungan = (e.target as HTMLSelectElement).value; setFamList(v); }}>
-                        <option value="">Pilih</option><option value="Ayah">Ayah</option><option value="Ibu">Ibu</option><option value="Suami">Suami</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Saudara">Saudara</option><option value="Lainnya">Lainnya</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="Ayah">Ayah</option><option value="Ibu">Ibu</option><option value="Suami">Suami</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Saudara">Saudara</option><option value="Lainnya">Lainnya</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label">TTL</label>
                       <input class="input" value={fam.ttl} onInput={(e) => { const v = [...famList]; v[i].ttl = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                     <div class="mb-3"><label class="label">Gender</label>
                       <select class="input" value={fam.gender} onChange={(e) => { const v = [...famList]; v[i].gender = (e.target as HTMLSelectElement).value; setFamList(v); }}>
-                        <option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="L">Laki-laki</option><option value="P">Perempuan</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label">Pekerjaan</label>
@@ -471,9 +471,9 @@ export default function MasterFullForm() {
                 <F label={t("form.mf_nilai")} k="nilai" ph="Misal: 120/180" twoCol />
               </div>
               <F label={t("form.mf_lisensi")} k="lisensi" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
-              {data.lisensi === 'Lainnya' && <F label="Ketik bidang SSW lain" k="lisensiManual" ph="その他の職種を入力" />}
+              {data.lisensi === 'Lainnya' && <F label={t("master.ketik_bidang")} k="lisensiManual" ph="その他の職種を入力" />}
               <F label={t("form.mf_ssw2")} k="lisensi2" opts={['-','AA','AB','AC','AD','AE','AF','AG','AH','AI','AJ','AK','AL','AM','AN','AO','AP','AQ','AR','AS','AT','AU','Lainnya']} />
-              {data.lisensi2 === 'Lainnya' && <F label="Ketik bidang SSW 2 lain" k="lisensi2Manual" ph="その他の職種を入力" />}
+              {data.lisensi2 === 'Lainnya' && <F label={t("master.ketik_bidang2")} k="lisensi2Manual" ph="その他の職種を入力" />}
 
               <div class="section-title mt-6">Upload Dokumen (MAX 2MB)</div>
               {[

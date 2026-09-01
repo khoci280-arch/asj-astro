@@ -69,7 +69,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
       }]);
       addMsg(data?.reply || "Jeklin bingung nih!", "assistant");
       if (data?.suggestedActions?.length) setSuggestions(data.suggestedActions);
-    } catch { addMsg("Error koneksi.", "assistant"); }
+    } catch { addMsg(t("admin.ai_conn_error"), "assistant"); }
     finally { setSending(false); inputRef.current?.focus(); }
   };
 
@@ -85,9 +85,9 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
       const b64 = await new Promise<string>((r) => { reader.onload = () => r(String(reader.result || "").split(",")[1] || ""); reader.readAsDataURL(parseFile); });
       const data = await apiCall("parseDokumenBiodata", [{ candidateId: candidateId || undefined, wa: parseWa || undefined, file: { name: parseFile.name, mimeType: parseFile.type, data: b64 } }]);
       if (data) { addMsg("Parse berhasil: " + parseFile.name + " - " + (data.fieldCount || 0) + " field", "assistant"); showToast(t("ai.parse_success"), "success"); }
-      else addMsg("Gagal parse.", "assistant");
+      else addMsg(t("admin.ai_parse_failed"), "assistant");
       setParseStatus("");
-    } catch (e) { addMsg("Error: " + (e as Error).message, "assistant"); setParseStatus(""); }
+    } catch (e) { addMsg(t("toast.error_prefix") + (e instanceof Error ? e.message : String(e)), "assistant"); setParseStatus(""); }
   };
 
   const handleGenModel = async () => {
@@ -97,7 +97,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
       const data = await apiCall("generateWawancaraModel", [{ candidateId: candidateId || undefined, wa: parseWa || undefined, bidang: parseBidang || undefined }]);
       if (data) { addMsg(t("admin.model_wawancara") + (data.bidang || "SSW") + "\n" + (data.model || ""), "assistant"); showToast(t("ai.model_ready"), "success"); }
       setParseStatus("");
-    } catch (e) { addMsg("Gagal: " + (e as Error).message, "assistant"); setParseStatus(""); }
+    } catch (e) { addMsg(t("toast.failed_prefix") + (e instanceof Error ? e.message : String(e)), "assistant"); setParseStatus(""); }
   };
 
   const handleResults = async () => {
@@ -111,7 +111,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
         addMsg("Skor: " + (h.score ?? "-") + "/10\nRekomendasi: " + (h.rekomendasi || "-"), "assistant");
       } else addMsg(t("ai.no_results"), "assistant");
       setParseStatus("");
-    } catch (e) { addMsg("Gagal: " + (e as Error).message, "assistant"); setParseStatus(""); }
+    } catch (e) { addMsg(t("toast.failed_prefix") + (e instanceof Error ? e.message : String(e)), "assistant"); setParseStatus(""); }
   };
 
   const handleUpdateBio = async () => {
@@ -124,7 +124,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
       const data = await apiCall("submitMasterForm", [{ wa, ...bio }]);
       if (data) { addMsg("Biodata updated.", "assistant"); showToast(t("ai.biodata_updated"), "success"); }
       setParseStatus("");
-    } catch (e) { addMsg("Gagal: " + (e as Error).message, "assistant"); setParseStatus(""); }
+    } catch (e) { addMsg(t("toast.failed_prefix") + (e instanceof Error ? e.message : String(e)), "assistant"); setParseStatus(""); }
   };
 
   return (

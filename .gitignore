@@ -18,3 +18,4 @@ netlify/functions/.netlify-built/
 
 # Local environment variables (secrets)
 .env.local
+superbase.txt
