@@ -21,8 +21,8 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   registerFcmToken: '/.netlify/functions/auth',
 
   // Public
-  getAppData: '/.netlify/functions/public',
-  getMonthlyReport: '/.netlify/functions/public',
+  getAppData: '/.netlify/functions/get-app-data',
+  getMonthlyReport: '/.netlify/functions/get-app-data',
 
   // Candidates
   getCandidatesPage: '/.netlify/functions/candidates',

@@ -13,7 +13,7 @@ import FormToolbar from '../components/forms/FormToolbar';
 
   <FormToolbar titleKey="toolbar.admin" client:only="preact" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
-    <AuthGuard requiredRole="admin" redirectTo="/">
+    <AuthGuard requiredRole="admin" redirectTo="/" client:only="preact">
       <AdminPanel client:only="preact" />
     </AuthGuard>
   </main>
