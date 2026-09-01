@@ -97,7 +97,8 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
       .then(r => r.json())
       .then(d => {
         if (controller.signal.aborted) return;
-        const c = d.data || {};
+        // Backend returns candidates array; kandidat mode has exactly one entry.
+        const c = d.candidates?.[0] || d.data || {};
         setData(mapApiToCandidate(c, nama, wa));
         setCatatanInternal(c.catatanInt || c.catatanInternal || '');
         setCatatanExternal(c.catatanExt || c.catatanExternal || '');
