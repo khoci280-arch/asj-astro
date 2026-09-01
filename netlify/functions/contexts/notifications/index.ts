@@ -1,6 +1,13 @@
 /**
- * contexts/notifications/index.ts — Notifications context
- * Owns: fcm_tokens, wa_templates, delivery
- * Wraps: actions-wa.ts, fcm-server.ts
+ * contexts/notifications/index.ts — Public interface for notifications context
+ *
+ * Owns: wa_templates, fcm_tokens, delivery
+ * Other contexts and surfaces import ONLY from this file.
  */
-export { handleSimpanWaTemplate, handleHapusWaTemplate, handleKirimSatuPesanFonnte, handleKirimTawaranMassal } from '../../_lib/actions-wa';
+export {
+  handleSimpanWaTemplate,
+  handleHapusWaTemplate,
+  handleKirimSatuPesanFonnte,
+  handleKirimTawaranMassal,
+  buildPesanTawaranMassal,
+} from './service';

@@ -1,6 +1,13 @@
 /**
- * contexts/configuration/index.ts — Configuration context
+ * contexts/configuration/index.ts — Public interface for configuration context
+ *
  * Owns: sys_config (write), rincian_presets
- * Wraps: actions-config.ts
+ * Other contexts and surfaces import ONLY from this file.
  */
-export { handleUpdateSysConfig, handleGetRincianPresets, handleSaveRincianPreset, handleDeleteRincianPreset, handleRunMigration } from '../../_lib/actions-config';
+export {
+  handleUpdateSysConfig,
+  handleGetRincianPresets,
+  handleSaveRincianPreset,
+  handleDeleteRincianPreset,
+  handleRunMigration,
+} from './service';

@@ -2,8 +2,6 @@
  * contexts/registry/index.ts — Public interface for candidate registry
  *
  * Owns: database_candidate (lifecycle), master_database_candidate (read)
- * Public interface: getPage(), getByWa(), updateStage(), nextCandidateId()
- *
- * STRFIG PATTERN: Wraps existing actions-candidate.ts / actions-master.ts
+ * Other contexts and surfaces import ONLY from this file.
  */
-export { handleGetCandidatesPage, handleUpdateCatatanKandidat } from '../../_lib/actions-candidate';
+export { handleGetCandidatesPage, handleUpdateCatatanKandidat, handleUpdateKandidatSuper } from './service';

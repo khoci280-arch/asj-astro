@@ -1,6 +1,15 @@
 /**
- * contexts/applications/index.ts — Application/form review context
- * Owns: database_asj_form (review/approve/reject lifecycle)
- * Wraps: actions-mail.ts
+ * contexts/applications/index.ts — Public interface for applications context
+ *
+ * Owns: database_asj_form (mail inbox lifecycle)
+ * Other contexts and surfaces import ONLY from this file.
  */
-export { handleReviewForm, handleApproveForm, handleRejectForm, handleDeleteForm, handleTandaiDibacaForm } from '../../_lib/actions-mail';
+export {
+  handleReviewForm,
+  handleApproveForm,
+  handleRejectForm,
+  handleDeleteForm,
+  handleTandaiDibacaForm,
+  syncBiodataKeMail,
+  syncFormMailDariUpload,
+} from './service';

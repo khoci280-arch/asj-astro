@@ -1,0 +1,155 @@
+/**
+ * contexts/jobs/service.ts — Business logic for job_database CRUD
+ */
+import { requireAdmin } from '../identity';
+import {
+  hasBackend, mapJobPayloadToRow, nextJobCode, getJobMapped,
+  patchJob, deleteJob, postJob, normalizeWa, pick, toText, mapCandidate, stripRaw,
+  findCandidateByWa, cacheClear, findFormsByWa, findForms, mapForm,
+  attachBerkasBio, countCandidatesForJob, findCandidates, supabaseJson,
+} from './repository';
+
+export async function handleSimpanJobBaru(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const data = (payload && payload[0]) || {};
+  if (!data.pekerjaan) return { success: false, error: 'Nama pekerjaan wajib diisi.' };
+  if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
+  try {
+    const code = await nextJobCode();
+    await postJob({ code_job: code, ...mapJobPayloadToRow(data) });
+    return { success: true, code };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal simpan loker: ' + e.message };
+  }
+}
+
+export async function handleEditLokerFull(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const data = (payload && payload[0]) || {};
+  if (!data.code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
+  try {
+    const body = mapJobPayloadToRow(data);
+    for (const k of Object.keys(body)) {
+      if (k !== 'dokumen_share' && (body[k] === '' || body[k] === '-')) delete body[k];
+    }
+    await patchJob(data.code, body);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal edit loker: ' + e.message };
+  }
+}
+
+export async function handleUbahStatusJob(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const [code, status] = payload || [];
+  if (!code || !status) return { success: false, error: 'Data tidak lengkap.' };
+  try {
+    await patchJob(code, { status });
+    return { success: true, job: await getJobMapped(code) };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal ubah status: ' + e.message };
+  }
+}
+
+export async function handleHapusJobData(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const [code] = payload || [];
+  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  try {
+    const adaTerkait = await countCandidatesForJob(code);
+    if (adaTerkait === true) {
+      return { success: false, error: 'Gagal hapus loker. Mungkin masih ada kandidat terkait.' };
+    }
+    if (adaTerkait === undefined) {
+      const cands = await findCandidates();
+      const terkait = cands.rows.some((r) => String(r.id_loker_pilihan || '') === String(code));
+      if (terkait) return { success: false, error: 'Gagal hapus loker. Mungkin masih ada kandidat terkait.' };
+    }
+    await deleteJob(code);
+    return { success: true, code };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal hapus loker: ' + e.message };
+  }
+}
+
+export async function handleUpdateTahapanDbJob(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const [code, tahapan, status] = payload || [];
+  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  const body: Record<string, any> = {};
+  if (tahapan !== undefined && tahapan !== null) body.tahapan = tahapan;
+  if (status !== undefined && status !== null) body.status = status;
+  try {
+    await patchJob(code, body);
+    return { success: true, job: await getJobMapped(code) };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal update tahapan: ' + e.message };
+  }
+}
+
+export async function handleUpdateDokumenShare(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const [code, joined] = payload || [];
+  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  try {
+    await patchJob(code, { dokumen_share: joined || '' });
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal update dokumen: ' + e.message };
+  }
+}
+
+export async function handleTandaiGagalJob(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const [wa, jobCode] = payload || [];
+  if (!wa || !jobCode) return { success: false, error: 'Data tidak lengkap.' };
+  cacheClear();
+  try {
+    const row = await findCandidateByWa(wa);
+    if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
+    const idLoker = toText(pick(row, ['id_loker_pilihan', 'id_loker']));
+    if (String(idLoker) !== String(jobCode)) {
+      return { success: false, error: 'Kandidat tidak terdaftar di job ini.' };
+    }
+    await supabaseJson('PATCH', 'database_candidate', {
+      query: { id: 'eq.' + row.id },
+      body: { status_kandidat: 'GAGAL', id_loker_pilihan: null, updated_at: new Date().toISOString() },
+      headers: { Prefer: 'return=minimal' },
+    });
+    let formUpdated: any = null;
+    try {
+      let forms = await findFormsByWa(wa);
+      if (forms === undefined) forms = await findForms();
+      const want = normalizeWa(wa);
+      const m = forms.find((r) => normalizeWa(String(r.no_wa || '')) === want) || null;
+      if (m && m.id !== undefined) {
+        await supabaseJson('PATCH', 'database_asj_form', {
+          query: { id: 'eq.' + m.id },
+          body: { status: 'GAGAL' },
+          headers: { Prefer: 'return=minimal' },
+        });
+        m.status = 'GAGAL';
+        formUpdated = mapForm(m, -1);
+      }
+    } catch { /* opsional */ }
+    let candidate: any = null;
+    try {
+      const row2 = await findCandidateByWa(wa);
+      if (row2 && row2.id !== undefined) {
+        candidate = stripRaw([mapCandidate(row2)])[0] || null;
+        if (candidate) { try { await attachBerkasBio([candidate]); } catch { /* best-effort */ } }
+      }
+    } catch { /* best-effort */ }
+    return { success: true, candidate, form: formUpdated };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal tandai gagal: ' + e.message };
+  }
+}

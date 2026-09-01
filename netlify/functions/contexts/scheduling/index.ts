@@ -1,6 +1,14 @@
 /**
- * contexts/scheduling/index.ts — Scheduling context
+ * contexts/scheduling/index.ts — Public interface for scheduling context
+ *
  * Owns: database_schedule, database_tugas
- * Wraps: actions-schedule.ts
+ * Other contexts and surfaces import ONLY from this file.
  */
-export { handleSimpanJadwalBaru, handleHapusJadwal, handleTambahTugasBaru, handleSetTugasStatus, handleHapusTugas, handleCheckAndSendAgendaReminders } from '../../_lib/actions-schedule';
+export {
+  handleSimpanJadwalBaru,
+  handleHapusJadwal,
+  handleTambahTugasBaru,
+  handleSetTugasStatus,
+  handleHapusTugas,
+  handleCheckAndSendAgendaReminders,
+} from './service';
