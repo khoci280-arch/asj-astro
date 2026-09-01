@@ -6,7 +6,7 @@
 // PATCH/POST = HTTP 400 PGRST204 = SELURUH simpan gagal (bug nyata 2026-08-16).
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { MASTER_COLUMN_MISSING, buildAiOverflow, mergeAiOverflow } from './actions-master';
+import { MASTER_COLUMN_MISSING, buildAiOverflow, mergeAiOverflow } from '../contexts/master-data';
 
 describe('MASTER_COLUMN_MISSING — kolom yang tidak ada di tabel', () => {
   it('keluarga_N_gaji & keluarga slot 2-5 masuk daftar', () => {

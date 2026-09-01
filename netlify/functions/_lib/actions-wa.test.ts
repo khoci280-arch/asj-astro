@@ -7,7 +7,7 @@
 // identik massal berisiko kena banned Fonnte/WA.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildPesanTawaranMassal } from './actions-wa';
+import { buildPesanTawaranMassal } from '../contexts/notifications/service';
 
 const V = [
   'Pesan A untuk {nama} ({link_grup})',

@@ -4,7 +4,7 @@
 // diproses (progres LULUS/GAGAL tidak di-reset) — ini alur inti mail sync.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { mailStatusUntukUpdate, appendFeedback } from './actions-mail';
+import { mailStatusUntukUpdate, appendFeedback } from '../contexts/applications/service';
 // Label seksi AI form — diimpor dari ai/cv.js (bukan duplikat) supaya test
 // menjaga sinkron dengan kode produksi; simpan ini juga membuktikan tidak ada
 // circular require (ai/cv → actions-mail).

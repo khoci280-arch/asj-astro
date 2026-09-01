@@ -37,6 +37,31 @@ export const BUDGETS = {
 export type BudgetKey = keyof typeof BUDGETS;
 
 /**
+ * §9.2 Connection pool configuration.
+ *
+ * Supabase caps Postgres connections (~60 on free/Pro tiers) fronted by Supavisor.
+ * Functions MUST connect through the Supavisor transaction-mode pooler (port 6543),
+ * NOT the direct connection (port 5432).
+ *
+ * max_connections_used = instances × pool.connections
+ * With 60-connection budget and 8 per instance: ~7 concurrent instances.
+ *
+ * Deployment:
+ *   - Set SUPABASE_URL to use port 6543 (Supavisor pooler)
+ *   - Set statement_timeout=5s server-side via ALTER DATABASE or pg_hba.conf
+ *   - Cap Netlify function concurrency to prevent connection exhaustion
+ */
+export const POOL_CONFIG = {
+  /** Max concurrent in-flight requests per dependency per instance */
+  connectionsPerInstance: 8,
+  /** Max concurrent instances (conservative, depends on Supabase plan) */
+  maxInstances: 7,
+  /** Server-side statement timeout (ms) — enforced via header */
+  statementTimeoutRead: 2_000,
+  statementTimeoutWrite: 3_000,
+} as const;
+
+/**
  * Custom error for upstream failures. Carries enough context for the caller
  * to decide retry/degradation without inspecting the raw error.
  */
@@ -84,6 +109,15 @@ export async function request(
   const headers = new Headers(fetchInit.headers as HeadersInit | undefined);
   if (traceparent && !headers.has('traceparent')) {
     headers.set('traceparent', traceparent);
+  }
+
+  // §9.2: Set statement_timeout on PostgREST reads to prevent runaway queries
+  // from pinning connections. Writes get a separate, slightly longer timeout.
+  if (dep === 'postgrest') {
+    const stmtTimeout = isRead ? '2000' : '3000';
+    if (!headers.has('statement_timeout')) {
+      headers.set('statement_timeout', stmtTimeout);
+    }
   }
 
   const startTime = Date.now();
