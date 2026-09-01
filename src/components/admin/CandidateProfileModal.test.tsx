@@ -15,65 +15,88 @@ vi.mock('../../lib/apiEndpoint', () => ({
 
 vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
 
+const mockCandidateData = {
+  nama: 'REVIN ANTHONIO NOVRI ANDHI',
+  wa: '6285854256720',
+  idKandidat: 'ASJ00159',
+  gender: 'LAKI-LAKI',
+  usia: '19',
+  tahapan: 'Baru (LULUS)',
+  status: 'LULUS',
+  catatanInternal: 'Kekuahan/Catatan khusus admin',
+  catatanExternal: 'Feedback untuk kandidat',
+  isVIP: true,
+  applications: [
+    { code: 'UMUM', kategori: 'UMUM', status: 'LULUS', tahapan: 'LIST', timestamp: '2026-09-01', nama: 'REVIN' },
+  ],
+  berkas: { foto: '' },
+  bio: {},
+};
+
+// Helper: find at least 1 matching element (handles double-render)
+function expectExists(text: string | RegExp) {
+  const els = typeof text === 'string' ? screen.getAllByText(text) : screen.getAllByText(text);
+  expect(els.length).toBeGreaterThanOrEqual(1);
+}
+
 describe('CandidateProfileModal', () => {
   beforeEach(() => {
     mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        success: true,
-        data: {
-          nama: 'Budi Santoso',
-          wa: '6281234567890',
-          gender: 'LAKI-LAKI',
-          usia: '25',
-          jft: 'A2',
-          tahapan: 'CHECK KAIWA',
-          applications: [{ code: 'TG658ASJ', tahapan: 'CHECK KAIWA', status: 'REVIEW', tanggal: '2026-09-01' }],
-          schedules: [],
-          documents: [],
-        },
-      }),
+      json: () => Promise.resolve({ success: true, data: mockCandidateData }),
     });
   });
 
-  it('renders candidate name after data loads', async () => {
-    render(
-      <CandidateProfileModal wa="6281234567890" nama="Budi Santoso" isOpen={true} onClose={() => {}} />
-    );
+  it('renders candidate name and VIP badge', async () => {
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
     await waitFor(() => {
-      expect(screen.getByText('Budi Santoso')).toBeTruthy();
+      expectExists('REVIN ANTHONIO NOVRI ANDHI');
+      expectExists('VIP');
     });
   });
 
   it('does not render when isOpen is false', () => {
-    const { container } = render(
-      <CandidateProfileModal wa="6281234567890" nama="Budi Santoso" isOpen={false} onClose={() => {}} />
-    );
+    const { container } = render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={false} onClose={() => {}} />);
     expect(container.innerHTML).toBe('');
   });
 
-  it('shows all four tabs after data loads', async () => {
-    render(
-      <CandidateProfileModal wa="6281234567890" nama="Budi Santoso" isOpen={true} onClose={() => {}} />
-    );
+  it('renders biodata: gender, usia', async () => {
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
     await waitFor(() => {
-      expect(screen.getByText('Riwayat')).toBeTruthy();
-      expect(screen.getByText('Dokumen')).toBeTruthy();
-      expect(screen.getByText('Jadwal')).toBeTruthy();
-      expect(screen.getByText('Catatan')).toBeTruthy();
+      expectExists('Gender');
+      expectExists('19 Tahun');
+    });
+  });
+
+  it('renders job applications', async () => {
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => {
+      expectExists('UMUM');
+      expectExists('LULUS');
+    });
+  });
+
+  it('renders catatan internal and external', async () => {
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => {
+      expectExists('Catatan Internal (Private)');
+      expectExists('Catatan External (Kandidat)');
+    });
+  });
+
+  it('renders edit and download buttons', async () => {
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => {
+      expectExists(/Edit Data Cepat/);
+      expectExists(/Download Full Biodata/);
     });
   });
 
   it('calls getAppData API on open', async () => {
-    render(
-      <CandidateProfileModal wa="6281234567890" nama="Budi Santoso" isOpen={true} onClose={() => {}} />
-    );
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/.netlify/functions/getAppData',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('6281234567890'),
-        })
+        expect.objectContaining({ method: 'POST', body: expect.stringContaining('6285854256720') })
       );
     });
   });

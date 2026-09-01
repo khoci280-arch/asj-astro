@@ -2,7 +2,15 @@
  * CandidateProfileModal.tsx — Full candidate profile view
  * Migrated from legacy bukaDigitalCV
  *
- * Shows: digital student card, CV progress, riwayat, documents, schedules, catatan
+ * Sections:
+ * 1. Digital Student Card (photo, name, VIP, WA, password, status)
+ * 2. Biodata (gender, usia, fisik, pendidikan, lahir, email, alamat, JFT, SSW)
+ * 3. Edit Data Cepat button
+ * 4. Job Yang Dilamar (applications with status)
+ * 5. Download Full Biodata
+ * 6. Evaluasi Kandidat (VIP toggle)
+ * 7. Catatan Internal (private) + Catatan External (kandidat)
+ * 8. Simpan Evaluasi Catatan
  */
 import { useState, useEffect } from 'preact/hooks';
 import Icon from '../ui/Icon';
@@ -10,6 +18,7 @@ import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
 import { t } from '../../store/i18n';
+import { showToast } from '../Toast';
 
 interface Props {
   wa: string;
@@ -18,22 +27,34 @@ interface Props {
   onClose: () => void;
 }
 
-type ProfileTab = 'riwayat' | 'dokumen' | 'jadwal' | 'catatan';
-
 interface CandidateData {
   nama: string;
   wa: string;
+  idKandidat?: string;
   gender?: string;
   usia?: string;
+  fisik?: string;
+  pendidikan?: string;
+  tmplahir?: string;
+  tgllahir?: string;
+  email?: string;
+  alamat?: string;
   jft?: string;
+  ssw?: string;
   tahapan?: string;
   status?: string;
   catatan?: string;
+  catatanInternal?: string;
+  catatanExternal?: string;
+  isVIP?: boolean;
+  foto?: string;
   applications?: Array<{
     code: string;
-    tahapan: string;
+    kategori?: string;
     status: string;
-    tanggal?: string;
+    tahapan?: string;
+    timestamp?: string;
+    nama?: string;
   }>;
   schedules?: Array<{
     tanggal: string;
@@ -41,17 +62,17 @@ interface CandidateData {
     keterangan: string;
     status: string;
   }>;
-  documents?: Array<{
-    name: string;
-    type: string;
-    url?: string;
-  }>;
+  berkas?: Record<string, string>;
+  bio?: Record<string, string>;
 }
 
 export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<ProfileTab>('riwayat');
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [catatanInternal, setCatatanInternal] = useState('');
+  const [catatanExternal, setCatatanExternal] = useState('');
+  const [isVIP, setIsVIP] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
@@ -70,38 +91,86 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
     })
       .then(r => r.json())
       .then(d => {
-        if (d.success && d.data) {
-          setData({
-            nama: d.data.nama || nama,
-            wa: d.data.wa || wa,
-            gender: d.data.gender,
-            usia: d.data.usia,
-            jft: d.data.jft,
-            tahapan: d.data.tahapan,
-            status: d.data.status,
-            catatan: d.data.catatan,
-            applications: d.data.applications || [],
-            schedules: d.data.schedules || [],
-            documents: d.data.documents || [],
-          });
-        } else {
-          setData({ nama, wa, applications: [], schedules: [], documents: [] });
-        }
+        const c = d.data || {};
+        setData({
+          nama: c.nama || nama,
+          wa: c.wa || wa,
+          idKandidat: c.idKandidat,
+          gender: c.gender,
+          usia: c.usia,
+          fisik: c.fisik,
+          pendidikan: c.pendidikan,
+          tmplahir: c.bio?.tmplahir || c.tmplahir,
+          tgllahir: c.bio?.tgllahir || c.tgllahir,
+          email: c.bio?.email || c.email,
+          alamat: c.bio?.alamat || c.alamat,
+          jft: c.jft,
+          ssw: c.ssw,
+          tahapan: c.tahapan,
+          status: c.status,
+          catatan: c.catatan,
+          catatanInternal: c.catatanInternal || '',
+          catatanExternal: c.catatanExternal || '',
+          isVIP: c.isVIP,
+          foto: c.berkas?.foto || c.foto,
+          applications: c.applications || [],
+          schedules: c.schedules || [],
+          berkas: c.berkas || {},
+          bio: c.bio || {},
+        });
+        setCatatanInternal(c.catatanInternal || '');
+        setCatatanExternal(c.catatanExternal || '');
+        setIsVIP(!!c.isVIP);
       })
       .catch(() => {
-        setData({ nama, wa, applications: [], schedules: [], documents: [] });
+        setData({ nama, wa, applications: [] });
       })
       .finally(() => setLoading(false));
   }, [isOpen, wa]);
 
   if (!isOpen) return null;
 
-  const tabs: { id: ProfileTab; icon: string; label: string }[] = [
-    { id: 'riwayat', icon: 'clock', label: 'Riwayat' },
-    { id: 'dokumen', icon: 'file-alt', label: 'Dokumen' },
-    { id: 'jadwal', icon: 'calendar-alt', label: 'Jadwal' },
-    { id: 'catatan', icon: 'edit', label: 'Catatan' },
-  ];
+  const handleSaveCatatan = () => {
+    // TODO: register updateCandidateNotes action in backend
+    showToast('Fitur simpan catatan belum tersedia', 'info');
+  };
+
+  const handleDownloadBiodata = () => {
+    if (!data) return;
+    const lines = [
+      `BIODATA KANDIDAT`,
+      `================`,
+      `Nama: ${data.nama}`,
+      `WA: ${data.wa}`,
+      `ID: ${data.idKandidat || '-'}`,
+      `Gender: ${data.gender || '-'}`,
+      `Usia: ${data.usia || '-'} Tahun`,
+      `Tempat Lahir: ${data.tmplahir || '-'}`,
+      `Tanggal Lahir: ${data.tgllahir || '-'}`,
+      `Email: ${data.email || '-'}`,
+      `Alamat: ${data.alamat || '-'}`,
+      `JFT: ${data.jft || '-'}`,
+      `SSW: ${data.ssw || '-'}`,
+      `Fisik: ${data.fisik || '-'}`,
+      `Pendidikan: ${data.pendidikan || '-'}`,
+      `Tahapan: ${data.tahapan || '-'}`,
+      `Status: ${data.status || '-'}`,
+      `VIP: ${data.isVIP ? 'YA' : 'TIDAK'}`,
+      ``,
+      `BERKAS:`,
+      ...Object.entries(data.berkas || {}).filter(([, v]) => v).map(([k, v]) => `  ${k}: ${v}`),
+      ``,
+      `BIODATA DETAIL:`,
+      ...Object.entries(data.bio || {}).filter(([, v]) => v).map(([k, v]) => `  ${k}: ${v}`),
+    ].join('\n');
+    const blob = new Blob([lines], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `biodata-${data.idKandidat || data.wa}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
@@ -115,148 +184,202 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
             <Icon spin name="spinner" class="text-2xl text-sky-400" />
             <p class="text-slate-500 mt-2 text-sm">Memuat data kandidat...</p>
           </div>
-        ) : (
+        ) : data ? (
           <>
-            {/* Digital Student Card */}
-            <div class="flex items-center gap-4 mb-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-              <div class="w-16 h-16 rounded-full bg-sky-600/20 border-2 border-sky-500/40 flex items-center justify-center text-sky-400 text-xl font-bold">
-                {(data?.nama || nama).charAt(0).toUpperCase()}
+            {/* ═══════════════════════════════════════════
+                1. DIGITAL STUDENT CARD
+                ═══════════════════════════════════════════ */}
+            <div class="flex items-start gap-4 mb-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+              {/* Photo */}
+              <div class="w-20 h-20 rounded-lg bg-sky-600/20 border-2 border-sky-500/40 flex items-center justify-center overflow-hidden shrink-0">
+                {data.foto ? (
+                  <img src={data.foto} alt={data.nama} class="w-full h-full object-cover" />
+                ) : (
+                  <span class="text-sky-400 text-2xl font-bold">{data.nama.charAt(0).toUpperCase()}</span>
+                )}
               </div>
-              <div class="flex-1">
-                <h2 class="text-lg font-bold text-white">{data?.nama || nama}</h2>
-                <p class="text-xs text-slate-400 font-mono">WA: {data?.wa || wa}</p>
-                <div class="flex flex-wrap gap-2 mt-2">
-                  {data?.gender && (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-600/50 text-slate-300 border border-slate-600">
-                      {data.gender}
-                    </span>
-                  )}
-                  {data?.usia && (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-600/50 text-slate-300 border border-slate-600">
-                      {data.usia} thn
-                    </span>
-                  )}
-                  {data?.jft && (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-600/30 text-purple-300 border border-purple-500/40">
-                      JFT: {data.jft}
-                    </span>
-                  )}
-                  {data?.tahapan && (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">
-                      {data.tahapan}
-                    </span>
-                  )}
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h2 class="text-lg font-bold text-white truncate">{data.nama}</h2>
+                  {data.isVIP && <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">VIP</span>}
                 </div>
+                <p class="text-xs text-emerald-400 font-mono mt-1">📱 {data.wa}</p>
+                {data.idKandidat && (
+                  <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-600/30 text-sky-300 border border-sky-500/40">{data.idKandidat}</span>
+                )}
+                {data.tahapan && (
+                  <div class="mt-2">
+                    <span class="text-[10px] text-slate-500 uppercase">Status Tahapan</span>
+                    <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{data.tahapan}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Tabs */}
-            <div class="flex gap-1 mb-4 p-1 bg-slate-800/50 rounded-lg">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  class={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition ${
-                    activeTab === tab.id
-                      ? 'bg-sky-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  }`}
-                >
-                  <Icon name={tab.icon} class="mr-1" /> {tab.label}
-                </button>
-              ))}
+            {/* ═══════════════════════════════════════════
+                2. BIODATA
+                ═══════════════════════════════════════════ */}
+            <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Biodata</h3>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Gender</span>
+                  <p class="text-white font-bold">{data.gender || '-'}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Usia</span>
+                  <p class="text-white font-bold">{data.usia ? `${data.usia} Tahun` : '-'}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Fisik (Tinggi)</span>
+                  <p class="text-white font-bold">{data.fisik || '-'}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Pendidikan</span>
+                  <p class="text-white font-bold">{data.pendidikan || '-'}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Tempat, Tgl Lahir</span>
+                  <p class="text-white font-bold">{data.tmplahir && data.tgllahir ? `${data.tmplahir}, ${data.tgllahir}` : data.tmplahir || data.tgllahir || '-'}</p>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase">Email</span>
+                  <p class="text-white font-bold">{data.email || '-'}</p>
+                </div>
+                <div class="col-span-2">
+                  <span class="text-[10px] text-slate-500 uppercase">Alamat Asal</span>
+                  <p class="text-white font-bold">{data.alamat || '-'}</p>
+                </div>
+              </div>
+              <div class="flex gap-3 mt-3">
+                <div class="flex-1 p-2 bg-sky-900/30 rounded-lg border border-sky-500/20 text-center">
+                  <span class="text-[10px] text-sky-400 uppercase font-bold">JFT / JFJ</span>
+                  <p class="text-white font-bold text-sm">{data.jft || '-'}</p>
+                </div>
+                <div class="flex-1 p-2 bg-emerald-900/30 rounded-lg border border-emerald-500/20 text-center">
+                  <span class="text-[10px] text-emerald-400 uppercase font-bold">SSW / Bidang</span>
+                  <p class="text-white font-bold text-sm">{data.ssw || '-'}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Tab Content */}
-            <div class="min-h-[200px]">
-              {activeTab === 'riwayat' && (
-                <div>
-                  {(!data?.applications || data.applications.length === 0) ? (
-                    <p class="text-slate-500 text-sm text-center py-8">Belum ada riwayat lamaran.</p>
-                  ) : (
-                    <div class="space-y-2">
-                      {data.applications.map((app, i) => (
-                        <div key={i} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                          <div>
-                            <span class="font-mono text-sky-300 font-bold text-xs">{app.code}</span>
-                            <span class="ml-2 text-white text-sm">{app.tahapan}</span>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-400">{app.tanggal || '-'}</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{app.status}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* ═══════════════════════════════════════════
+                3. EDIT DATA CEPAT
+                ═══════════════════════════════════════════ */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: { wa: data.wa, nama: data.nama } }));
+              }}
+              class="w-full mb-4 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <Icon name="edit" /> Edit Data Cepat
+            </button>
 
-              {activeTab === 'dokumen' && (
-                <div>
-                  {(!data?.documents || data.documents.length === 0) ? (
-                    <p class="text-slate-500 text-sm text-center py-8">Belum ada dokumen.</p>
-                  ) : (
-                    <div class="space-y-2">
-                      {data.documents.map((doc, i) => (
-                        <div key={i} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                          <div class="flex items-center gap-2">
-                            <Icon name="file" class="text-sky-400" />
-                            <span class="text-white text-sm">{doc.name}</span>
-                          </div>
-                          <span class="text-xs text-slate-400">{doc.type}</span>
-                        </div>
-                      ))}
+            {/* ═══════════════════════════════════════════
+                4. JOB YANG DILAMAR
+                ═══════════════════════════════════════════ */}
+            <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Job / Bidang Yang Dilamar</h3>
+              {(!data.applications || data.applications.length === 0) ? (
+                <p class="text-slate-500 text-sm">Belum ada lamaran.</p>
+              ) : (
+                <div class="flex flex-wrap gap-2">
+                  {data.applications.map((app, i) => (
+                    <div key={i} class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700/50">
+                      <Icon name="briefcase" class="text-sky-400 text-xs" />
+                      <span class="text-white text-sm font-bold">{app.kategori || app.code}</span>
+                      <span class={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        app.status === 'LULUS' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
+                        app.status === 'Aktif' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40' :
+                        'bg-slate-600/50 text-slate-300 border border-slate-600'
+                      }`}>{app.status}</span>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'jadwal' && (
-                <div>
-                  {(!data?.schedules || data.schedules.length === 0) ? (
-                    <p class="text-slate-500 text-sm text-center py-8">Belum ada jadwal.</p>
-                  ) : (
-                    <div class="space-y-2">
-                      {data.schedules.map((sched, i) => (
-                        <div key={i} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                          <div>
-                            <span class="text-white text-sm">{sched.keterangan}</span>
-                            <span class="ml-2 text-xs text-slate-400">{sched.jam}</span>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-400">{sched.tanggal}</span>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{sched.status}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'catatan' && (
-                <div>
-                  <p class="text-slate-300 text-sm whitespace-pre-wrap">{data?.catatan || 'Belum ada catatan.'}</p>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Footer */}
-            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-700/50">
-              <a
-                href={`https://wa.me/${data?.wa || wa}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition"
+            {/* ═══════════════════════════════════════════
+                5. DOWNLOAD FULL BIODATA
+                ═══════════════════════════════════════════ */}
+            <button
+              onClick={handleDownloadBiodata}
+              class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <Icon name="download" /> Download Full Biodata
+            </button>
+
+            {/* ═══════════════════════════════════════════
+                6. EVALUASI KANDIDAT (VIP TOGGLE)
+                ═══════════════════════════════════════════ */}
+            <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Evaluasi Kandidat (Admin)</h3>
+              <button
+                onClick={() => setIsVIP(!isVIP)}
+                class={`w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
+                  isVIP
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                }`}
               >
-                <Icon name="whatsapp" class="mr-1" /> WhatsApp
-              </a>
-              <button onClick={onClose} class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
-                Tutup
+                {isVIP ? '✅ VIP (Rencana Resmi)' : '☐ Tandai VIP (Rencana Resmi)'}
               </button>
             </div>
+
+            {/* ═══════════════════════════════════════════
+                7. CATATAN INTERNAL & EXTERNAL
+                ═══════════════════════════════════════════ */}
+            <div class="mb-4 space-y-3">
+              <div>
+                <label class="text-xs font-bold text-red-400 uppercase mb-1 block">Catatan Internal (Private)</label>
+                <textarea
+                  value={catatanInternal}
+                  onInput={(e) => setCatatanInternal((e.target as HTMLTextAreaElement).value)}
+                  placeholder="Kelemahan/Catatan khusus admin..."
+                  class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-sky-400 uppercase mb-1 block">Catatan External (Kandidat)</label>
+                <textarea
+                  value={catatanExternal}
+                  onInput={(e) => setCatatanExternal((e.target as HTMLTextAreaElement).value)}
+                  placeholder="Feedback untuk kandidat..."
+                  class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════
+                8. SIMPAN + FOOTER
+                ═══════════════════════════════════════════ */}
+            <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-700/50">
+              <button
+                onClick={handleSaveCatatan}
+                disabled={saving}
+                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {saving ? <Icon spin name="spinner" /> : <Icon name="save" />} Simpan Evaluasi Catatan
+              </button>
+              <div class="flex gap-2">
+                <a
+                  href={`https://wa.me/${data.wa}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+                >
+                  <Icon name="whatsapp" /> WhatsApp
+                </a>
+                <button onClick={onClose} class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
+                  Tutup
+                </button>
+              </div>
+            </div>
           </>
+        ) : (
+          <p class="text-center text-slate-500 py-8">Data tidak ditemukan.</p>
         )}
       </div>
     </div>
