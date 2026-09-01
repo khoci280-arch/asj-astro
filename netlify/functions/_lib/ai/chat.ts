@@ -122,7 +122,7 @@ import {
 // Single source of truth for ASJ student status — same regex as
 // isSiswaASJ in db/candidates.ts mapCandidate().
 function isVipCatatan(catatan) {
-  return /\[VIP\]|\[KELAS\s*[A-Z0-9]+\]/i.test(String(catatan || ''));
+  return /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(String(catatan || ''));
 }
 
 // Skema data yang DIISI OTOMATIS ke form ai_form (kunci persis fieldPaths di
