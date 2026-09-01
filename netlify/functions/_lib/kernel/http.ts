@@ -63,9 +63,9 @@ export class TimeoutError extends Error {
  */
 export async function request(
   url: string,
-  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey } = {},
+  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
 ): Promise<Response> {
-  const { budgetMs: explicitBudget, budgetKey, ...fetchInit } = init;
+  const { budgetMs: explicitBudget, budgetKey, action: actionName, ...fetchInit } = init;
   const budgetMs = explicitBudget ?? (budgetKey ? BUDGETS[budgetKey] : BUDGETS.postgrest_read);
 
   const controller = new AbortController();
@@ -76,23 +76,36 @@ export async function request(
     ? AbortSignal.any([fetchInit.signal, controller.signal])
     : controller.signal;
 
+  const startTime = Date.now();
+  const dep = detectDependency(url);
+
   try {
     const res = await fetch(url, { ...fetchInit, signal });
+    const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
+      // Log dependency call (fire-and-forget, never block the request)
+      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
       throw new HttpError(
         `HTTP ${res.status} ${url}: ${body.slice(0, 200)}`,
         res.status,
       );
     }
+    // Log successful call (only if slow or for sampling)
+    if (durationMs > 100 || Math.random() < 0.05) {
+      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'ok');
+    }
     return res;
   } catch (e: unknown) {
+    const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (e instanceof HttpError) throw e;
     if (e instanceof DOMException && e.name === 'AbortError') {
+      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
       throw new TimeoutError(url, budgetMs);
     }
+    void logDependencyCall(dep, actionName, budgetMs, durationMs, 'network_error');
     throw e;
   }
 }
@@ -103,9 +116,54 @@ export async function request(
  */
 export async function requestJson<T = unknown>(
   url: string,
-  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey } = {},
+  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
 ): Promise<T> {
   const res = await request(url, init);
   const text = await res.text();
   return text ? JSON.parse(text) : (null as T);
 }
+
+// ── Dependency detection ──────────────────────────────────────────────────────
+
+function detectDependency(url: string): string {
+  if (url.includes('supabase')) return 'postgrest';
+  if (url.includes('storage')) return 'storage';
+  if (url.includes('generativelanguage') || url.includes('gemini')) return 'gemini';
+  if (url.includes('fonnte') || url.includes('api.fonnte')) return 'fonnte';
+  if (url.includes('fcm') || url.includes('fcm.googleapis')) return 'fcm';
+  if (url.includes('cloudinary')) return 'cloudinary';
+  return 'other';
+}
+
+// ── Dependency call logging ───────────────────────────────────────────────────
+// Writes to dependency_calls table. Fire-and-forget: never blocks the caller.
+// Uses supabaseJson directly to avoid circular import with db/client.ts.
+
+async function logDependencyCall(
+  dep: string,
+  action: string | undefined,
+  budgetMs: number,
+  durationMs: number,
+  outcome: string,
+  statusCode?: number,
+): Promise<void> {
+  try {
+    await supabaseJson('POST', 'dependency_calls', {
+      body: {
+        dep,
+        action: action ?? 'unknown',
+        budget_ms: budgetMs,
+        duration_ms: durationMs,
+        outcome,
+        status_code: statusCode ?? null,
+        attempts: 1,
+      },
+      headers: { Prefer: 'return=minimal' },
+    });
+  } catch {
+    // Logging must never fail the request. Silently drop.
+  }
+}
+
+// Import supabaseJson at module level (lazy to avoid circular dep issues)
+import { supabaseJson } from '../db/client';

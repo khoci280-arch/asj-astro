@@ -20,12 +20,22 @@ import { REGISTER_ACTIONS } from './register';
 import { NOTIFY_ACTIONS } from './notify';
 import { AI_ACTIONS } from './ai';
 import { INGEST_ACTIONS } from './ingest';
+import { handleGetJobStatus } from '../_lib/actions-job-status';
+
+/**
+ * Infrastructure actions (not tied to a specific surface).
+ * Phase 5: getJobStatus for background job polling.
+ */
+const INFRA_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
+  getJobStatus: (p, s) => handleGetJobStatus(p, s),
+};
 
 /**
  * All surface registries merged into a single action → handler map.
  * Unmapped actions fall through to the old ACTION_HANDLERS (strangler-fig).
  */
 export const SURFACE_HANDLERS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
+  ...INFRA_ACTIONS,
   ...AUTH_ACTIONS,
   ...PUBLIC_ACTIONS,
   ...DOCS_ACTIONS,

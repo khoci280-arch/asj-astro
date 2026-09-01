@@ -5,6 +5,8 @@ import * as shareActions from './actions-share';
 import { toErrorResponse } from './kernel/errors';
 import { log, runWithContext } from './kernel/log';
 import { SURFACE_HANDLERS } from '../surfaces/index';
+import { supabaseJson } from './db/client';
+import { handleGetJobStatus } from './actions-job-status';
 // handlers.js — dispatcher pusat backend rebuild.
 //
 // Frontend mengirim { action, payload, sessionToken } ke /.netlify/functions/*
@@ -163,26 +165,77 @@ async function handleAction(action, payload, sessionToken, meta) {
 }
 
 async function dispatchAction(action, payload, sessionToken) {
+  // ── Idempotency check (Phase 5) ──────────────────────────────────────────
+  // For mutating actions, check Idempotency-Key header (passed via meta).
+  const idempotencyKey = (globalThis as any).__idempotencyKey as string | undefined;
+  if (idempotencyKey && isMutatingAction(action)) {
+    try {
+      const existing = await supabaseJson('GET', 'idempotency_keys', {
+        query: { select: '*', key: 'eq.' + idempotencyKey, limit: '1' },
+      }).catch(() => null);
+      if (Array.isArray(existing) && existing.length > 0) {
+        log.info('idempotency.hit', { action, key: idempotencyKey.slice(0, 8) });
+        return existing[0].result;
+      }
+    } catch {
+      // If idempotency table doesn't exist yet, proceed normally
+    }
+  }
+
+  let result: unknown;
+
   // Try surface registry first (new architecture), fall back to old registry
   const surfaceHandler = SURFACE_HANDLERS[action];
   if (surfaceHandler) {
     try {
-      return await surfaceHandler(payload, sessionToken);
+      result = await surfaceHandler(payload, sessionToken);
     } catch (err) {
       log.error('surface.error', { action, err: String(err) });
       return toErrorResponse(err);
     }
+  } else {
+    const handler = ACTION_HANDLERS[action];
+    if (!handler) {
+      return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
+    }
+    try {
+      result = await handler(payload, sessionToken);
+    } catch (err) {
+      log.error('handler.error', { action, err: String(err) });
+      return toErrorResponse(err);
+    }
   }
-  const handler = ACTION_HANDLERS[action];
-  if (!handler) {
-    return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
+
+  // ── Store idempotency result (Phase 5) ────────────────────────────────────
+  if (idempotencyKey && isMutatingAction(action) && result && (result as any).success !== false) {
+    try {
+      await supabaseJson('POST', 'idempotency_keys', {
+        query: { on_conflict: 'key' },
+        body: { key: idempotencyKey, result, created_at: new Date().toISOString() },
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      }).catch(() => {});
+    } catch {
+      // Storage failure must not affect the response
+    }
   }
-  try {
-    return await handler(payload, sessionToken);
-  } catch (err) {
-    log.error('handler.error', { action, err: String(err) });
-    return toErrorResponse(err);
-  }
+
+  return result;
+}
+
+/** Actions that should be idempotent (mutations only) */
+function isMutatingAction(action: string): boolean {
+  const MUTATING = new Set([
+    'daftarKandidat', 'gantiPasswordKandidat', 'loginKandidat',
+    'handleSimpanJobBaru', 'handleEditLokerFull', 'handleUbahStatusJob',
+    'handleHapusJobData', 'handleUpdateTahapanDbJob', 'handleUpdateDokumenShare',
+    'handleTandaiGagalJob', 'handleReviewForm', 'handleApproveForm',
+    'handleRejectForm', 'handleDeleteForm', 'handleUpdateCatatanKandidat',
+    'handleUpdateKandidatSuper', 'handleSimpanWaTemplate', 'handleHapusWaTemplate',
+    'kirimSatuPesanFonnte', 'kirimTawaranMassal', 'handleSubmitMasterForm',
+    'handleSetTugasStatus', 'handleHapusJadwal', 'handleSimpanJadwal',
+    'handleUpdateSysConfig', 'processUploadDoc', 'processAiFormSubmit',
+  ]);
+  return MUTATING.has(action);
 }
 
 // Fase 1.1d (2026-08-16): handleShareData, docTypeOf, docAge, TYPE_ALIAS,

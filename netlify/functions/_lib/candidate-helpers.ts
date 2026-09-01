@@ -3,38 +3,34 @@ import { normalizeWa, pick, supabaseJson } from './db/client';
 // auth, job, form). Dipisah dari handlers.js (Fase 1.1b) supaya tidak ada
 // saling-require antar modul action.
 
-import { findCandidateByWaFiltered, findCandidates, maxCandidateIdNumber } from './db/candidates';
+import { findCandidateByWaFiltered } from './db/candidates';
 
 // Kolom WA yang dikenali di tabel kandidat (urutan prioritas).
 const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
 
-// ID kandidat baru ASJ<max+1> (dipusatkan di sini — dulu ada 3 salinan:
-// actions-extra, actions-mail, actions-master).
-async function nextCandidateId() {
-  // Jalur cepat: id_kandidat tertinggi via query server-side.
-  const fastMax = await maxCandidateIdNumber();
-  if (fastMax !== undefined) return 'ASJ' + String(fastMax + 1).padStart(5, '0');
-  // Fallback: scan penuh (perilaku lama). Sama seperti fast path, id juga
-  // dipakai di master_database_candidate → ikut di-scan supaya tidak ada
-  // 409 duplicate key saat INSERT master (FIX 2026-08-16).
-  const found = await findCandidates();
-  let max = 0;
-  for (const r of found.rows) {
-    const m = String(pick(r, ['id_kandidat', 'id']) || '').match(/ASJ(\d+)/i);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
+// ── Atomic candidate ID allocation via Postgres sequence ──────────────────────
+// Phase 5: Replaced MAX(id)+1 pattern (TOCTOU race) with a Postgres sequence.
+// Sequence: candidate_id_seq (created in 2026-09-01-phase5-async-scale.sql)
+// Fallback: if sequence doesn't exist yet, fall back to the old MAX+1 pattern.
+
+async function nextCandidateId(): Promise<string> {
   try {
-    const master = await supabaseJson('GET', 'master_database_candidate', {
-      query: { select: 'id_kandidat', order: 'id_kandidat.desc', limit: '5' },
-    });
-    for (const r of Array.isArray(master) ? master : []) {
-      const m = String(r.id_kandidat || '').match(/ASJ(\d+)/i);
-      if (m) max = Math.max(max, parseInt(m[1], 10));
+    // Atomic: nextval is safe under concurrent access — no race.
+    const rows = await supabaseJson('GET', 'rpc/nextval', {
+      query: { seqname: 'candidate_id_seq' },
+    }).catch(() => null);
+    if (rows != null) {
+      const n = typeof rows === 'number' ? rows : Number(rows);
+      if (!isNaN(n) && n > 0) return 'ASJ' + String(n).padStart(5, '0');
     }
   } catch {
-    /* master tidak bisa dibaca — pakai max dari database_candidate saja */
+    // Sequence doesn't exist yet — fall back to legacy pattern
   }
-  return 'ASJ' + String(max + 1).padStart(5, '0');
+  // Legacy fallback: MAX(id) + 1 pattern
+  const { maxCandidateIdNumber } = await import('./db/candidates');
+  const fastMax = await maxCandidateIdNumber();
+  if (fastMax !== undefined) return 'ASJ' + String(fastMax + 1).padStart(5, '0');
+  return 'ASJ' + String(10001).padStart(5, '0');
 }
 
 // Cari baris kandidat berdasarkan WA (format fleksibel 0xx / 62xx).

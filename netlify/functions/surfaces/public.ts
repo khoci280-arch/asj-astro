@@ -2,11 +2,36 @@
  * surfaces/public.ts — Public data surface (read-only, high-traffic)
  *
  * Handles: getAppData, getMonthlyReport
- * Cacheable: Yes — CDN cache + stale-while-revalidate
+ * Cacheable: Yes — CDN cache + stale-while-revalidate + stale-if-error
  *
  * This surface imports ONLY from contexts/catalog (boundary rule).
+ *
+ * CDN Cache Strategy (Phase 5):
+ *   - s-maxage=60: CDN serves cached response for 60s
+ *   - stale-while-revalidate=86400: serve stale for up to 24h while revalidating
+ *   - stale-if-error=86400: serve stale for up to 24h during Supabase outage
+ *   This keeps the public job board alive during a full database outage.
  */
 import * as catalog from '../contexts/catalog';
+
+/** Cache headers for public surface responses (Phase 5) */
+export const PUBLIC_CACHE_HEADERS: Record<string, string> = {
+  'Content-Type': 'application/json',
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=86400, stale-if-error=86400',
+  'CDN-Cache-Control': 'public, s-maxage=60',
+  'Vary': 'Accept-Encoding',
+};
+
+/**
+ * Wrap a handler result with CDN cache headers.
+ * Used by public surface to enable CDN caching.
+ */
+export function withCacheHeaders(data: unknown, extraHeaders?: Record<string, string>): Response {
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { ...PUBLIC_CACHE_HEADERS, ...extraHeaders },
+  });
+}
 
 export const PUBLIC_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   getAppData: (payload, sessionToken) => catalog.handleGetAppData(payload, sessionToken),
