@@ -78,7 +78,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
 
   useEffect(() => {
     if (!isOpen || !wa) return;
+    const controller = new AbortController();
     setLoading(true);
+    setData(null);
     const sessionToken = authStore.get().sessionToken || '';
     fetch(getEndpoint('getAppData'), {
       method: 'POST',
@@ -88,9 +90,11 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
         args: ['kandidat', wa],
         sessionToken,
       }),
+      signal: controller.signal,
     })
       .then(r => r.json())
       .then(d => {
+        if (controller.signal.aborted) return;
         const c = d.data || {};
         setData({
           nama: c.nama || nama,
@@ -122,10 +126,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
         setCatatanExternal(c.catatanExternal || '');
         setIsVIP(!!c.isVIP);
       })
-      .catch(() => {
+      .catch(e => {
+        if (e.name === 'AbortError') return;
         setData({ nama, wa, applications: [] });
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, [isOpen, wa]);
 
   if (!isOpen) return null;
@@ -179,12 +185,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
           <Icon name="times" class="text-2xl" />
         </button>
 
-        {loading ? (
+        {loading || !data ? (
           <div class="text-center py-12">
             <Icon spin name="spinner" class="text-2xl text-sky-400" />
             <p class="text-slate-500 mt-2 text-sm">Memuat data kandidat...</p>
           </div>
-        ) : data ? (
+        ) : (
           <>
             {/* ═══════════════════════════════════════════
                 1. DIGITAL STUDENT CARD
@@ -378,8 +384,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               </div>
             </div>
           </>
-        ) : (
-          <p class="text-center text-slate-500 py-8">Data tidak ditemukan.</p>
         )}
       </div>
     </div>
