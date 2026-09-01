@@ -5,6 +5,7 @@
  */
 import { cacheClear } from '../../_lib/cache';
 import { requireAdmin } from '../identity';
+import { emit } from '../../_lib/kernel/events';
 import { findCandidateByWa } from '../../_lib/candidate-helpers';
 import { syncBiodataKeMail } from '../applications';
 import { getCandidatesPage as getCandidatesPageRepo, patchCandidate } from './repository';
@@ -18,12 +19,16 @@ export async function handleUpdateCatatanKandidat(payload: any[], sessionToken?:
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
-  const [id, intNote, extNote] = payload || [];
+  const [id, intNote, extNote, updatedAt] = payload || [];
   if (!id) return { success: false, error: 'ID kandidat tidak ditemukan.' };
   try {
-    await patchCandidate(String(id), { catatan_internal: intNote || '', catatan_external: extNote || '' });
+    await patchCandidate(String(id), { catatan_internal: intNote || '', catatan_external: extNote || '' }, updatedAt, sessionToken);
     return { success: true };
   } catch (e: any) {
+    const msg = String(e.message || e);
+    if (msg.includes('412') || msg.includes('Precondition')) {
+      return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
+    }
     return { success: false, error: 'Gagal simpan catatan: ' + e.message };
   }
 }
@@ -34,6 +39,7 @@ export async function handleUpdateKandidatSuper(payload: any[], sessionToken?: s
   cacheClear();
   const data = (payload && payload[0]) || {};
   if (!data.wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
+  const updatedAt = data.updated_at as string | undefined;
   const body: Record<string, any> = {
     gender: data.gender !== undefined ? data.gender : undefined,
     usia: data.usia !== undefined ? data.usia : undefined,
@@ -50,7 +56,12 @@ export async function handleUpdateKandidatSuper(payload: any[], sessionToken?: s
     const row = await findCandidateByWa(data.wa);
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
     const { normalizeWa } = await import('../../_lib/db/client');
-    await patchCandidate(row.id, body);
+    await patchCandidate(row.id, body, updatedAt, sessionToken);
+
+    // Emit stage-changed event if status_kandidat was modified
+    if (body.status_kandidat && String(body.status_kandidat) !== String(row.status_kandidat || '')) {
+      emit({ type: 'candidate.stageChanged', wa: data.wa, from: String(row.status_kandidat || ''), to: String(body.status_kandidat), at: new Date().toISOString() });
+    }
     try {
       const labels: string[] = [];
       for (const k of Object.keys(body)) {
@@ -66,6 +77,10 @@ export async function handleUpdateKandidatSuper(payload: any[], sessionToken?: s
     } catch { /* sync mail is best-effort */ }
     return { success: true };
   } catch (e: any) {
+    const msg = String(e.message || e);
+    if (msg.includes('412') || msg.includes('Precondition')) {
+      return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
+    }
     return { success: false, error: 'Gagal update kandidat: ' + e.message };
   }
 }

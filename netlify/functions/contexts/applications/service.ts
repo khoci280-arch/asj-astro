@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { requireAdmin } from '../identity';
+import { emit } from '../../_lib/kernel/events';
 import { mapCandidate } from '../../_lib/db/candidates';
 import { findCandidateByWa, nextCandidateId } from '../../_lib/candidate-helpers';
 import { stripRaw } from '../catalog';
@@ -95,7 +96,7 @@ async function syncCandidateDariForm(f: any, status: string): Promise<void> {
   }
 }
 
-async function handleFormStatus(rowIndex: number, status: string, reason?: string) {
+async function handleFormStatus(rowIndex: number, status: string, reason?: string, sessionToken?: string) {
   cacheClear();
   if (!Number.isInteger(rowIndex) || rowIndex < 0) {
     return { success: false, error: 'Index form tidak valid.' };
@@ -105,8 +106,19 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
     const body: Record<string, any> = { status };
     if (reason !== null && reason !== undefined) body.keterangan = reason;
-    await patchForm(f.id, body);
+    await patchForm(f.id, body, sessionToken);
     try { await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
+
+    // Emit domain event for cross-context communication
+    const waEvent = normWa(String(f.no_wa || f.wa || ''));
+    const jobCodeEvent = String(f.code_job || '');
+    if (status === 'LULUS' && waEvent) {
+      emit({ type: 'application.approved', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
+    } else if (status === 'GAGAL' && waEvent) {
+      emit({ type: 'application.rejected', wa: waEvent, jobCode: jobCodeEvent, reason: reason || undefined, at: new Date().toISOString() });
+    } else if (waEvent) {
+      emit({ type: 'application.submitted', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
+    }
 
     // FCM notification
     const waNotify = normWa(String(f.no_wa || f.wa || ''));
@@ -152,20 +164,20 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
 export async function handleReviewForm(payload: any[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0], 'REVIEW ADMIN', undefined);
+  return handleFormStatus((payload || [])[0], 'REVIEW ADMIN', undefined, sessionToken);
 }
 
 export async function handleApproveForm(payload: any[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0], 'LULUS', undefined);
+  return handleFormStatus((payload || [])[0], 'LULUS', undefined, sessionToken);
 }
 
 export async function handleRejectForm(payload: any[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [, , reason] = payload || [];
-  return handleFormStatus((payload || [])[0], 'GAGAL', reason || 'Lamaran ditolak');
+  return handleFormStatus((payload || [])[0], 'GAGAL', reason || 'Lamaran ditolak', sessionToken);
 }
 
 export async function handleDeleteForm(payload: any[], sessionToken?: string) {
@@ -179,7 +191,7 @@ export async function handleDeleteForm(payload: any[], sessionToken?: string) {
   try {
     const f = await getFormByIndex(idx);
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
-    await deleteForm(f.id);
+    await deleteForm(f.id, sessionToken);
     return { success: true, rowIndex: idx };
   } catch (e: any) {
     return { success: false, error: 'Gagal menghapus form. Silakan coba lagi.' };
@@ -200,7 +212,7 @@ export async function handleTandaiDibacaForm(payload: any[], sessionToken?: stri
     const m = fb.match(/\[\[PREV:([^\]]+)\]\]/);
     const prevStatus = m ? m[1].trim() : 'MENUNGGU';
     const newFb = fb.replace(/\[\[PREV:[^\]]+\]\]\s*/, '').trim();
-    await patchForm(f.id, { status: prevStatus, feedback_berkas: newFb, updated_at: new Date().toISOString() });
+    await patchForm(f.id, { status: prevStatus, feedback_berkas: newFb, updated_at: new Date().toISOString() }, sessionToken);
     f.status = prevStatus;
     f.feedback_berkas = newFb;
     return { success: true, form: mapForm(f, idx) };
@@ -226,7 +238,7 @@ export async function syncBiodataKeMail(wa: string, nama: string, labels: string
       feedback_berkas: appendFeedback(r.feedback_berkas, entry),
     };
     if (isUpdate) body.status = 'UPDATE';
-    await patchForm(r.id, body);
+    await patchForm(r.id, body, sessionToken);
   }
   if (labels && labels.length > 0) {
     try {
@@ -281,7 +293,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
     if (label === 'SSW') body.ssw = String(url || '');
 
     if (existing && existing.id !== undefined) {
-      await patchForm(existing.id, body);
+      await patchForm(existing.id, body, sessionToken);
     } else {
       await upsertForm(body);
     }

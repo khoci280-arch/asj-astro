@@ -8,6 +8,10 @@ import { getSurfaceHandler } from '../surfaces/index';
 import { supabaseJson } from './db/client';
 import { handleGetJobStatus } from './actions-job-status';
 
+// Register domain event handlers (side-effect import)
+import { initEventHandlers } from './event-handlers';
+initEventHandlers();
+
 // Rate limit groups — moved from old action-registry.ts
 const LOGIN_ACTIONS = new Set([
   'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',

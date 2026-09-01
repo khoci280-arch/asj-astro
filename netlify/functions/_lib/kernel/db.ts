@@ -21,6 +21,7 @@
  * genuinely need cross-table access or Storage signing.
  */
 
+import crypto from 'crypto';
 import { env } from '../env';
 import { log } from './log';
 
@@ -40,11 +41,48 @@ const SERVICE_ROLE_ALLOWLIST = new Set([
   'scheduling.dueReminders',    // Cross-table reads
 ]);
 
+// ── Supabase JWT creation ───────────────────────────────────────────────────
+// PostgRLS evaluates RLS policies using the JWT's claims. Our session tokens
+// are custom HMAC tokens, not Supabase JWTs. This helper creates a
+// Supabase-compatible JWT from session claims so RLS can evaluate `wa`.
+
+function createSupabaseJwt(claims: { role: string; wa?: string; name?: string }): string {
+  const secret = env('SUPABASE_JWT_SECRET');
+  if (!secret) {
+    // No JWT secret configured — return empty string (RLS will treat as anon)
+    log.debug('supabase_jwt.no_secret', { op: claims.role });
+    return '';
+  }
+
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const payload = Buffer.from(JSON.stringify({
+    role: 'authenticated',
+    ...claims,
+    iat: now,
+    exp: now + 3600, // 1 hour expiry
+  })).toString('base64url');
+
+  const signature = crypto.createHmac('sha256', secret)
+    .update(header + '.' + payload)
+    .digest('base64url');
+
+  return header + '.' + payload + '.' + signature;
+}
+
 // ── Client factories ────────────────────────────────────────────────────────
 
-interface ClientInfo {
+/**
+ * Client info with separate apikey (project identification) and
+ * authKey (RLS evaluation via JWT). For anon/service, both are the same key.
+ * For user client, apikey = anon key, authKey = Supabase JWT with wa claim.
+ */
+export interface ClientInfo {
   url: string;
-  key: string;
+  /** The apikey header — identifies the Supabase project. */
+  apikey: string;
+  /** The Authorization header value (without 'Bearer ' prefix). */
+  authKey: string;
   label: string;
 }
 
@@ -56,28 +94,45 @@ export function anonClient(): ClientInfo {
   const key = env('SUPABASE_ANON_KEY') || env('SUPABASE_KEY');
   return {
     url: supabaseUrl(),
-    key,
+    apikey: key,
+    authKey: key,
     label: 'anon',
   };
 }
 
 /**
- * User client — authenticated access with user JWT (RLS applies).
- * Used for: candidate-scoped reads/writes.
- *
- * In the current architecture, we use the service-role key but log which
- * operations use it. Full RLS enforcement requires enabling RLS policies
- * on tables and passing the user's JWT — tracked as a follow-up.
+ * User client — authenticated access with Supabase JWT (RLS applies).
+ * apikey = anon key (project identification)
+ * authKey = Supabase JWT with wa claim (RLS policy evaluation)
  */
-export function userClient(token?: string): ClientInfo {
-  // For now, use the service key with user context logged.
-  // Full RLS: pass token as Authorization, service key as apikey.
-  const key = token || env('SUPABASE_ANON_KEY') || env('SUPABASE_KEY');
-  return {
-    url: supabaseUrl(),
-    key,
-    label: 'user',
-  };
+export function userClient(sessionToken?: string): ClientInfo {
+  const anonKey = env('SUPABASE_ANON_KEY') || env('SUPABASE_KEY');
+
+  if (!sessionToken) {
+    // No session — fall back to anon (public read)
+    return { url: supabaseUrl(), apikey: anonKey, authKey: anonKey, label: 'anon' };
+  }
+
+  // Decode our custom session token to extract claims
+  // (It's base64url(JSON).signature — same format as our JWT)
+  try {
+    const parts = sessionToken.split('.');
+    if (parts.length === 2) {
+      const claims = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      const supabaseJwt = createSupabaseJwt({
+        role: claims.role || 'authenticated',
+        wa: claims.wa,
+        name: claims.name,
+      });
+      if (supabaseJwt) {
+        return { url: supabaseUrl(), apikey: anonKey, authKey: supabaseJwt, label: 'user' };
+      }
+    }
+  } catch {
+    // Invalid token — fall back to anon
+  }
+
+  return { url: supabaseUrl(), apikey: anonKey, authKey: anonKey, label: 'anon' };
 }
 
 /**
@@ -86,10 +141,11 @@ export function userClient(token?: string): ClientInfo {
  */
 export function serviceClient(op: string): ClientInfo {
   const key = env('SUPABASE_SERVICE_ROLE_KEY') || env('SUPABASE_KEY');
-  log.warn('service_role.used', { op });
+  log.debug('service_role.used', { op });
   return {
     url: supabaseUrl(),
-    key,
+    apikey: key,
+    authKey: key,
     label: 'service',
   };
 }
@@ -97,8 +153,8 @@ export function serviceClient(op: string): ClientInfo {
 /**
  * Select the appropriate client for an operation.
  *
- *   const { url, key } = clientFor('registry.getCandidatesPage', sessionToken);
- *   // Use: headers: { apikey: key, Authorization: `Bearer ${key}` }
+ *   const { url, apikey, authKey } = clientFor('registry.getCandidatesPage', sessionToken);
+ *   // Use: headers: { apikey, Authorization: `Bearer ${authKey}` }
  */
 export function clientFor(
   op: string,

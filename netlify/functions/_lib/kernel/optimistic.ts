@@ -130,10 +130,11 @@ export async function optimisticUpdateWithRetry(
           },
         });
         if (Array.isArray(rows) && rows.length > 0) {
-          const freshRow = rows[0] as { updated_at?: string };
-          if (freshRow.updated_at) {
+          const candidate = rows[0] as Record<string, unknown>;
+          const freshUpdatedAt = typeof candidate.updated_at === 'string' ? candidate.updated_at : null;
+          if (freshUpdatedAt) {
             log.info('optimistic.retry', { table, rowId, attempt: attempt + 1 });
-            opts.updated_at = freshRow.updated_at;
+            opts.updated_at = freshUpdatedAt;
             continue;
           }
         }
@@ -163,7 +164,8 @@ export async function readUpdatedAt(
       },
     });
     if (Array.isArray(rows) && rows.length > 0) {
-      return (rows[0] as { updated_at?: string })?.updated_at ?? null;
+      const candidate = rows[0] as Record<string, unknown>;
+      return typeof candidate.updated_at === 'string' ? candidate.updated_at : null;
     }
     return null;
   } catch {

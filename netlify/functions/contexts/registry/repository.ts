@@ -5,6 +5,7 @@
  * All DB access goes through kernel/http → supabaseJson
  */
 import { normalizeWa, supabaseJson } from '../../_lib/db/client';
+import { clientFor } from '../../_lib/kernel/db';
 import { mapCandidate } from '../../_lib/db/candidates';
 import { findForms, findFormsByWaList } from '../../_lib/db/forms';
 import { attachBerkasBio } from '../../_lib/db/berkas';
@@ -28,12 +29,17 @@ export async function getCandidatesPage(opts: any): Promise<{ candidates: any[];
   return { candidates: cands, total };
 }
 
-export async function patchCandidate(id: string, body: Record<string, any>): Promise<void> {
+export async function patchCandidate(id: string, body: Record<string, any>, updatedAt?: string, sessionToken?: string): Promise<void> {
+  const headers: Record<string, string> = { Prefer: 'return=minimal' };
+  if (updatedAt) headers['If-Match'] = '"' + updatedAt + '"';
+  const client = clientFor('registry.patchCandidate', sessionToken);
   await supabaseJson('PATCH', 'database_candidate', {
     query: { id: 'eq.' + id },
     body,
-    headers: { Prefer: 'return=minimal' },
-  });
+    headers,
+    overrideKey: client.apikey,
+    overrideAuthKey: client.authKey,
+  } as any);
 }
 
 export { normalizeWa, supabaseJson };

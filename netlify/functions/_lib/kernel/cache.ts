@@ -9,7 +9,7 @@
  *
  * This module provides:
  *   1. Per-key invalidation (not global flush)
- *   2. Generation counter for cross-instance cache busting
+ *   2. Generation counter for per-process cache busting (bump after mutations)
  *   3. Negative caching (cache "not found" for 10s to prevent DoS)
  *   4. L1 in-process LRU for per-request hot reads (dropdowns, config)
  *
@@ -130,13 +130,12 @@ const l1 = new L1Cache();
 // ── Generation counter ──────────────────────────────────────────────────────
 
 /**
- * Cache keys include a generation counter to avoid stale data across instances.
- * The generation is bumped on any config/job write.
+ * Cache keys include a generation counter for per-process cache busting.
+ * The generation is bumped on config/job writes within this process instance.
+ * NOTE: Each Netlify instance has its own generation counter — old-generation
+ * keys expire naturally via TTL, providing eventual consistency across instances.
  *
  * Key format: `{namespace}:v${generation}:{qualifier}`
- *
- * Old generation keys expire naturally via TTL — no cross-instance coordination,
- * no thundering herd on flush.
  */
 let currentGeneration = 0;
 

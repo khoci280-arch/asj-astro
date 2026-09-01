@@ -11,6 +11,7 @@ import {
   findFormsByWa, findForms, upsertFormRow, mapCandidate, nextCandidateId,
 } from './repository';
 import { requireRole, isOwnerOrAdmin } from '../identity';
+import { emit } from '../../_lib/kernel/events';
 import { syncFormMailDariUpload } from '../applications';
 import { cacheClear } from '../../_lib/cache';
 import {
@@ -340,6 +341,12 @@ export async function handleSimpanKandidatDanUpload(payload: any[], sessionToken
     const ingestFiles: any[] = [];
     for (const f of files) { if (!f) continue; const fUrl = String(f.url || '').trim(); if (!fUrl) continue; const ext = fUrl.split('.').pop().split('?')[0].toLowerCase(); if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl: fUrl, fileType: ext }); }
     if (ingestFiles.length && wa) fireIngest(ingestFiles.map((f) => ({ ...f, wa })), sessionToken);
+    // Emit domain event for each uploaded file
+    if (wa) {
+      for (const label of uploaded) {
+        emit({ type: 'document.uploaded', wa, kind: label, path: fileUrls[label] || '', at: new Date().toISOString() });
+      }
+    }
     return { success: true, uploaded };
   } catch (e: any) { return { success: false, error: 'Gagal simpan kandidat: ' + e.message }; }
 }
@@ -398,6 +405,10 @@ export async function handleSimpanBerkasTahapan(payload: any[], sessionToken?: s
     }
     const PARSEABLE_EXTS = new Set(['pdf', 'docx', 'xlsx', 'xls', 'csv', 'txt']);
     if (PARSEABLE_EXTS.has(ext.toLowerCase()) && url && wa) fireIngest([{ fileUrl: url, fileType: ext.toLowerCase(), wa }], sessionToken);
+    // Emit domain event for document upload
+    if (wa && url) {
+      emit({ type: 'document.uploaded', wa, kind: jenis || 'UNKNOWN', path: url, at: new Date().toISOString() });
+    }
     try {
       const { notifyAdmins } = await import('../../_lib/fcm-helpers');
       notifyAdmins('Berkas Baru!', `${nama || 'Kandidat'} mengunggah ${jenis || 'dokumen'}.`, '/admin.html');

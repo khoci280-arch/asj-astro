@@ -15,3 +15,6 @@ netlify/functions/.netlify-built/
 # Dependensi scratch untuk script diagnostik (scripts/db-baseline.mjs).
 # Bukan dependensi runtime aplikasi — jangan ikut ter-commit.
 .workbuddy-ai/tools/
+
+# Local environment variables (secrets)
+.env.local

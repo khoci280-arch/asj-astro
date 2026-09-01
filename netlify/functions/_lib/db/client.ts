@@ -1,6 +1,7 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
 import { request, requestJson, BUDGETS } from '../kernel/http.ts';
+import { breaker, bulkhead } from '../kernel/resilience';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
@@ -30,33 +31,48 @@ function hasBackend() {
 /** @param {string} method @param {string} pathname @param {JsonOpts} [opts] @returns {Promise<unknown>} */
 async function supabaseJson(method, pathname, opts = {}) {
   const url = supabaseUrl();
-  const key = supabaseKey();
-  if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
   // @ts-expect-error JS→TS migration
-  const qs = opts.query
-    ? '?' +
-      // @ts-expect-error JS→TS migration
-      new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
-    : '';
-  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
-    method,
-    headers: {
-      apikey: key,
-      Authorization: 'Bearer ' + key,
-      'Content-Type': 'application/json',
-      // @ts-expect-error JS→TS migration
-      ...(opts.headers || {}),
-    },
+  const overrideKey = opts && opts.overrideKey;
+  // @ts-expect-error JS→TS migration
+  const overrideAuthKey = opts && opts.overrideAuthKey;
+  const key = overrideKey || supabaseKey();
+  if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
+
+  // Circuit breaker: fail fast if PostgREST is down
+  breaker.check('postgrest');
+  const release = await bulkhead.acquire('postgrest');
+
+  try {
     // @ts-expect-error JS→TS migration
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
-  });
-  if (!res.ok) {
+    const qs = opts.query
+      ? '?' +
+        // @ts-expect-error JS→TS migration
+        new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
+      : '';
+    const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
+      method,
+      headers: {
+        apikey: key,
+        Authorization: 'Bearer ' + (overrideAuthKey || key),
+        'Content-Type': 'application/json',
+        // @ts-expect-error JS→TS migration
+        ...(opts.headers || {}),
+      },
+      // @ts-expect-error JS→TS migration
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      breaker.failure('postgrest');
+      throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));
+    }
+    breaker.success('postgrest');
     const text = await res.text();
-    throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));
+    return text ? JSON.parse(text) : null;
+  } finally {
+    release();
   }
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
 }
 
 // UPSERT via PostgREST: INSERT dengan resolution=merge-duplicates + on_conflict.

@@ -4,6 +4,7 @@
  * Owns: job_database
  */
 import { hasBackend, normalizeWa, pick, supabaseJson, toText } from '../../_lib/db/client';
+import { clientFor } from '../../_lib/kernel/db';
 import { findForms, findFormsByWa, mapForm } from '../../_lib/db/forms';
 import { findCandidates, mapCandidate } from '../../_lib/db/candidates';
 import { attachBerkasBio } from '../../_lib/db/berkas';
@@ -52,12 +53,17 @@ export async function getJobMapped(code: string): Promise<any | null> {
   return stripRaw([mapJob(row)])[0] || null;
 }
 
-export async function patchJob(code: string, body: Record<string, any>): Promise<void> {
+export async function patchJob(code: string, body: Record<string, any>, updatedAt?: string, sessionToken?: string): Promise<void> {
+  const headers: Record<string, string> = { Prefer: 'return=minimal' };
+  if (updatedAt) headers['If-Match'] = '"' + updatedAt + '"';
+  const client = clientFor('jobs.patchJob', sessionToken);
   await supabaseJson('PATCH', 'job_database', {
     query: { code_job: 'eq.' + code },
     body,
-    headers: { Prefer: 'return=minimal' },
-  });
+    headers,
+    overrideKey: client.apikey,
+    overrideAuthKey: client.authKey,
+  } as any);
 }
 
 export async function deleteJob(code: string): Promise<void> {

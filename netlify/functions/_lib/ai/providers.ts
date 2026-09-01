@@ -1,4 +1,5 @@
 import { env } from '../env.ts';
+import { breaker } from '../kernel/resilience';
 // ai/providers.js — lapisan PROVIDER AI (Gemini) + helper parsing output AI.
 
 // ---------------------------------------------------------------------------
@@ -29,29 +30,38 @@ function trimTrailingModelTurn(contents) {
 }
 
 async function fetchGemini(model, key, contents) {
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' +
-      model +
-      ':generateContent?key=' +
-      key,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    },
-  );
-  if (!res.ok) {
-    throw new Error('Gemini HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+  breaker.check('gemini');
+  try {
+    const res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+        model +
+        ':generateContent?key=' +
+        key,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents }),
+        signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+      },
+    );
+    if (!res.ok) {
+      breaker.failure('gemini');
+      throw new Error('Gemini HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+    }
+    breaker.success('gemini');
+    const j = await res.json();
+    return j &&
+      j.candidates &&
+      j.candidates[0] &&
+      j.candidates[0].content &&
+      j.candidates[0].content.parts
+      ? j.candidates[0].content.parts.map((p) => p.text || '').join('')
+      : '';
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Gemini HTTP')) throw e;
+    breaker.failure('gemini');
+    throw e;
   }
-  const j = await res.json();
-  return j &&
-    j.candidates &&
-    j.candidates[0] &&
-    j.candidates[0].content &&
-    j.candidates[0].content.parts
-    ? j.candidates[0].content.parts.map((p) => p.text || '').join('')
-    : '';
 }
 
 
@@ -62,30 +72,39 @@ async function fetchGemini(model, key, contents) {
 const GROK_TIMEOUT_MS = 10000;
 
 async function fetchGrok(key, systemPrompt, history) {
+  breaker.check('grok');
   const messages = [{ role: 'system', content: systemPrompt }];
   for (const h of Array.isArray(history) ? history : []) {
     const role = h && h.role === 'assistant' ? 'assistant' : 'user';
     if (h && h.content) messages.push({ role, content: String(h.content) });
   }
-  const res = await fetch('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
-    },
-    body: JSON.stringify({
-      model: 'grok-3-mini',
-      messages,
-      max_tokens: 2048,
-      temperature: 0.7,
-    }),
-    signal: AbortSignal.timeout(GROK_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    throw new Error('Grok HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+  try {
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      },
+      body: JSON.stringify({
+        model: 'grok-3-mini',
+        messages,
+        max_tokens: 2048,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(GROK_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      breaker.failure('grok');
+      throw new Error('Grok HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+    }
+    breaker.success('grok');
+    const j = await res.json();
+    return j?.choices?.[0]?.message?.content || '';
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Grok HTTP')) throw e;
+    breaker.failure('grok');
+    throw e;
   }
-  const j = await res.json();
-  return j?.choices?.[0]?.message?.content || '';
 }
 
 async function grokGenerate(systemPrompt, history) {

@@ -35,9 +35,13 @@ export async function handleEditLokerFull(payload: any[], sessionToken?: string)
     for (const k of Object.keys(body)) {
       if (k !== 'dokumen_share' && (body[k] === '' || body[k] === '-')) delete body[k];
     }
-    await patchJob(data.code, body);
+    await patchJob(data.code, body, data.updated_at, sessionToken);
     return { success: true };
   } catch (e: any) {
+    const msg = String(e.message || e);
+    if (msg.includes('412') || msg.includes('Precondition')) {
+      return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
+    }
     return { success: false, error: 'Gagal edit loker: ' + e.message };
   }
 }
@@ -45,12 +49,16 @@ export async function handleEditLokerFull(payload: any[], sessionToken?: string)
 export async function handleUbahStatusJob(payload: any[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, status] = payload || [];
+  const [code, status, updatedAt] = payload || [];
   if (!code || !status) return { success: false, error: 'Data tidak lengkap.' };
   try {
-    await patchJob(code, { status });
+    await patchJob(code, { status }, updatedAt, sessionToken);
     return { success: true, job: await getJobMapped(code) };
   } catch (e: any) {
+    const msg = String(e.message || e);
+    if (msg.includes('412') || msg.includes('Precondition')) {
+      return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
+    }
     return { success: false, error: 'Gagal ubah status: ' + e.message };
   }
 }
@@ -86,7 +94,7 @@ export async function handleUpdateTahapanDbJob(payload: any[], sessionToken?: st
   if (tahapan !== undefined && tahapan !== null) body.tahapan = tahapan;
   if (status !== undefined && status !== null) body.status = status;
   try {
-    await patchJob(code, body);
+    await patchJob(code, body, undefined, sessionToken);
     return { success: true, job: await getJobMapped(code) };
   } catch (e: any) {
     return { success: false, error: 'Gagal update tahapan: ' + e.message };
@@ -99,7 +107,7 @@ export async function handleUpdateDokumenShare(payload: any[], sessionToken?: st
   const [code, joined] = payload || [];
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   try {
-    await patchJob(code, { dokumen_share: joined || '' });
+    await patchJob(code, { dokumen_share: joined || '' }, undefined, sessionToken);
     return { success: true };
   } catch (e: any) {
     return { success: false, error: 'Gagal update dokumen: ' + e.message };

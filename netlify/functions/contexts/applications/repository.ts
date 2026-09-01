@@ -5,6 +5,7 @@
  * All DB access goes through kernel/http → supabaseJson
  */
 import { normalizeWa, pick, supabaseJson, supabaseUpsert } from '../../_lib/db/client';
+import { clientFor } from '../../_lib/kernel/db';
 import {
   findFormByIndexFiltered,
   findForms,
@@ -32,19 +33,25 @@ export async function getFormsByWa(wa: string): Promise<any[]> {
   return Array.isArray(rows) ? rows : [];
 }
 
-export async function patchForm(id: string, body: Record<string, any>): Promise<void> {
+export async function patchForm(id: string, body: Record<string, any>, sessionToken?: string): Promise<void> {
+  const client = clientFor('applications.patchForm', sessionToken);
   await supabaseJson('PATCH', 'database_asj_form', {
     query: { id: 'eq.' + id },
     body,
     headers: { Prefer: 'return=minimal' },
-  });
+    overrideKey: client.apikey,
+    overrideAuthKey: client.authKey,
+  } as any);
 }
 
-export async function deleteForm(id: string): Promise<void> {
+export async function deleteForm(id: string, sessionToken?: string): Promise<void> {
+  const client = clientFor('applications.deleteForm', sessionToken);
   await supabaseJson('DELETE', 'database_asj_form', {
     query: { id: 'eq.' + id },
     headers: { Prefer: 'return=minimal' },
-  });
+    overrideKey: client.apikey,
+    overrideAuthKey: client.authKey,
+  } as any);
 }
 
 export async function upsertForm(body: Record<string, any>): Promise<void> {
