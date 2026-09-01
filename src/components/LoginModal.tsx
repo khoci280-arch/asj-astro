@@ -85,7 +85,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     try {
       const r = await api('loginKandidat', [logWa, logPass]);
       if (r.success) {
-        loginAsKandidat(r.nama || r.name || logWa, logWa, r.sessionToken || '', r.refreshToken || '');
+        loginAsKandidat(r.nama || r.name || logWa, logWa, r.token || r.sessionToken || '', r.refreshToken || '');
         showToast('Selamat datang, ' + (r.nama || r.name || logWa) + '!', 'success');
         onClose();
       } else {
@@ -120,7 +120,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       const tk = Date.now().toString(36) + Math.random().toString(36).substr(2);
       const r = await api("checkAdminPersonal", [selectedAdmin, personalPin, tk]);
       if (r.success) {
-        loginAsAdmin(selectedAdmin, r.sessionToken || tk, r.refreshToken || "");
+        loginAsAdmin(selectedAdmin, r.token || r.sessionToken || tk, r.refreshToken || "");
         showToast(t('login.selamat_datang') + selectedAdmin + "!", "success");
         onClose();
         window.location.reload();

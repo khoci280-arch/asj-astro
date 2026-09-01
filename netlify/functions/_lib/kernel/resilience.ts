@@ -58,8 +58,7 @@ function isRetryable(error: unknown): boolean {
     const e = error as unknown as Record<string, unknown>;
     if (typeof e.status === 'number') return RETRYABLE_HTTP.has(e.status);
     // Fallback: parse HTTP status from message (e.g. 'HTTP 500', 'HTTP 503')
-    const msg = error.message;
-    const m = msg && msg.match(/\bHTTP\s+(\d{3})\b/);
+    const m = error.message?.match(/\bHTTP\s+(\d{3})\b/);
     if (m) return RETRYABLE_HTTP.has(Number(m[1]));
   }
   return false;

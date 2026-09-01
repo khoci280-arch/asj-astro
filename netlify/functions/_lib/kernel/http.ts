@@ -37,31 +37,6 @@ export const BUDGETS = {
 export type BudgetKey = keyof typeof BUDGETS;
 
 /**
- * §9.2 Connection pool configuration.
- *
- * Supabase caps Postgres connections (~60 on free/Pro tiers) fronted by Supavisor.
- * Functions MUST connect through the Supavisor transaction-mode pooler (port 6543),
- * NOT the direct connection (port 5432).
- *
- * max_connections_used = instances × pool.connections
- * With 60-connection budget and 8 per instance: ~7 concurrent instances.
- *
- * Deployment:
- *   - Set SUPABASE_URL to use port 6543 (Supavisor pooler)
- *   - Set statement_timeout=5s server-side via ALTER DATABASE or pg_hba.conf
- *   - Cap Netlify function concurrency to prevent connection exhaustion
- */
-export const POOL_CONFIG = {
-  /** Max concurrent in-flight requests per dependency per instance */
-  connectionsPerInstance: 8,
-  /** Max concurrent instances (conservative, depends on Supabase plan) */
-  maxInstances: 7,
-  /** Server-side statement timeout (ms) — enforced via header */
-  statementTimeoutRead: 2_000,
-  statementTimeoutWrite: 3_000,
-} as const;
-
-/**
  * Custom error for upstream failures. Carries enough context for the caller
  * to decide retry/degradation without inspecting the raw error.
  */
@@ -183,65 +158,6 @@ export async function requestJson<T = unknown>(
   init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
 ): Promise<T> {
   const res = await request(url, init);
-  const text = await res.text();
-  return text ? JSON.parse(text) : (null as T);
-}
-
-// ── Retry wrapper for reads ─────────────────────────────────────────────────
-
-const RETRYABLE_HTTP = new Set([408, 425, 429, 500, 502, 503, 504]);
-
-function isRetryableError(e: unknown): boolean {
-  if (e instanceof HttpError) return RETRYABLE_HTTP.has(e.status);
-  if (e instanceof TimeoutError) return true;
-  if (e instanceof Error) {
-    const name = e.name;
-    if (name === 'TimeoutError' || name === 'AbortError' || name === 'FetchError') return true;
-  }
-  return false;
-}
-
-/**
- * Request with retry + full jitter. For GET (read) requests only.
- * POST/PATCH/DELETE should not retry at this level — caller handles idempotency.
- *
- * Usage:
- *   const data = await requestWithRetry(url, { budgetKey: 'postgrest_read' });
- */
-export async function requestWithRetry(
-  url: string,
-  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
-  opts: { attempts?: number; baseMs?: number; maxMs?: number } = {},
-): Promise<Response> {
-  const { attempts = 2, baseMs = 200, maxMs = 2000 } = opts;
-  const isRead = !init.method || init.method.toUpperCase() === 'GET';
-  if (!isRead) return request(url, init); // Don't retry writes
-
-  let lastError: unknown;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await request(url, init);
-    } catch (e) {
-      lastError = e;
-      if (attempt >= attempts || !isRetryableError(e)) throw e;
-      const ceiling = Math.min(baseMs * 2 ** attempt, maxMs);
-      const delay = Math.random() * ceiling;
-      log.debug('http.retry', { url: url.slice(0, 80), attempt: attempt + 1, delayMs: Math.round(delay) });
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-  throw lastError;
-}
-
-/**
- * JSON request with retry + full jitter. For GET (read) requests only.
- */
-export async function requestJsonWithRetry<T = unknown>(
-  url: string,
-  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
-  opts: { attempts?: number; baseMs?: number; maxMs?: number } = {},
-): Promise<T> {
-  const res = await requestWithRetry(url, init, opts);
   const text = await res.text();
   return text ? JSON.parse(text) : (null as T);
 }
