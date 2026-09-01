@@ -119,7 +119,7 @@ export default function InputManualModal() {
       });
       const data = await res.json();
       if (data.success) {
-        addKandidat(data.candidate || data.kandidat);
+        addKandidat(data.kandidat);
         setNama(''); setWa(''); setLoker(''); setGender(''); setUsia('');
         setTinggi(''); setBerat(''); setPendidikan('');
         setPhoto(null); setCv(null); setJft(null); setSsw(null);

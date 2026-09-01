@@ -134,9 +134,9 @@ export async function fetchKandidatFromAPI() {
     });
     const data = await res.json();
     if (data.success) {
-      const k = data.candidates || data.kandidat || [];
+      const k = data.candidates || [];
       setKandidatList(page === 0 ? k : [...kandidatList.get(), ...k]);
-      setAllKandidatList(data.allKandidat || k);
+      setAllKandidatList(k);
     } else if (data.sessionInvalid) {
       setKandidatList([]);
     }
