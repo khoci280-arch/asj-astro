@@ -50,16 +50,11 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   </style>
 <script is:inline>
     // ─── Theme restore (before paint, avoids a flash of the wrong theme) ───
-    // Writes BOTH `data-theme` (new token system) and the legacy `.light`
-    // class (the html.light !important shim in global.css still reads it).
-    // Both stay in sync until that shim is deleted. See store/theme.ts.
+    // Writes `data-theme` (new token system, see styles/theme.css).
     (function(){
       try {
         var t = localStorage.getItem("asjTheme");
-        var light = t === "light";
-        var root = document.documentElement;
-        root.setAttribute("data-theme", light ? "light" : "dark");
-        root.classList.toggle("light", light);
+        document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
       } catch (e) {
         document.documentElement.setAttribute("data-theme", "dark");
       }

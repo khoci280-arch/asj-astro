@@ -14,11 +14,9 @@
  *
  * MIGRATION NOTE (dual-write)
  * ---------------------------
- * We write BOTH `data-theme` (new token system, see styles/theme.css)
- * and the legacy `.light` class (the ~92 `html.light ... !important`
- * rules in global.css still rely on it). Both stay in sync until the
- * shim is fully deleted, at which point the `.light` write can be
- * dropped — see the plan's Step 9.
+ * We write `data-theme` (new token system, see styles/theme.css).
+ * The legacy `.light` class has been removed — all light-mode styles
+ * now flow through semantic CSS variables defined in theme.css.
  */
 import { persistentAtom } from '@nanostores/persistent';
 
@@ -49,13 +47,7 @@ export function applyTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
-  if (mode === 'light') {
-    root.setAttribute('data-theme', 'light');
-    root.classList.add('light'); // legacy shim
-  } else {
-    root.setAttribute('data-theme', 'dark');
-    root.classList.remove('light'); // legacy shim
-  }
+  root.setAttribute('data-theme', mode);
 }
 
 /** Flip the theme. This is the ONLY place that should mutate it. */
