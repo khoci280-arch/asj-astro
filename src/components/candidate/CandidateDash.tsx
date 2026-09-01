@@ -21,7 +21,7 @@ import { getEndpoint } from '../../lib/apiEndpoint';
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
   nama: string; wa: string; job: string; tahapan: string; status: string;
-  isVIP: boolean; kelas?: string; idKandidat?: string;
+  isVIP: boolean; isSiswaASJ?: boolean; kelas?: string; idKandidat?: string;
   cvMiniProgress: number; cvMasterProgress: number;
   riwayat: Riwayat[];
   jadwal: { id: string; nama: string; waktu: string; lokasi: string; link: string; }[];
@@ -110,7 +110,7 @@ export default function CandidateDash() {
         setData({
           nama: d.nama || user.name || 'Kandidat', wa,
           job: d.job || '-', tahapan: d.tahapan || '-', status: d.status || '-',
-          isVIP: d.isVIP || false, kelas: d.kelas || '', idKandidat: d.idKandidat || '',
+          isVIP: d.isVIP || false, isSiswaASJ: d.isSiswaASJ || false, kelas: d.kelas || '', idKandidat: d.idKandidat || '',
           cvMiniProgress: d.cvMiniProgress || 0, cvMasterProgress: d.cvMasterProgress || 0,
           riwayat: d.riwayat || [], jadwal: d.jadwal || [],
           catatan: d.catatan || '', catatanExt: d.catatanExt || '',
@@ -163,7 +163,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         </div>
 
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
-        {data.isVIP && data.idKandidat && (
+        {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
           <div class="max-w-sm mx-auto mb-8 perspective-1000 relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-[2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
             <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-[2rem] p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
