@@ -14,6 +14,10 @@
     "netlify/functions/shared/**"
   ]
 
+# Phase 5: Job queue sweep every 2 minutes
+[functions."sweep-queue"]
+  schedule = "@every 2m"
+
 # Cache headers
 [[headers]]
   for = "/_astro/*"

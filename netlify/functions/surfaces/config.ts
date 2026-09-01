@@ -7,5 +7,5 @@ export const CONFIG_ACTIONS: Record<string, Function> = {
   getRincianPresets: () => configuration.handleGetRincianPresets(),
   saveRincianPreset: (p, s) => configuration.handleSaveRincianPreset(p, s),
   deleteRincianPreset: (p, s) => configuration.handleDeleteRincianPreset(p, s),
-  runMigration: (p, s) => configuration.handleRunMigration(p, s),
+  // REMOVED: runMigration — schema changes must never be reachable from a POST body.
 };

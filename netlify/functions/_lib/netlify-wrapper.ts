@@ -51,6 +51,13 @@ function makeHandler() {
         body.payload = body.payload || body.args || q.payload || undefined;
       }
     }
+    // Phase 5: extract Idempotency-Key header for mutation dedup
+    const idempotencyKey = (event && event.headers)
+      ? (event.headers['idempotency-key'] || event.headers['Idempotency-Key'] || undefined)
+      : undefined;
+    if (idempotencyKey) (globalThis as any).__idempotencyKey = String(idempotencyKey);
+    else delete (globalThis as any).__idempotencyKey;
+
     let out;
     try {
       out = await handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {

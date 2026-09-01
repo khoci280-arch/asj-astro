@@ -95,7 +95,7 @@ const ACTION_HANDLERS = {
   getRincianPresets: config.handleGetRincianPresets,
   saveRincianPreset: config.handleSaveRincianPreset,
   deleteRincianPreset: config.handleDeleteRincianPreset,
-  runMigration: config.handleRunMigration,
+  // REMOVED: runMigration — schema changes must never be reachable from a POST body.
   // Siswa baru
   getDaftarSiswaBaru: register.handleGetDaftarSiswaBaru,
   submitDaftarSiswa: register.handleSubmitDaftarSiswa,
