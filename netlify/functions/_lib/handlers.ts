@@ -3,6 +3,7 @@ import * as rateLimit from './kernel/rate-limit';
 import { handleShareData, docTypeOf } from '../contexts/catalog';
 import { toErrorResponse } from './kernel/errors';
 import { log, runWithContext } from './kernel/log';
+import { metrics } from './kernel/metrics';
 import { SURFACE_HANDLERS } from '../surfaces/index';
 import { supabaseJson } from './db/client';
 import { handleGetJobStatus } from './actions-job-status';
@@ -75,6 +76,7 @@ async function handleAction(action: string, payload: any[], sessionToken: string
         if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
       }
     }
+    metrics.flushMetrics();
     return out;
   });
 }

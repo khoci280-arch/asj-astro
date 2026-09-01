@@ -106,6 +106,7 @@ export async function request(
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (shouldProtect) recordBreakerSuccess(dep);
+    metrics.increment('dependency.call', { dep, outcome: 'success' });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
@@ -123,6 +124,7 @@ export async function request(
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (shouldProtect) recordBreakerFailure(dep);
+    metrics.increment('dependency.call', { dep, outcome: 'error' });
     if (e instanceof HttpError) throw e;
     if (e instanceof DOMException && e.name === 'AbortError') {
       void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
@@ -290,6 +292,7 @@ async function acquireBulkhead(dep: string): Promise<(() => void) | null> {
 }
 
 import { AppError } from './errors';
+import { metrics } from './metrics';
 
 // ── Dependency call logging ───────────────────────────────────────────────────
 // Writes to dependency_calls table. Fire-and-forget: never blocks the caller.
