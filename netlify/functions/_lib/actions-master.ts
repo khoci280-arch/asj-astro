@@ -3,8 +3,8 @@ import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from './db/cl
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 import { fetchMasterByWa } from './db/master';
 import * as session from './session';
-import { requireRole, isOwnerOrAdmin } from './actions-auth';
-import { syncBiodataKeMail } from './actions-mail';
+import { requireRole, isOwnerOrAdmin } from '../contexts/identity';
+import { syncBiodataKeMail } from '../contexts/applications';
 import { nextCandidateId } from './candidate-helpers';
 import { cacheClear } from './cache';
 import { resolveFileUrl } from './storage';
