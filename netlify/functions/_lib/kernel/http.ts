@@ -10,11 +10,14 @@
  *   1. Per-request timeout via AbortSignal.timeout()
  *   2. Typed errors (UPSTREAM_TIMEOUT, HTTP_ERROR) for retry/breaker decisions
  *   3. A single place to add keep-alive, connection pooling, or tracing later
+ *   4. Retry with full jitter (via resilience module)
+ *   5. Circuit breaker + bulkhead (via resilience module)
  *
  * MIGRATION
  * ---------
  * Phase 1: wire into db/client.ts supabaseJson() only.
  * Phase 2: wire into all outbound fetch() calls.
+ * Phase 5: added retry/breaker/bulkhead via resilience module.
  */
 
 /** Timeouts per dependency (ms). Strictly < 10 s Netlify function limit. */
@@ -79,13 +82,25 @@ export async function request(
   const startTime = Date.now();
   const dep = detectDependency(url);
 
+  // Retry reads (GET) with circuit breaker. Non-idempotent writes (POST/PATCH/DELETE)
+  // should NOT be retried at this level — the caller controls idempotency.
+  const isRead = !fetchInit.method || fetchInit.method.toUpperCase() === 'GET';
+  const shouldProtect = isRead && !!dep;
+
+  // Acquire bulkhead slot
+  const release = shouldProtect ? await acquireBulkhead(dep) : null;
+
   try {
+    if (shouldProtect) {
+      checkBreaker(dep);
+    }
+
     const res = await fetch(url, { ...fetchInit, signal });
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
+    if (shouldProtect) recordBreakerSuccess(dep);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      // Log dependency call (fire-and-forget, never block the request)
       void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
       throw new HttpError(
         `HTTP ${res.status} ${url}: ${body.slice(0, 200)}`,
@@ -100,6 +115,7 @@ export async function request(
   } catch (e: unknown) {
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
+    if (shouldProtect) recordBreakerFailure(dep);
     if (e instanceof HttpError) throw e;
     if (e instanceof DOMException && e.name === 'AbortError') {
       void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
@@ -107,6 +123,8 @@ export async function request(
     }
     void logDependencyCall(dep, actionName, budgetMs, durationMs, 'network_error');
     throw e;
+  } finally {
+    release?.();
   }
 }
 
@@ -123,6 +141,65 @@ export async function requestJson<T = unknown>(
   return text ? JSON.parse(text) : (null as T);
 }
 
+// ── Retry wrapper for reads ─────────────────────────────────────────────────
+
+const RETRYABLE_HTTP = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function isRetryableError(e: unknown): boolean {
+  if (e instanceof HttpError) return RETRYABLE_HTTP.has(e.status);
+  if (e instanceof TimeoutError) return true;
+  if (e instanceof Error) {
+    const name = e.name;
+    if (name === 'TimeoutError' || name === 'AbortError' || name === 'FetchError') return true;
+  }
+  return false;
+}
+
+/**
+ * Request with retry + full jitter. For GET (read) requests only.
+ * POST/PATCH/DELETE should not retry at this level — caller handles idempotency.
+ *
+ * Usage:
+ *   const data = await requestWithRetry(url, { budgetKey: 'postgrest_read' });
+ */
+export async function requestWithRetry(
+  url: string,
+  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
+  opts: { attempts?: number; baseMs?: number; maxMs?: number } = {},
+): Promise<Response> {
+  const { attempts = 2, baseMs = 200, maxMs = 2000 } = opts;
+  const isRead = !init.method || init.method.toUpperCase() === 'GET';
+  if (!isRead) return request(url, init); // Don't retry writes
+
+  let lastError: unknown;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await request(url, init);
+    } catch (e) {
+      lastError = e;
+      if (attempt >= attempts || !isRetryableError(e)) throw e;
+      const ceiling = Math.min(baseMs * 2 ** attempt, maxMs);
+      const delay = Math.random() * ceiling;
+      log.debug('http.retry', { url: url.slice(0, 80), attempt: attempt + 1, delayMs: Math.round(delay) });
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * JSON request with retry + full jitter. For GET (read) requests only.
+ */
+export async function requestJsonWithRetry<T = unknown>(
+  url: string,
+  init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
+  opts: { attempts?: number; baseMs?: number; maxMs?: number } = {},
+): Promise<T> {
+  const res = await requestWithRetry(url, init, opts);
+  const text = await res.text();
+  return text ? JSON.parse(text) : (null as T);
+}
+
 // ── Dependency detection ──────────────────────────────────────────────────────
 
 function detectDependency(url: string): string {
@@ -134,6 +211,78 @@ function detectDependency(url: string): string {
   if (url.includes('cloudinary')) return 'cloudinary';
   return 'other';
 }
+
+// ── Circuit breaker + bulkhead (inline, no import from resilience to avoid circular) ─
+// These are lightweight in-process state — acceptable for fail-fast decisions.
+// The full resilience module provides withRetry + callWithProtection for handler use.
+
+type BreakerState = 'closed' | 'open' | 'half-open';
+interface BreakerRecord { state: BreakerState; failures: number; windowStart: number; openedAt: number; }
+const breakers = new Map<string, BreakerRecord>();
+const BREAKER_CONFIGS: Record<string, { threshold: number; windowMs: number; coolDownMs: number }> = {
+  postgrest: { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
+  gemini:    { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
+  fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
+  fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
+  storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },
+};
+
+function checkBreaker(dep: string): void {
+  const cfg = BREAKER_CONFIGS[dep];
+  if (!cfg) return;
+  const rec = breakers.get(dep);
+  if (!rec) return;
+  const now = Date.now();
+  if (rec.state === 'open' && now - rec.openedAt >= cfg.coolDownMs) {
+    rec.state = 'half-open';
+    log.info('breaker.half-open', { dep });
+    return;
+  }
+  if (rec.state === 'open' || rec.state === 'half-open') {
+    throw new AppError('SERVICE_UNAVAILABLE', { message: `Circuit breaker open for ${dep}`, retryable: false });
+  }
+}
+
+function recordBreakerSuccess(dep: string): void {
+  const rec = breakers.get(dep);
+  if (!rec) return;
+  if (rec.state === 'half-open') { breakers.delete(dep); log.info('breaker.closed', { dep }); return; }
+  const now = Date.now();
+  const cfg = BREAKER_CONFIGS[dep];
+  if (cfg && now - rec.windowStart >= cfg.windowMs) { rec.failures = 0; rec.windowStart = now; }
+}
+
+function recordBreakerFailure(dep: string): void {
+  const cfg = BREAKER_CONFIGS[dep];
+  if (!cfg) return;
+  const now = Date.now();
+  let rec = breakers.get(dep);
+  if (!rec) { rec = { state: 'closed', failures: 0, windowStart: now, openedAt: 0 }; breakers.set(dep, rec); }
+  if (now - rec.windowStart >= cfg.windowMs) { rec.failures = 0; rec.windowStart = now; }
+  if (rec.state === 'half-open') { rec.state = 'open'; rec.openedAt = now; log.warn('breaker.reopened', { dep }); return; }
+  rec.failures++;
+  if (rec.failures >= cfg.threshold) { rec.state = 'open'; rec.openedAt = now; log.warn('breaker.opened', { dep, failures: rec.failures }); }
+}
+
+// Bulkhead: limit concurrent in-flight calls per dependency
+const bulkheadInflight = new Map<string, number>();
+const BULKHEAD_MAX = 8;
+
+async function acquireBulkhead(dep: string): Promise<(() => void) | null> {
+  const current = bulkheadInflight.get(dep) ?? 0;
+  if (current >= BULKHEAD_MAX) {
+    throw new AppError('SERVICE_UNAVAILABLE', { message: `Bulkhead limit for ${dep}`, retryable: true });
+  }
+  bulkheadInflight.set(dep, current + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    bulkheadInflight.set(dep, Math.max(0, (bulkheadInflight.get(dep) ?? 1) - 1));
+  };
+}
+
+import { AppError } from './errors';
 
 // ── Dependency call logging ───────────────────────────────────────────────────
 // Writes to dependency_calls table. Fire-and-forget: never blocks the caller.

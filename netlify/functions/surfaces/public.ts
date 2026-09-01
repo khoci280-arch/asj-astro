@@ -13,6 +13,7 @@
  *   This keeps the public job board alive during a full database outage.
  */
 import * as catalog from '../contexts/catalog';
+import { cache, genKey } from '../_lib/kernel/cache';
 
 /** Cache headers for public surface responses (Phase 5) */
 export const PUBLIC_CACHE_HEADERS: Record<string, string> = {
@@ -34,6 +35,10 @@ export function withCacheHeaders(data: unknown, extraHeaders?: Record<string, st
 }
 
 export const PUBLIC_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
-  getAppData: (payload, sessionToken) => catalog.handleGetAppData(payload, sessionToken),
+  getAppData: async (payload, sessionToken) => {
+    const mode = (payload?.[0] as string) || 'default';
+    const key = genKey('public-appdata', mode);
+    return cache.getOrSet(key, () => catalog.handleGetAppData(payload, sessionToken), { ttlMs: 60_000 });
+  },
   getMonthlyReport: (payload, sessionToken) => catalog.handleGetMonthlyReport(payload, sessionToken),
 };

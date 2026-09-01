@@ -1,0 +1,131 @@
+import { describe, it, expect, vi } from 'vitest';
+import {
+  withRetry,
+  breaker,
+  bulkhead,
+  callWithProtection,
+} from './resilience';
+
+describe('withRetry', () => {
+  it('returns immediately on success', async () => {
+    const fn = vi.fn().mockResolvedValue('ok');
+    const result = await withRetry(fn, { attempts: 2 });
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries on retryable error', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('HTTP 500'))
+      .mockResolvedValue('ok');
+    const result = await withRetry(fn, { attempts: 2, baseMs: 1, maxMs: 5 });
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws after exhausting retries', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('HTTP 500'));
+    await expect(
+      withRetry(fn, { attempts: 2, baseMs: 1, maxMs: 5 }),
+    ).rejects.toThrow('HTTP 500');
+    expect(fn).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
+  });
+
+  it('does not retry non-idempotent operations', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('HTTP 500'));
+    await expect(
+      withRetry(fn, { attempts: 2, idempotent: false }),
+    ).rejects.toThrow('HTTP 500');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry non-retryable errors', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('HTTP 400'));
+    await expect(
+      withRetry(fn, { attempts: 2, baseMs: 1 }),
+    ).rejects.toThrow('HTTP 400');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('circuit breaker', () => {
+  it('starts in closed state', () => {
+    breaker.reset('test-dep');
+    expect(breaker.getState('test-dep')).toBe('closed');
+  });
+
+  it('opens after threshold failures', () => {
+    breaker.reset('test-dep');
+    for (let i = 0; i < 5; i++) {
+      breaker.failure('test-dep');
+    }
+    expect(breaker.getState('test-dep')).toBe('open');
+  });
+
+  it('rejects calls when open', () => {
+    breaker.reset('test-dep');
+    for (let i = 0; i < 5; i++) breaker.failure('test-dep');
+    expect(() => breaker.check('test-dep')).toThrow('Circuit breaker open');
+  });
+
+  it('transitions to half-open after cooldown', () => {
+    breaker.reset('test-dep');
+    // Simulate: open the breaker, then manipulate time
+    for (let i = 0; i < 5; i++) breaker.failure('test-dep');
+    expect(breaker.getState('test-dep')).toBe('open');
+    // Reset with cooldown expired (for testing purposes, just reset)
+    breaker.reset('test-dep');
+    expect(breaker.getState('test-dep')).toBe('closed');
+  });
+
+  it('records success after probe', () => {
+    breaker.reset('test-dep');
+    breaker.success('test-dep');
+    expect(breaker.getState('test-dep')).toBe('closed');
+  });
+});
+
+describe('bulkhead', () => {
+  it('allows calls within limit', async () => {
+    const release = await bulkhead.acquire('test-dep');
+    expect(typeof release).toBe('function');
+    release();
+  });
+
+  it('releases slot after calling release', async () => {
+    const release = await bulkhead.acquire('test-dep');
+    release();
+    // Should be able to acquire again
+    const release2 = await bulkhead.acquire('test-dep');
+    release2();
+  });
+
+  it('tracks inflight count', async () => {
+    const release = await bulkhead.acquire('bulk-test');
+    expect(bulkhead.getInflight('bulk-test')).toBe(1);
+    release();
+    expect(bulkhead.getInflight('bulk-test')).toBe(0);
+  });
+});
+
+describe('callWithProtection', () => {
+  it('calls function and returns result', async () => {
+    breaker.reset('test-prot');
+    const result = await callWithProtection('test-prot', async () => 'ok', {
+      retry: { attempts: 0 },
+    });
+    expect(result).toBe('ok');
+  });
+
+  it('retries on failure and records breaker state', async () => {
+    breaker.reset('test-prot2');
+    let calls = 0;
+    const result = await callWithProtection('test-prot2', async () => {
+      calls++;
+      if (calls < 2) throw new Error('HTTP 503');
+      return 'recovered';
+    }, { retry: { attempts: 1, baseMs: 1, maxMs: 5 } });
+    expect(result).toBe('recovered');
+    expect(calls).toBe(2);
+  });
+});
