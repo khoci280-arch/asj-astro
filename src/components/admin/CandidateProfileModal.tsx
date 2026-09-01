@@ -41,6 +41,33 @@ interface CandidateData {
   bio?: Record<string, string>;
 }
 
+function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbackWa: string): CandidateData {
+  return {
+    nama: c.nama || fallbackNama,
+    wa: c.wa || fallbackWa,
+    idKandidat: c.idKandidat,
+    gender: c.gender,
+    usia: c.usia,
+    fisik: c.fisik,
+    pendidikan: c.pendidikan,
+    tmplahir: c.bio?.tmplahir || c.tmplahir,
+    tgllahir: c.bio?.tgllahir || c.tgllahir,
+    email: c.bio?.email || c.email,
+    alamat: c.bio?.alamat || c.alamat,
+    jft: c.jft,
+    ssw: c.ssw,
+    tahapan: c.tahapan,
+    status: c.status,
+    catatanInternal: c.catatanInt || c.catatanInternal || '',
+    catatanExternal: c.catatanExt || c.catatanExternal || '',
+    isVIP: c.isVIP,
+    foto: c.berkas?.foto || c.foto,
+    applications: c.applications || [],
+    berkas: c.berkas || {},
+    bio: c.bio || {},
+  };
+}
+
 export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Props) {
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,32 +96,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
       .then(d => {
         if (controller.signal.aborted) return;
         const c = d.data || {};
-        setData({
-          nama: c.nama || nama,
-          wa: c.wa || wa,
-          idKandidat: c.idKandidat,
-          gender: c.gender,
-          usia: c.usia,
-          fisik: c.fisik,
-          pendidikan: c.pendidikan,
-          tmplahir: c.bio?.tmplahir || c.tmplahir,
-          tgllahir: c.bio?.tgllahir || c.tgllahir,
-          email: c.bio?.email || c.email,
-          alamat: c.bio?.alamat || c.alamat,
-          jft: c.jft,
-          ssw: c.ssw,
-          tahapan: c.tahapan,
-          status: c.status,
-          catatanInternal: c.catatanInt || c.catatanInternal || '',
-          catatanExternal: c.catatanExt || c.catatanExternal || '',
-          isVIP: c.isVIP,
-          foto: c.berkas?.foto || c.foto,
-          applications: c.applications || [],
-          berkas: c.berkas || {},
-          bio: c.bio || {},
-        });
-        setCatatanInternal(c.catatanInternal || '');
-        setCatatanExternal(c.catatanExternal || '');
+        setData(mapApiToCandidate(c, nama, wa));
+        setCatatanInternal(c.catatanInt || c.catatanInternal || '');
+        setCatatanExternal(c.catatanExt || c.catatanExternal || '');
         setIsVIP(!!c.isVIP);
       })
       .catch(e => {
