@@ -25,6 +25,7 @@ import PemberkasanModal from "./PemberkasanModal";
 import UndanganKelasModal from "./UndanganKelasModal";
 import TabConfig from './TabConfig.tsx';
 import AdminAiCopilot from "./AdminAiCopilot";
+import CandidateProfileModal from './CandidateProfileModal';
 import Icon from '../ui/Icon';
 
 /**
@@ -71,8 +72,9 @@ export default function AdminPanel() {
       showToast('Edit kandidat: ' + (e as CustomEvent).detail.nama, 'info');
     };
     const handleShowHistory = (e: Event) => {
-      // TODO: Open history modal with e.detail.wa
-      showToast('Riwayat: ' + (e as any).detail.nama, 'info');
+      const d = (e as CustomEvent).detail;
+      setProfileTarget({ wa: d.wa, nama: d.nama });
+      setShowProfileModal(true);
     };
     window.addEventListener('openAdminAiCopilot', handleOpenAiCopilot);
     const handleOpenUndangan = () => setShowUndanganKelas(true);
@@ -99,6 +101,8 @@ export default function AdminPanel() {
   const [aiCopilotTarget, setAiCopilotTarget] = useState<{wa: string; nama: string} | null>(null);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [pemberkasanTarget, setPemberkasanTarget] = useState({ wa: "", nama: "" });
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileTarget, setProfileTarget] = useState<{ wa: string; nama: string }>({ wa: '', nama: '' });
 
   return (
     <div class="space-y-6">
@@ -203,6 +207,7 @@ export default function AdminPanel() {
       {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={pemberkasanTarget.wa} namaTarget={pemberkasanTarget.nama} />}
       {showUndanganKelas && <UndanganKelasModal isOpen={showUndanganKelas} onClose={() => setShowUndanganKelas(false)} />}
       {showAiCopilot && <AdminAiCopilot candidateWa={aiCopilotTarget?.wa} candidateId={aiCopilotTarget?.nama} onClose={() => { setShowAiCopilot(false); setAiCopilotTarget(null); }} />}
+      {showProfileModal && <CandidateProfileModal wa={profileTarget.wa} nama={profileTarget.nama} isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />}
     </div>
   );
 }
