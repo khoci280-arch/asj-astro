@@ -1,5 +1,6 @@
 import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
-import { requireRole } from '../actions-auth.ts';
+import * as session from '../session';
+import { requireRole } from '../../contexts/identity';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
 

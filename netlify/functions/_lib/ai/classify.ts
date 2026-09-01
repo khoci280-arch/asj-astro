@@ -1,6 +1,6 @@
 import { normalizeWa, pick, normalizeGender } from '../db/client.ts';
 import { findCandidateByIdFiltered, findCandidates } from '../db/candidates.ts';
-import { requireRole } from '../actions-auth.ts';
+import { requireRole } from '../../contexts/identity';
 import { findMasterByWa } from './cv';
 import { geminiParseFile, parseJsonLoose } from './providers';
 // ai/classify.js — domain AI klasifikasi & parse dokumen biodata/CV admin
