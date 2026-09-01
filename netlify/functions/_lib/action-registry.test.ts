@@ -21,7 +21,19 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './action-registry';
+import { SURFACE_HANDLERS } from '../surfaces/index';
+
+// Rate limit groups — must match handlers.ts
+const LOGIN_ACTIONS = new Set([
+  'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',
+  'refreshKandidatSession', 'loginKandidat', 'daftarKandidat',
+]);
+const AI_ACTIONS = new Set([
+  'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
+  'processAiInterview', 'parseDokumenBiodata', 'processUploadDoc',
+  'generateWawancaraModel',
+]);
+const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
 
 const ROOT = process.cwd();
 const SRC_DIR = join(ROOT, 'src');
@@ -57,15 +69,15 @@ function frontendActions(): string[] {
   return [...found].sort();
 }
 
-describe('ACTION_HANDLERS — isi registry', () => {
+describe('SURFACE_HANDLERS — isi registry', () => {
   it('semua nilai adalah fungsi (handler terdaftar benar)', () => {
-    for (const [name, h] of Object.entries(ACTION_HANDLERS)) {
+    for (const [name, h] of Object.entries(SURFACE_HANDLERS)) {
       expect(typeof h, `handler '${name}' harus fungsi`).toBe('function');
     }
   });
 
   it('tidak kosong dan tidak ada nama duplikat', () => {
-    const names = Object.keys(ACTION_HANDLERS);
+    const names = Object.keys(SURFACE_HANDLERS);
     expect(names.length).toBeGreaterThan(50);
     expect(new Set(names).size).toBe(names.length);
   });
@@ -79,7 +91,7 @@ describe('grup rate limit ⊆ registry', () => {
   ]) {
     it(`${label}_ACTIONS hanya berisi action terdaftar`, () => {
       for (const a of set) {
-        expect(ACTION_HANDLERS[a], `'${a}' harus ada di ACTION_HANDLERS`).toBeDefined();
+        expect(SURFACE_HANDLERS[a], `'${a}' harus ada di SURFACE_HANDLERS`).toBeDefined();
       }
     });
   }
@@ -93,7 +105,7 @@ describe('kontrak frontend → registry', () => {
   });
 
   it('setiap action yang dipanggil frontend ADA di registry backend', () => {
-    const missing = front.filter((a) => !(a in ACTION_HANDLERS));
+    const missing = front.filter((a) => !(a in SURFACE_HANDLERS));
     expect(
       missing,
       'action dipanggil frontend tapi tidak terdaftar — fitur akan gagal diam-diam ' +
@@ -108,10 +120,10 @@ describe('kontrak frontend → registry', () => {
 // dispatcher menolaknya. Test ini mengunci perbaikannya.
 describe('regresi — action yang pernah tidak terdaftar', () => {
   it('submitFormPelamar (ApplyFullForm) terdaftar', () => {
-    expect(typeof ACTION_HANDLERS.submitFormPelamar).toBe('function');
+    expect(typeof SURFACE_HANDLERS.submitFormPelamar).toBe('function');
   });
 
   it('saveSignature (CandidateDash) terdaftar', () => {
-    expect(typeof ACTION_HANDLERS.saveSignature).toBe('function');
+    expect(typeof SURFACE_HANDLERS.saveSignature).toBe('function');
   });
 });

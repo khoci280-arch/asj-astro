@@ -20,6 +20,8 @@ import { REGISTER_ACTIONS } from './register';
 import { NOTIFY_ACTIONS } from './notify';
 import { AI_ACTIONS } from './ai';
 import { INGEST_ACTIONS } from './ingest';
+import { JOB_ACTIONS } from './jobs';
+import { DIAGNOSTICS_ACTIONS } from './diagnostics';
 import { handleGetJobStatus } from '../_lib/actions-job-status';
 
 /**
@@ -48,6 +50,8 @@ export const SURFACE_HANDLERS: Record<string, (payload: unknown[], sessionToken?
   ...NOTIFY_ACTIONS,
   ...AI_ACTIONS,
   ...INGEST_ACTIONS,
+  ...JOB_ACTIONS,
+  ...DIAGNOSTICS_ACTIONS,
 };
 
 /** Number of actions routed through surfaces */

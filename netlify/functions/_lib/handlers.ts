@@ -1,12 +1,23 @@
 import * as session from './session';
 import * as rateLimit from './kernel/rate-limit';
-import { ACTION_HANDLERS, LOGIN_ACTIONS, AI_ACTIONS, FONNTE_ACTIONS } from './action-registry';
 import * as shareActions from './actions-share';
 import { toErrorResponse } from './kernel/errors';
 import { log, runWithContext } from './kernel/log';
 import { SURFACE_HANDLERS } from '../surfaces/index';
 import { supabaseJson } from './db/client';
 import { handleGetJobStatus } from './actions-job-status';
+
+// Rate limit groups — moved from old action-registry.ts
+const LOGIN_ACTIONS = new Set([
+  'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',
+  'refreshKandidatSession', 'loginKandidat', 'daftarKandidat',
+]);
+const AI_ACTIONS = new Set([
+  'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
+  'processAiInterview', 'parseDokumenBiodata', 'processUploadDoc',
+  'generateWawancaraModel',
+]);
+const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
 // handlers.js — dispatcher pusat backend rebuild.
 //
 // Frontend mengirim { action, payload, sessionToken } ke /.netlify/functions/*
@@ -184,26 +195,16 @@ async function dispatchAction(action, payload, sessionToken) {
 
   let result: unknown;
 
-  // Try surface registry first (new architecture), fall back to old registry
+  // Surface registry — all actions are now routed through surfaces
   const surfaceHandler = SURFACE_HANDLERS[action];
-  if (surfaceHandler) {
-    try {
-      result = await surfaceHandler(payload, sessionToken);
-    } catch (err) {
-      log.error('surface.error', { action, err: String(err) });
-      return toErrorResponse(err);
-    }
-  } else {
-    const handler = ACTION_HANDLERS[action];
-    if (!handler) {
-      return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
-    }
-    try {
-      result = await handler(payload, sessionToken);
-    } catch (err) {
-      log.error('handler.error', { action, err: String(err) });
-      return toErrorResponse(err);
-    }
+  if (!surfaceHandler) {
+    return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
+  }
+  try {
+    result = await surfaceHandler(payload, sessionToken);
+  } catch (err) {
+    log.error('surface.error', { action, err: String(err) });
+    return toErrorResponse(err);
   }
 
   // ── Store idempotency result (Phase 5) ────────────────────────────────────
