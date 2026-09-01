@@ -141,7 +141,7 @@ export async function fetchKandidatFromAPI() {
     });
     const data = await res.json();
     if (data.success) {
-      const k = data.kandidat || [];
+      const k = data.candidates || data.kandidat || [];
       setKandidatList(k);
       // Only store allKandidat if server returns it (backward compat)
       if (data.allKandidat) setAllKandidatList(data.allKandidat);
