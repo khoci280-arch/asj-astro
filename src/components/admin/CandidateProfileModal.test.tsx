@@ -13,8 +13,6 @@ vi.mock('../../lib/apiEndpoint', () => ({
   getEndpoint: (key: string) => `/.netlify/functions/${key}`,
 }));
 
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
-
 const mockCandidateData = {
   nama: 'REVIN ANTHONIO NOVRI ANDHI',
   wa: '6285854256720',

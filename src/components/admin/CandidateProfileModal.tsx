@@ -1,17 +1,3 @@
-/**
- * CandidateProfileModal.tsx — Full candidate profile view
- * Migrated from legacy bukaDigitalCV
- *
- * Sections:
- * 1. Digital Student Card (photo, name, VIP, WA, password, status)
- * 2. Biodata (gender, usia, fisik, pendidikan, lahir, email, alamat, JFT, SSW)
- * 3. Edit Data Cepat button
- * 4. Job Yang Dilamar (applications with status)
- * 5. Download Full Biodata
- * 6. Evaluasi Kandidat (VIP toggle)
- * 7. Catatan Internal (private) + Catatan External (kandidat)
- * 8. Simpan Evaluasi Catatan
- */
 import { useState, useEffect } from 'preact/hooks';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
@@ -177,11 +163,8 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
           </div>
         ) : (
           <>
-            {/* ═══════════════════════════════════════════
-                1. DIGITAL STUDENT CARD
-                ═══════════════════════════════════════════ */}
+            {/* 1. Digital Student Card */}
             <div class="flex items-start gap-4 mb-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-              {/* Photo */}
               <div class="w-20 h-20 rounded-lg bg-sky-600/20 border-2 border-sky-500/40 flex items-center justify-center overflow-hidden shrink-0">
                 {data.foto ? (
                   <img src={data.foto} alt={data.nama} class="w-full h-full object-cover" />
@@ -207,9 +190,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               </div>
             </div>
 
-            {/* ═══════════════════════════════════════════
-                2. BIODATA
-                ═══════════════════════════════════════════ */}
+            {/* 2. Biodata */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Biodata</h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
@@ -254,9 +235,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               </div>
             </div>
 
-            {/* ═══════════════════════════════════════════
-                3. EDIT DATA CEPAT
-                ═══════════════════════════════════════════ */}
+            {/* 3. Edit Data Cepat */}
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: { wa: data.wa, nama: data.nama } }));
@@ -266,9 +245,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               <Icon name="edit" /> Edit Data Cepat
             </button>
 
-            {/* ═══════════════════════════════════════════
-                4. JOB YANG DILAMAR
-                ═══════════════════════════════════════════ */}
+            {/* 4. Job Yang Dilamar */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Job / Bidang Yang Dilamar</h3>
               {(!data.applications || data.applications.length === 0) ? (
@@ -290,9 +267,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               )}
             </div>
 
-            {/* ═══════════════════════════════════════════
-                5. DOWNLOAD FULL BIODATA
-                ═══════════════════════════════════════════ */}
+            {/* 5. Download Full Biodata */}
             <button
               onClick={handleDownloadBiodata}
               class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
@@ -300,9 +275,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               <Icon name="download" /> Download Full Biodata
             </button>
 
-            {/* ═══════════════════════════════════════════
-                6. EVALUASI KANDIDAT (VIP TOGGLE)
-                ═══════════════════════════════════════════ */}
+            {/* 6. Evaluasi Kandidat (VIP Toggle) */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Evaluasi Kandidat (Admin)</h3>
               <button
@@ -317,9 +290,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               </button>
             </div>
 
-            {/* ═══════════════════════════════════════════
-                7. CATATAN INTERNAL & EXTERNAL
-                ═══════════════════════════════════════════ */}
+            {/* 7. Catatan Internal & External */}
             <div class="mb-4 space-y-3">
               <div>
                 <label class="text-xs font-bold text-red-400 uppercase mb-1 block">Catatan Internal (Private)</label>
@@ -343,9 +314,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               </div>
             </div>
 
-            {/* ═══════════════════════════════════════════
-                8. SIMPAN + FOOTER
-                ═══════════════════════════════════════════ */}
+            {/* 8. Simpan + Footer */}
             <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-700/50">
               <button
                 onClick={handleSaveCatatan}
