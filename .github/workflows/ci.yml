@@ -1,0 +1,185 @@
+name: CI
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Continuous integration: every push and pull request is built and verified once,
+# here. The artifact produced by this pipeline is the EXACT artifact that gets
+# deployed — staging and production never rebuild. That removes the most common
+# source of "works in CI, broken in prod".
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      run-e2e:
+        description: 'Run the Playwright E2E suite (slower)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Superseded pushes on the same branch cancel the previous run — faster feedback
+# and no wasted runner minutes. Deploy workflows deliberately do NOT cancel,
+# because cancelling a deploy halfway is worse than letting it finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  # ══ Gate 1 · static analysis ════════════════════════════════════════════════
+  # These three are independent and run concurrently.
+
+  typecheck:
+    name: Typecheck · no new errors
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      # Debt-aware gate: the repo carries historical type errors, so we block NEW
+      # errors rather than all of them. See scripts/ci/typecheck-ratchet.mjs.
+      - name: Enforce no-new-type-errors ratchet
+        run: npm run typecheck:ratchet
+
+  boundary:
+    name: Architecture boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Check layering rules (dependency-cruiser)
+        run: npm run boundary
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Report-only for now. Flip `continue-on-error` to false once the production
+    # dependency tree is clean — otherwise every PR inherits today's advisories.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  # ══ Gate 2 · unit tests (sharded, parallel) ═════════════════════════════════
+
+  test-frontend:
+    name: Unit tests · frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Run frontend suite (jsdom)
+        run: npm run test:frontend
+
+  test-backend:
+    name: Unit tests · backend ${{ matrix.shard }}/${{ strategy.job-total }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      # Keep running every shard even if one fails, so a single red test does not
+      # hide failures in the other shards.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Run backend suite shard ${{ matrix.shard }} of ${{ strategy.job-total }}
+        run: npm run test:backend -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # ══ Gate 3 · build + artifact ═══════════════════════════════════════════════
+
+  # ══ Gate 3 · build + artifact ═══════════════════════════════════════════════
+  # Delegates to the shared reusable build so CI and both deploy pipelines
+  # produce bit-identical artifacts from the same definition.
+
+  build:
+    name: Build artifact
+    uses: ./.github/workflows/_build.yml
+
+  # ══ Gate 4 · verify the artifact actually serves ════════════════════════════
+
+  smoke:
+    name: Smoke test artifact
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+
+      # Prove the bytes we are about to test are the bytes that were built.
+      - name: Verify artifact integrity
+        run: |
+          EXPECTED=$(node -e "console.log(require('./build-manifest.json').sha256)")
+          ACTUAL=$(find dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          echo "expected: $EXPECTED"
+          echo "actual  : $ACTUAL"
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::Artifact hash mismatch"; exit 1; }
+
+      - name: Serve artifact and smoke test
+        run: |
+          npm run preview -- --port 4321 > preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null "http://127.0.0.1:4321/" 2>/dev/null && break
+            sleep 2
+          done
+          npm run smoke -- --url http://127.0.0.1:4321 --expect "Lowongan Loker" --retries 3 --backoff 1000
+
+  # Full browser E2E. Slower, so it runs on main/develop and on demand.
+  e2e:
+    name: E2E · public flow
+    needs: build
+    if: github.event_name == 'push' || inputs.run-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E against built artifact
+        env:
+          BASE_URL: http://127.0.0.1:4321
+        run: |
+          npm run preview -- --port 4321 > preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null "http://127.0.0.1:4321/" 2>/dev/null && break
+            sleep 2
+          done
+          npm run test:e2e
+
+  # ══ Notification ════════════════════════════════════════════════════════════
+  # Only for the shared branches. Firing on every PR would train everyone to
+  # ignore the channel.
+
+  notify-failure:
+    name: Notify · build failure
+    needs: [typecheck, boundary, test-frontend, test-backend, build, smoke]
+    if: failure() && github.event_name == 'push'
+    uses: ./.github/workflows/_notify.yml
+    with:
+      status: failure
+      title: 'CI failed'
+      environment: ci
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      details: 'Branch `${{ github.ref_name }}` broke the build. Do not merge further changes until it is green.'
+    secrets: inherit

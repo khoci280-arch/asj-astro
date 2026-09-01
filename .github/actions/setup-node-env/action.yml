@@ -1,0 +1,33 @@
+name: 'Setup Node & Install'
+description: 'Pins Node from .nvmrc and installs npm dependencies with a warm cache.'
+
+# Everything that installs dependencies goes through this one action, so the
+# Node version, cache key and install flags can never drift between jobs.
+# Reproducibility is the whole point: CI, staging and production must build
+# from byte-identical toolchains.
+
+inputs:
+  install-args:
+    description: 'Arguments passed to npm for install (use "ci" for locked, reproducible installs).'
+    required: false
+    default: 'ci'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+
+    - name: Report toolchain
+      shell: bash
+      run: |
+        echo "node    : $(node --version)"
+        echo "npm     : $(npm --version)"
+        echo "install : npm ${{ inputs.install-args }}"
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ${{ inputs.install-args }} --no-audit --no-fund

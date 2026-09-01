@@ -86,60 +86,25 @@ export async function enqueue(
  * Claim the next pending job (SKIP LOCKED).
  * Returns null if no jobs are ready.
  *
- * Implementation: fetch pending jobs, then claim one via PATCH with
- * status='running' + locked_until. This works with PostgREST's
- * upsert model.
+ * B5 fix: Use atomic RPC function instead of non-atomic SELECT + PATCH.
+ * The claim_next_job function atomically updates and returns the claimed job.
  */
 export async function claimJob(): Promise<Job | null> {
-  // Find the next eligible job
-  const now = new Date().toISOString();
-  const rows = await supabaseJson('GET', TABLE, {
-    query: {
-      select: '*',
-      status: 'in.(pending,failed)',
-      order: 'run_after.asc',
-      limit: '1',
-    },
-  }).catch(() => []);
-
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-
-  const job = rows[0] as Job;
-
-  // Check if job is actually ready to run
-  if (job.run_after > now && job.status !== 'failed') return null;
-
-  // Check max attempts (only for failed jobs being retried)
-  if (job.status === 'failed' && job.attempts >= job.max_attempts) {
-    // Move to dead-letter
-    await supabaseJson('PATCH', TABLE, {
-      query: { id: 'eq.' + job.id },
-      body: { status: 'dead', locked_until: null },
-      headers: { Prefer: 'return=minimal' },
-    }).catch(() => {});
-    log.warn('job.dead-letter', { jobId: job.id, type: job.type, attempts: job.attempts });
-    return null;
-  }
-
-  // Claim it: set status=running, increment attempts, set locked_until
-  const lockUntil = new Date(Date.now() + 300_000).toISOString(); // 5 min lock
-  const newAttempts = job.attempts + 1;
-
   try {
-    await supabaseJson('PATCH', TABLE, {
-      query: { id: 'eq.' + job.id },
-      body: {
-        status: 'running',
-        attempts: newAttempts,
-        locked_until: lockUntil,
-      },
-      headers: { Prefer: 'return=minimal' },
+    // B5 fix: Use atomic RPC function for job claiming
+    const result = await supabaseJson('POST', 'rpc/claim_next_job', {
+      body: {},
     });
 
-    log.info('job.claimed', { jobId: job.id, type: job.type, attempt: newAttempts });
-    return { ...job, status: 'running', attempts: newAttempts, locked_until: lockUntil };
+    if (!result || !Array.isArray(result) || result.length === 0) {
+      return null;
+    }
+
+    const job = result[0] as Job;
+    log.info('job.claimed', { jobId: job.id, type: job.type, attempt: job.attempts });
+    return job;
   } catch (err) {
-    log.error('job.claim-failed', { jobId: job.id, err: String(err) });
+    log.error('job.claim-failed', { err: String(err) });
     return null;
   }
 }
@@ -206,24 +171,14 @@ export async function getJob(jobId: string): Promise<Job | null> {
 export async function cleanupIdempotencyKeys(): Promise<number> {
   const cutoff = new Date(Date.now() - 86_400_000).toISOString();
   try {
-    const rows = await supabaseJson('GET', 'idempotency_keys', {
-      query: {
-        select: 'key',
-        created_at: 'lt.' + cutoff,
-        limit: '100',
-      },
+    // P4 fix: Batch delete with a single DELETE WHERE instead of N+1 sequential
+    // DELETE calls (was up to 100 HTTP round trips, now 1).
+    const result = await supabaseJson('DELETE', 'idempotency_keys', {
+      query: { created_at: 'lt.' + cutoff },
+      headers: { Prefer: 'return=minimal' },
     });
-    if (!Array.isArray(rows) || rows.length === 0) return 0;
-
-    let deleted = 0;
-    for (const row of rows) {
-      await supabaseJson('DELETE', 'idempotency_keys', {
-        query: { key: 'eq.' + (row as any).key },
-        headers: { Prefer: 'return=minimal' },
-      }).catch(() => {});
-      deleted++;
-    }
-    return deleted;
+    // PostgREST returns the deleted rows, so count them.
+    return Array.isArray(result) ? result.length : 0;
   } catch {
     return 0;
   }

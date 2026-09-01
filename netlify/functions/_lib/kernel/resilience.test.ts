@@ -18,7 +18,7 @@ describe('withRetry', () => {
     const fn = vi.fn()
       .mockRejectedValueOnce(new Error('HTTP 500'))
       .mockResolvedValue('ok');
-    const result = await withRetry(fn, { attempts: 2, base: 1, max: 5 });
+    const result = await withRetry(fn, { attempts: 2, base: 1, max: 5, idempotent: true });
     expect(result).toBe('ok');
     expect(fn).toHaveBeenCalledTimes(2);
   });
@@ -26,7 +26,7 @@ describe('withRetry', () => {
   it('throws after exhausting retries', async () => {
     const fn = vi.fn().mockRejectedValue(new Error('HTTP 500'));
     await expect(
-      withRetry(fn, { attempts: 2, base: 1, max: 5 }),
+      withRetry(fn, { attempts: 2, base: 1, max: 5, idempotent: true }),
     ).rejects.toThrow('HTTP 500');
     expect(fn).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
   });
@@ -124,7 +124,7 @@ describe('callWithProtection', () => {
       calls++;
       if (calls < 2) throw new Error('HTTP 503');
       return 'recovered';
-    }, { retry: { attempts: 1, base: 1, max: 5 } });
+    }, { retry: { attempts: 1, base: 1, max: 5, idempotent: true } });
     expect(result).toBe('recovered');
     expect(calls).toBe(2);
   });

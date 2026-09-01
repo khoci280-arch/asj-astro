@@ -75,16 +75,14 @@ export async function loginKandidatSupabase(
     }
 
     if (data.session && data.user) {
-      // Sync Supabase session → existing authStore
+      // S7 fix: Never trust user_metadata.role for admin grants.
+      // user_metadata is user-writable — setting role='admin' is trivial.
+      // Admin auth goes through the backend (checkAdminMaster/checkAdminPersonal).
+      // Supabase phone auth always grants kandidat role.
       const meta = data.user.user_metadata || {};
-      const role = meta.role || 'kandidat';
       const name = meta.nama || meta.name || normalizedPhone;
 
-      if (role === 'admin') {
-        loginAsAdmin(name, data.session.access_token, data.session.refresh_token);
-      } else {
-        loginAsKandidat(name, normalizedPhone, data.session.access_token, data.session.refresh_token);
-      }
+      loginAsKandidat(name, normalizedPhone, data.session.access_token, data.session.refresh_token);
 
       showToast(`Selamat datang, ${name}!`, 'success');
       return true;
@@ -176,43 +174,37 @@ let listenerInitialized = false;
  *
  * Safe to call multiple times — idempotent via listenerInitialized flag.
  */
+// P23 fix: Store the unsubscribe function so repeated calls return the real
+// cleanup, not a no-op. Without this, a second caller's unmount leaks the subscription.
+let storedUnsubscribe: (() => void) | null = null;
+
 export function initializeAuthListener(): () => void {
-  if (listenerInitialized) return () => {}; // already initialized
+  // P23 fix: Return the real unsubscribe instead of a no-op.
+  if (listenerInitialized) return storedUnsubscribe ?? (() => {});
   if (!isSupabaseConfigured()) {
-    console.warn('[UserStore] Supabase not configured — auth listener not started');
     return () => {};
   }
 
   listenerInitialized = true;
-  console.log('[UserStore] Initializing Supabase auth listener');
 
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     (event, session) => {
-      console.log('[UserStore] Auth event:', event);
-
       switch (event) {
         case 'SIGNED_IN':
         case 'TOKEN_REFRESHED': {
           if (session?.user) {
             const user = session.user;
             const meta = user.user_metadata || {};
-            const role = meta.role || 'kandidat';
             const name = meta.nama || meta.name || '';
             const phone = user.phone || '';
 
-            if (role === 'admin') {
-              loginAsAdmin(name, session.access_token, session.refresh_token);
-            } else {
-              loginAsKandidat(name, phone, session.access_token, session.refresh_token);
-            }
-
-            console.log('[UserStore] Session synced:', { role, name });
+            // S7 fix: Never trust user_metadata.role — always kandidat from Supabase path.
+            loginAsKandidat(name, phone, session.access_token, session.refresh_token);
           }
           break;
         }
 
         case 'SIGNED_OUT': {
-          console.log('[UserStore] Signed out — clearing auth state');
           authLogout();
           break;
         }
@@ -222,19 +214,14 @@ export function initializeAuthListener(): () => void {
           if (session?.user) {
             const user = session.user;
             const meta = user.user_metadata || {};
-            const role = meta.role || 'kandidat';
             const name = meta.nama || meta.name || '';
             const phone = user.phone || '';
 
             // Only update if authStore is currently guest (avoid overwriting)
             const current = authStore.get();
             if (!current.isLoggedIn) {
-              if (role === 'admin') {
-                loginAsAdmin(name, session.access_token, session.refresh_token);
-              } else {
-                loginAsKandidat(name, phone, session.access_token, session.refresh_token);
-              }
-              console.log('[UserStore] Initial session restored:', { role, name });
+              // S7 fix: Never trust user_metadata.role — always kandidat from Supabase path.
+              loginAsKandidat(name, phone, session.access_token, session.refresh_token);
             }
           }
           break;
@@ -246,11 +233,14 @@ export function initializeAuthListener(): () => void {
     }
   );
 
-  // Return cleanup function
-  return () => {
+  // Return cleanup function — store it so repeated calls get the same one.
+  const unsubscribe = () => {
     subscription.unsubscribe();
     listenerInitialized = false;
+    storedUnsubscribe = null;
   };
+  storedUnsubscribe = unsubscribe;
+  return unsubscribe;
 }
 
 // ─── Helpers ──────────────────────────────────────────

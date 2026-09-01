@@ -56,8 +56,9 @@ export function checkAdminMaster(pin: string) {
 export async function checkAdminPersonal(name: string, pin: string) {
   const admin = await repo.findAdminByName(name);
   if (!admin) return { success: false, message: 'Admin tidak ditemukan.' };
-  // Check PIN against bcrypt hash or plain text
-  const pinMatch = admin.pin === pin || (await bcrypt.compare(pin, admin.pin));
+  // S6 fix: Only use bcrypt comparison — never plaintext.
+  // Plaintext comparison is a timing side-channel and means plaintext credentials exist in DB.
+  const pinMatch = await bcrypt.compare(pin, admin.pin);
   if (!pinMatch) return { success: false, message: 'PIN salah.' };
   const token = session.signToken({ role: 'admin', name: admin.name, kind: 'session' });
   return { success: true, token, user: admin.name };
@@ -79,7 +80,8 @@ export async function loginKandidat(wa: string, password: string) {
   if (!cand) return { success: false, message: 'Kandidat tidak ditemukan.' };
   const storedPass = String(cand.password_kandidat || '');
   if (!storedPass) return { success: false, message: 'Password belum diatur.' };
-  const ok = storedPass === password || (await bcrypt.compare(password, storedPass));
+  // S6 fix: Only use bcrypt comparison — never plaintext.
+  const ok = await bcrypt.compare(password, storedPass);
   if (!ok) return { success: false, message: 'Password salah.' };
   const token = session.signToken({ role: 'kandidat', wa: cand.no_wa, kind: 'session' });
   return { success: true, token, user: 'kandidat', wa: cand.no_wa, name: cand.nama_lengkap };
@@ -98,8 +100,12 @@ export async function registerKandidat(nama: string, wa: string, password?: stri
   // Check if already registered
   const existing = await repo.findCandidateForAuth(wa);
   if (existing) return { success: false, message: 'Nomor WA sudah terdaftar.' };
-  // Generate password from last 4 digits of WA if not provided
-  const pass = password || wa.slice(-4);
+  // S8 fix: Require explicit password — never default to phone digits.
+  // Default passwords are trivially guessable and enumerable.
+  if (!password || password.length < 4) {
+    return { success: false, message: 'Password harus diisi minimal 4 karakter.' };
+  }
+  const pass = password;
   const hash = await bcrypt.hash(pass, 10);
   // Insert via Supabase
   const { supabaseJson } = await import('../../_lib/db/client');
@@ -124,7 +130,8 @@ export async function changePassword(wa: string, lama: string, baru: string) {
   const cand = await repo.findCandidateForAuth(wa);
   if (!cand) return { success: false, message: 'Kandidat tidak ditemukan.' };
   const storedPass = String(cand.password_kandidat || '');
-  const ok = storedPass === lama || (await bcrypt.compare(lama, storedPass));
+  // S6 fix: Only use bcrypt comparison — never plaintext.
+  const ok = await bcrypt.compare(lama, storedPass);
   if (!ok) return { success: false, message: 'Password lama salah.' };
   const hash = await bcrypt.hash(baru, 10);
   const { supabaseJson } = await import('../../_lib/db/client');

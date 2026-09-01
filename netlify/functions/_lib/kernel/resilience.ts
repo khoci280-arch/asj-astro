@@ -42,7 +42,7 @@ export interface RetryOpts {
   base?: number;
   /** Max delay cap in ms. Default: 2000. */
   max?: number;
-  /** Whether the operation is idempotent. Non-idempotent = no retry. Default: true. */
+  /** Whether the operation is idempotent. Non-idempotent = no retry. Default: false (safe). */
   idempotent?: boolean;
 }
 
@@ -54,9 +54,13 @@ function isRetryable(error: unknown): boolean {
     const name = error.name;
     // Network/timeout errors are retryable
     if (name === 'TimeoutError' || name === 'AbortError' || name === 'FetchError') return true;
-    // Check for retryable HTTP status in message
-    const match = error.message.match(/HTTP (\d{3})/);
-    if (match) return RETRYABLE_HTTP.has(Number(match[1]));
+    // P15 fix: Check for typed 'status' property (HttpError, etc.)
+    const e = error as unknown as Record<string, unknown>;
+    if (typeof e.status === 'number') return RETRYABLE_HTTP.has(e.status);
+    // Fallback: parse HTTP status from message (e.g. 'HTTP 500', 'HTTP 503')
+    const msg = error.message;
+    const m = msg && msg.match(/\bHTTP\s+(\d{3})\b/);
+    if (m) return RETRYABLE_HTTP.has(Number(m[1]));
   }
   return false;
 }
@@ -75,7 +79,8 @@ export async function withRetry<T>(
   const attempts = opts.attempts ?? 2;
   const base = opts.base ?? 200;
   const max = opts.max ?? 2_000;
-  const idempotent = opts.idempotent ?? true;
+  // P26 fix: Default to false (safe direction). Writes should opt IN to retry.
+  const idempotent = opts.idempotent ?? false;
 
   let lastError: unknown;
 
@@ -133,13 +138,26 @@ interface BreakerRecord {
 
 class CircuitBreaker {
   private records = new Map<string, BreakerRecord>();
-  private opts: Required<BreakerOpts>;
+  private defaultOpts: Required<BreakerOpts>;
+  private depConfigs: Record<string, BreakerOpts>;
 
-  constructor(opts: BreakerOpts = {}) {
-    this.opts = {
+  constructor(opts: BreakerOpts = {}, depConfigs: Record<string, BreakerOpts> = {}) {
+    this.defaultOpts = {
       threshold: opts.threshold ?? 5,
       windowMs: opts.windowMs ?? 30_000,
       coolDownMs: opts.coolDownMs ?? 15_000,
+    };
+    this.depConfigs = depConfigs;
+  }
+
+  /** Get effective opts for a dependency (per-dep override or default). */
+  private optsFor(dep: string): Required<BreakerOpts> {
+    const override = this.depConfigs[dep];
+    if (!override) return this.defaultOpts;
+    return {
+      threshold: override.threshold ?? this.defaultOpts.threshold,
+      windowMs: override.windowMs ?? this.defaultOpts.windowMs,
+      coolDownMs: override.coolDownMs ?? this.defaultOpts.coolDownMs,
     };
   }
 
@@ -149,9 +167,10 @@ class CircuitBreaker {
     if (!rec) return; // No record = closed
 
     const now = Date.now();
+    const opts = this.optsFor(dep);
 
     if (rec.state === 'open') {
-      if (now - rec.openedAt >= this.opts.coolDownMs) {
+      if (now - rec.openedAt >= opts.coolDownMs) {
         // Transition to half-open: allow one probe
         rec.state = 'half-open';
         log.info('breaker.half-open', { dep });
@@ -182,7 +201,7 @@ class CircuitBreaker {
     } else if (rec) {
       // Reset failure count in window
       const now = Date.now();
-      if (now - rec.windowStart >= this.opts.windowMs) {
+      if (now - rec.windowStart >= this.optsFor(dep).windowMs) {
         rec.failures = 0;
         rec.windowStart = now;
       }
@@ -192,6 +211,7 @@ class CircuitBreaker {
   /** Record a failed call. Opens the breaker if threshold exceeded. */
   failure(dep: string): void {
     const now = Date.now();
+    const opts = this.optsFor(dep);
     let rec = this.records.get(dep);
 
     if (!rec) {
@@ -200,7 +220,7 @@ class CircuitBreaker {
     }
 
     // Reset window if expired
-    if (now - rec.windowStart >= this.opts.windowMs) {
+    if (now - rec.windowStart >= opts.windowMs) {
       rec.failures = 0;
       rec.windowStart = now;
     }
@@ -214,7 +234,7 @@ class CircuitBreaker {
     }
 
     rec.failures++;
-    if (rec.failures >= this.opts.threshold) {
+    if (rec.failures >= opts.threshold) {
       rec.state = 'open';
       rec.openedAt = now;
       log.warn('breaker.opened', { dep, failures: rec.failures });
@@ -232,8 +252,18 @@ class CircuitBreaker {
   }
 }
 
-/** Singleton breaker instance (in-process state is acceptable for fail-fast). */
-export const breaker = new CircuitBreaker();
+// ── Default breaker configs per dependency (§4.3) ───────────────────────────
+// Must be declared before the breaker singleton to avoid temporal dead zone.
+export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
+  postgrest: { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
+  gemini:    { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
+  fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
+  fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
+  storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },
+};
+
+/** Singleton breaker instance with per-dependency tuned thresholds (§4.3). */
+export const breaker = new CircuitBreaker({}, DEPENDENCY_CONFIGS);
 
 // ── Bulkhead ────────────────────────────────────────────────────────────────
 
@@ -329,12 +359,4 @@ export async function callWithProtection<T>(
   }
 }
 
-// ── Default breaker configs per dependency (§4.3) ───────────────────────────
 
-export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
-  postgrest: { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
-  gemini:    { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
-  fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
-  fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
-  storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },
-};

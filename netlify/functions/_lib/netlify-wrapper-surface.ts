@@ -13,27 +13,10 @@
  *   exports.handler = makeSurfaceHandler(['checkAdminMaster', 'loginKandidat', ...]);
  */
 
+import { randomUUID } from 'node:crypto';
 import { log, runWithContext } from './kernel/log';
 import { metrics } from './kernel/metrics';
-
-// ── Shared helpers (duplicated from netlify-wrapper.ts for independence) ─────
-
-function clientIp(event: { headers?: Record<string, string> }): string | null {
-  const h = (event && event.headers) || {};
-  const fwd = h['x-forwarded-for'];
-  if (fwd) return String(fwd).split(',')[0].trim();
-  return h['client-ip'] || h['x-real-ip'] || null;
-}
-
-function sessionTokenFrom(event: { headers?: Record<string, string>; queryStringParameters?: Record<string, string> }, body: Record<string, unknown>): string | undefined {
-  if (body && body.sessionToken) return body.sessionToken;
-  const h = (event && event.headers) || {};
-  const auth = h.authorization || h.Authorization || '';
-  const m = /^Bearer\s+(.+)$/i.exec(String(auth).trim());
-  if (m) return m[1];
-  const q = (event && event.queryStringParameters) || {};
-  return q.sessionToken || undefined;
-}
+import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helpers';
 
 // ── Surface handler factory ─────────────────────────────────────────────────
 
@@ -48,6 +31,19 @@ export function makeSurfaceHandler(allowedActions: string[]) {
   const allowedSet = new Set(allowedActions);
 
   return async (event: { body?: string; headers?: Record<string, string>; queryStringParameters?: Record<string, string> }) => {
+    // S10 fix: Add request size limit (10MB max)
+    const MAX_BODY_SIZE = 10 * 1024 * 1024;
+    if (event.body && event.body.length > MAX_BODY_SIZE) {
+      return {
+        statusCode: 413,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+          success: false,
+          message: 'Request body too large (max 10MB)',
+        }),
+      };
+    }
+
     let body: Record<string, any> = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -57,7 +53,14 @@ export function makeSurfaceHandler(allowedActions: string[]) {
       const q = (event && event.queryStringParameters) || {};
       body.action = body.action || q.action || undefined;
       if (body.action) {
-        body.payload = body.payload || body.args || q.payload || undefined;
+        // P19 fix: Parse query-string payload from string to array.
+        // Without this, payload[0] yields the first character, not the first argument.
+        const raw = body.payload || body.args || q.payload || undefined;
+        if (typeof raw === 'string') {
+          try { body.payload = JSON.parse(raw); } catch { body.payload = [raw]; }
+        } else {
+          body.payload = raw;
+        }
       }
     }
 
@@ -77,16 +80,13 @@ export function makeSurfaceHandler(allowedActions: string[]) {
     const idempotencyKey = (event && event.headers)
       ? (event.headers['idempotency-key'] || event.headers['Idempotency-Key'] || undefined)
       : undefined;
-    if (idempotencyKey) (globalThis as Record<string, unknown>).__idempotencyKey = String(idempotencyKey);
-    else delete (globalThis as Record<string, unknown>).__idempotencyKey;
 
     // Distributed tracing
     const traceparent = (event && event.headers)
       ? (event.headers['traceparent'] || event.headers['Traceparent'] || undefined)
       : undefined;
-    const requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
-    (globalThis as Record<string, unknown>).__requestId = requestId;
-    (globalThis as Record<string, unknown>).__traceparent = traceparent;
+    // LOW fix: Use randomUUID() for clear, collision-free request IDs.
+    const requestId = randomUUID();
 
     // Import the lazy surface loader
     const { getSurfaceHandler } = await import('../surfaces/index');
@@ -94,24 +94,30 @@ export function makeSurfaceHandler(allowedActions: string[]) {
 
     let out: unknown;
     try {
-      out = await runWithContext({ requestId, action: body.action }, () =>
-        handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
-          ip: clientIp(event),
+      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent }, () =>
+        handleAction(body.action ?? 'ping', body.payload || body.args, sessionTokenFrom(event, body) ?? '', {
+          ip: clientIp(event) ?? undefined,
         }),
       );
     } catch (e: unknown) {
       out = { success: false, message: 'Error internal: ' + (e instanceof Error ? e.message : String(e)) };
     }
 
-    const baseHeaders: Record<string, string> = {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-    };
+    const requestOrigin = event?.headers?.origin || event?.headers?.Origin || '';
+    const baseHeaders = corsHeaders(requestOrigin);
 
-    if (out && typeof out === 'object' && typeof out.statusCode === 'number' && out.body !== undefined) {
-      return { statusCode: out.statusCode, headers: baseHeaders, body: String(out.body) };
+    const rec = out as Record<string, unknown>;
+    if (out && typeof out === 'object' && typeof rec.statusCode === 'number' && rec.body !== undefined) {
+      return { statusCode: rec.statusCode as number, headers: baseHeaders, body: String(rec.body) };
     }
-    return { statusCode: 200, headers: baseHeaders, body: JSON.stringify(out) };
+    // P18 fix: Return proper HTTP status for error responses instead of 200.
+    // This lets the client's 404-based fallback and monitoring work correctly.
+    let statusCode = 200;
+    if (out && typeof out === 'object') {
+      if (rec.rateLimited) statusCode = 429;
+      else if (rec.success === false && rec.message) statusCode = 400;
+    }
+    return { statusCode, headers: baseHeaders, body: JSON.stringify(out) };
   };
 }
 

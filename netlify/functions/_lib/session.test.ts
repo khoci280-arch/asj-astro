@@ -19,25 +19,52 @@ vi.mock('./env.js', () => {
 import { signToken, verifyToken } from './session';
 
 describe('session — signToken + verifyToken', () => {
-  it('roundtrip: sign → verify mengembalikan payload asli', () => {
-    const payload = { role: 'admin', name: 'KHOCI' };
-    const token = signToken(payload);
-    const result = verifyToken(token);
-    expect(result).toEqual(payload);
+  // signToken intentionally injects `exp` when the caller does not supply one
+  // (S2 fix: 24h for session tokens, 7d for refresh tokens). verifyToken
+  // therefore returns the original payload PLUS exp. These tests assert both
+  // halves: exp is present and in the future, and every other field survives
+  // the roundtrip untouched.
+  const nowSec = () => Math.floor(Date.now() / 1000);
+
+  function expectRoundtrip(payload) {
+    const result = verifyToken(signToken(payload));
+    expect(typeof result.exp).toBe('number');
+    expect(result.exp).toBeGreaterThan(nowSec());
+    const { exp, ...rest } = result;
+    expect(rest).toEqual(payload);
+    return exp;
+  }
+
+  it('roundtrip: sign → verify mengembalikan payload asli (+ exp)', () => {
+    expectRoundtrip({ role: 'admin', name: 'KHOCI' });
   });
 
   it('roundtrip dengan payload kandidat (role: kandidat + wa)', () => {
-    const payload = { role: 'kandidat', wa: '6281234567890' };
-    const token = signToken(payload);
-    const result = verifyToken(token);
-    expect(result).toEqual(payload);
+    expectRoundtrip({ role: 'kandidat', wa: '6281234567890' });
   });
 
   it('roundtrip dengan payload kosong', () => {
-    const payload = {};
-    const token = signToken(payload);
-    const result = verifyToken(token);
-    expect(result).toEqual(payload);
+    expectRoundtrip({});
+  });
+
+  it('exp diinject ~24 jam untuk session token (bukan refresh)', () => {
+    const exp = expectRoundtrip({ role: 'admin' });
+    const hours = (exp - nowSec()) / 3600;
+    expect(hours).toBeGreaterThan(23.9);
+    expect(hours).toBeLessThanOrEqual(24);
+  });
+
+  it('exp eksplisit dari caller tidak ditimpa', () => {
+    const custom = nowSec() + 3600; // 1 hour
+    const result = verifyToken(signToken({ role: 'admin', exp: custom }));
+    expect(result.exp).toBe(custom);
+  });
+
+  it('refresh token mendapat exp ~7 hari', () => {
+    const result = verifyToken(signToken({ role: 'admin', kind: 'refresh' }));
+    const days = (result.exp - nowSec()) / 86400;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThanOrEqual(7);
   });
 
   it('token format: base64url.body.base64url.signature', () => {

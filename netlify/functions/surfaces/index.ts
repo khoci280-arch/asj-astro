@@ -136,6 +136,16 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
 
 const surfaceCache = new Map<string, Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>>>();
 
+// P24 fix: Build stable surface name keys from the import path pattern.
+// All loaders follow `() => import('./<name>').then(...)` — extract <name>
+// to use as cache key instead of loader.toString() (which depends on bundler).
+const ACTION_SURFACE_NAME = new Map<string, string>();
+for (const [action, loader] of Object.entries(ACTION_TO_SURFACE)) {
+  const src = loader.toString();
+  const m = src.match(/import\(['"]\.\/([^'"\/]+)['"]\)/);
+  if (m) ACTION_SURFACE_NAME.set(action, m[1]);
+}
+
 /**
  * Get the handler for an action name.
  * Uses lazy loading: only imports the surface module when first accessed,
@@ -149,8 +159,8 @@ export async function getSurfaceHandler(
 
   const stop = metrics.histogram('surface.load', { action });
 
-  // Check cache first (same surface module shared across actions)
-  const surfaceKey = loader.toString(); // Stable key per loader identity
+  // P24 fix: Use extracted surface name as cache key instead of loader.toString().
+  const surfaceKey = ACTION_SURFACE_NAME.get(action) || action;
   let surfaceActions = surfaceCache.get(surfaceKey);
   if (!surfaceActions) {
     try {

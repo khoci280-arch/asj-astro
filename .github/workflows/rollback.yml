@@ -1,0 +1,96 @@
+name: Rollback
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Manual escape hatch.
+#
+# Automatic rollback (in deploy-production.yml) only covers "the new deploy is
+# broken". This covers everything else: a bad release that passed its smoke test,
+# a third-party outage, or a change that simply needs undoing now.
+#
+# Two modes:
+#   • no deploy id  -> restore the newest previous ready deploy (safe default)
+#   • deploy id     -> pin back to that exact deploy
+#
+# Use --dry-run first if you are unsure which deploy you will get.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to roll back'
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - staging
+      deploy-id:
+        description: 'Specific deploy id (leave empty for the previous ready deploy)'
+        required: false
+        type: string
+        default: ''
+      dry-run:
+        description: 'Show the target without restoring it'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rollback-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Roll back ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Rolling back production still requires the same approval as deploying to it.
+    environment:
+      name: ${{ inputs.environment }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+
+      - name: Execute rollback
+        id: rollback
+        run: |
+          ARGS="--site $NETLIFY_SITE_ID --token $NETLIFY_AUTH_TOKEN"
+          if [ -n "${{ inputs.deploy-id }}" ]; then
+            ARGS="$ARGS --to ${{ inputs.deploy-id }}"
+          fi
+          if [ "${{ inputs.dry-run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          node scripts/ci/netlify-rollback.mjs $ARGS
+
+      - name: Smoke test after rollback
+        if: ${{ !inputs.dry-run && inputs.environment == 'production' }}
+        env:
+          PROD_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          if [ -z "$PROD_URL" ]; then
+            echo "::warning::PRODUCTION_URL variable not set — skipping post-rollback smoke test."
+            echo "Set it in Settings > Secrets and variables > Actions > Variables."
+            exit 0
+          fi
+          npm run smoke -- --url "$PROD_URL" --expect "Lowongan Loker" --retries 6 --backoff 3000
+
+  notify:
+    name: Notify
+    needs: rollback
+    if: always() && needs.rollback.result != 'skipped' && !inputs.dry-run
+    uses: ./.github/workflows/_notify.yml
+    with:
+      status: ${{ needs.rollback.result == 'success' && 'rollback' || 'failure' }}
+      title: ${{ needs.rollback.result == 'success' && 'Manual rollback completed' || 'Manual rollback FAILED' }}
+      environment: ${{ inputs.environment }}
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      details: "Requested by ${{ github.actor }} — deploy `${{ inputs.deploy-id || 'previous ready deploy' }}`"
+    secrets: inherit

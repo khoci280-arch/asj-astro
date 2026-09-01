@@ -1,0 +1,217 @@
+name: Deploy · Production
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Production is the only place a human sits in the loop, and they sit there
+# BEFORE anything ships (required reviewers on the `production` environment),
+# not after. Once approved, the pipeline is fully automatic:
+#
+#   1. record the deploy currently serving production  -> rollback target
+#   2. publish the new build
+#   3. smoke test the live URL
+#   4. if the smoke test fails, restore step 1's deploy automatically
+#
+# Step 1 is the important one. Capturing the previous deploy BEFORE we publish is
+# what makes an automatic rollback possible; trying to work out what "previous"
+# means after the fact is how rollback scripts pick the wrong artifact.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+        type: string
+        default: ''
+      skip-db-gate:
+        description: 'Skip the database contract gate (emergency use only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  NETLIFY_CLI_VERSION: '27.4.2'
+
+jobs:
+  guard:
+    name: Confirm manual run
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "deploy" ]; then
+            echo "::error::Manual production deploy requires typing 'deploy' in the confirm field."
+            exit 1
+          fi
+
+  build:
+    name: Build artifact
+    needs: guard
+    if: always() && needs.guard.result != 'failure'
+    uses: ./.github/workflows/_build.yml
+    with:
+      retention-days: 90
+
+  deploy:
+    name: Deploy to production
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Required reviewers + environment-scoped secrets are configured in
+    # Settings > Environments > production. This is the approval gate.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deploy-url }}
+    outputs:
+      deploy-url: ${{ steps.deploy.outputs.deploy-url }}
+      outcome: ${{ steps.outcome.outputs.value }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+
+      - name: Gate environment
+        run: npm run verify:env -- --profile production --strict
+
+      # ── Database contract ────────────────────────────────────────────────────
+      # Last line of defence before production ships. The database is migrated by
+      # hand, so it can be behind the code. When it is, the failure is silent:
+      # PostgREST answers 200 with an empty result and the app degrades quietly
+      # rather than erroring. Checking it here costs one HTTP request; discovering
+      # it after a release costs a rollback and an incident.
+      #
+      # Runs on tag and release triggers too — `inputs.skip-db-gate` only exists
+      # on a manual dispatch, so the normal path is always gated.
+      - name: Gate database contract
+        if: ${{ !inputs.skip-db-gate }}
+        run: npm run verify:db -- --json db-contract.json
+
+      - name: Upload database contract report
+        if: ${{ always() && !inputs.skip-db-gate }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-contract-production-${{ github.sha }}
+          path: db-contract.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Verify artifact integrity
+        run: |
+          EXPECTED=$(node -e "console.log(require('./build-manifest.json').sha256)")
+          ACTUAL=$(find dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          echo "expected: $EXPECTED"; echo "actual  : $ACTUAL"
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::Artifact hash mismatch"; exit 1; }
+
+      # ── Rollback target: whatever is live right now, captured BEFORE we publish ──
+      - name: Record current production deploy
+        id: pre
+        run: |
+          PREV=$(curl -fsS \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            -H "User-Agent: asj-ci/1.0" \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?per_page=20" \
+            | node -e "
+              let d='';
+              process.stdin.on('data',c=>d+=c).on('end',()=>{
+                try {
+                  const j = JSON.parse(d);
+                  const p = Array.isArray(j) ? j.find(x => x.state === 'ready') : null;
+                  console.log(p ? p.id : '');
+                } catch { console.log(''); }
+              });
+            ")
+          if [ -n "$PREV" ]; then
+            echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+            echo "Rollback target captured: $PREV"
+          else
+            echo "::warning::No previous ready deploy found — automatic rollback unavailable."
+          fi
+
+      - name: Install Netlify CLI
+        run: npm i -g netlify-cli@${{ env.NETLIFY_CLI_VERSION }}
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          set -o pipefail
+          netlify deploy \
+            --dir=dist \
+            --functions=netlify/functions \
+            --prod \
+            --message="prod ${GITHUB_REF_NAME} (run ${GITHUB_RUN_ID})" \
+            --json | tee deploy.json
+          URL=$(node -e "
+            const j = require('./deploy.json');
+            console.log(j.deploy_url || j.url || j.deploy_ssl_url || '');
+          ")
+          if [ -z "$URL" ]; then
+            echo "::error::Could not determine deploy URL from netlify output"
+            exit 1
+          fi
+          echo "deploy-url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Production deploy live at $URL"
+
+      - name: Smoke test production
+        id: smoke
+        run: npm run smoke -- --url "${{ steps.deploy.outputs.deploy-url }}" --expect "Lowongan Loker" --retries 6 --backoff 3000
+
+      # Only meaningful if the deploy itself succeeded — otherwise there is
+      # nothing new to roll back from.
+      - name: Automatic rollback
+        id: rollback
+        if: failure() && steps.deploy.outcome == 'success' && steps.pre.outputs.prev != ''
+        run: |
+          echo "::error::Production smoke test failed — rolling back to ${{ steps.pre.outputs.prev }}"
+          node scripts/ci/netlify-rollback.mjs \
+            --site "$NETLIFY_SITE_ID" \
+            --token "$NETLIFY_AUTH_TOKEN" \
+            --to "${{ steps.pre.outputs.prev }}"
+
+      - name: Set outcome
+        id: outcome
+        if: always()
+        run: |
+          if [ "${{ steps.smoke.outcome }}" = "success" ]; then
+            echo "value=success" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.rollback.outcome }}" = "success" ]; then
+            echo "value=rollback" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  notify:
+    name: Notify
+    needs: deploy
+    if: always() && needs.deploy.result != 'skipped'
+    uses: ./.github/workflows/_notify.yml
+    with:
+      status: ${{ needs.deploy.outputs.outcome }}
+      title: ${{ needs.deploy.outputs.outcome == 'success' && 'Production deploy succeeded' || needs.deploy.outputs.outcome == 'rollback' && 'Production deploy rolled back' || 'Production deploy failed' }}
+      environment: production
+      deploy-url: ${{ needs.deploy.outputs.deploy-url }}
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      details: 'Ref `${{ github.ref_name }}` · commit `${{ github.sha }}`'
+    secrets: inherit

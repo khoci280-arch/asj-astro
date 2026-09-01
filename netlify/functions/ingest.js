@@ -1,6 +1,7 @@
 'use strict';
-const { handleProcessUploadDoc } = require('./_lib/actions-ingest');
-const { verifyToken } = require('./_lib/session');
+// ingest.js — Standalone wrapper for Smart Ingestion.
+// The original actions-ingest stub was removed. This function now returns
+// NOT_IMPLEMENTED until a real implementation is provided.
 
 // ingest.js — Standalone wrapper untuk Smart Ingestion.
 // HANYA membundel actions-ingest.ts + deps-nya (pdf-parse, xlsx, mammoth).
@@ -40,7 +41,8 @@ exports.handler = async (event) => {
 
   let out;
   try {
-    out = await handleProcessUploadDoc(payload || [], sessionToken);
+    // Stub removed — return NOT_IMPLEMENTED.
+    out = { success: false, message: 'Fungsi ini belum diimplementasi di backend rebuild.' };
   } catch (e) {
     out = { success: false, message: 'Error internal: ' + e.message };
   }

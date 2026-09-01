@@ -40,16 +40,28 @@ function setCache(action: string, args: unknown[], value: unknown): void {
     sessionStorage.setItem(getCacheKey(action, args), JSON.stringify({ at: Date.now(), value }));
   } catch {}
 }
-function invalidateCache(): void {
+function invalidateCache(action?: string): void {
   try {
+    const prefix = action ? 'asj_cache_' + action + ':' : 'asj_cache_';
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i);
-      if (key && key.startsWith('asj_cache_')) sessionStorage.removeItem(key);
+      if (key && key.startsWith(prefix)) sessionStorage.removeItem(key);
     }
   } catch {}
 }
 
 const FALLBACK_ENDPOINT = '/.netlify/functions/bridge-links';
+
+// P7 fix: Cache Supabase token to avoid extra round trip on every API call.
+let cachedToken: string | null = null;
+let tokenCachedAt = 0;
+const TOKEN_CACHE_TTL_MS = 60_000; // 60s — shorter than session lifetime
+
+// P6 fix: Track write generation to detect stale-cache race.
+// When a non-cacheable action runs, bump the generation. A stale read
+// that finishes after the write will see the bumped generation and
+// refuse to cache its now-stale result.
+let writeGeneration = 0;
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -64,10 +76,18 @@ interface ApiResponse<T = any> {
  * Get the freshest session token — checks Supabase first if configured.
  */
 async function getFreshToken(): Promise<string> {
+  // P7 fix: Return cached token if still fresh, avoiding a round trip per request.
+  const now = Date.now();
+  if (cachedToken && now - tokenCachedAt < TOKEN_CACHE_TTL_MS) return cachedToken;
+
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) return session.access_token;
+      if (session?.access_token) {
+        cachedToken = session.access_token;
+        tokenCachedAt = now;
+        return cachedToken;
+      }
     } catch { /* fall through */ }
   }
   return authStore.get().sessionToken;
@@ -88,8 +108,14 @@ export async function apiClient<T = ApiResponse>(
     const cached = getCached(action, args);
     if (cached) return cached as T;
   } else {
-    invalidateCache();
+    // P5 fix: Invalidate only keys for this action's prefix, not all cache entries.
+    invalidateCache(action);
+    // P6 fix: Bump generation so any in-flight reads skip caching stale data.
+    writeGeneration++;
   }
+
+  // P6 fix: Capture generation at request start for stale-cache detection.
+  const genAtStart = writeGeneration;
 
   const { isLoggedIn } = authStore.get();
   const sessionToken = await getFreshToken();
@@ -130,7 +156,10 @@ export async function apiClient<T = ApiResponse>(
     }
 
     if (CACHEABLE_READS.has(action)) {
-      setCache(action, args, data);
+      // P6 fix: Only cache if no write happened during the fetch.
+      if (genAtStart === writeGeneration) {
+        setCache(action, args, data);
+      }
     }
     return data as T;
   } catch (err: unknown) {

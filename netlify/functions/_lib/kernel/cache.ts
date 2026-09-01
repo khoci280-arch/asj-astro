@@ -36,7 +36,6 @@
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
-  negativeExpiry?: number; // For negative cache entries (not found)
 }
 
 const DEFAULT_MAX_ENTRIES = 100;
@@ -57,12 +56,6 @@ class L1Cache {
 
     const now = Date.now();
     if (now > entry.expiresAt) {
-      this.store.delete(key);
-      return undefined;
-    }
-
-    // Check negative cache (value is null/undefined, meaning "not found")
-    if (entry.negativeExpiry && now > entry.negativeExpiry) {
       this.store.delete(key);
       return undefined;
     }
@@ -89,7 +82,7 @@ class L1Cache {
 
   /**
    * Cache a negative result (e.g., "candidate not found").
-   * Stored as null with a separate expiry to prevent DoS via repeated lookups.
+   * Stored as null with a shorter TTL to prevent DoS via repeated lookups.
    */
   setNegative(key: string, ttlMs: number = NEGATIVE_TTL_MS): void {
     if (this.store.size >= this.maxEntries) {
@@ -100,7 +93,6 @@ class L1Cache {
     this.store.set(key, {
       value: null,
       expiresAt: Date.now() + ttlMs,
-      negativeExpiry: Date.now() + ttlMs,
     });
   }
 
@@ -127,6 +119,11 @@ class L1Cache {
 
 const l1 = new L1Cache();
 
+// ── In-flight dedup ───────────────────────────────────────────────────────
+// Prevent thundering herd: when multiple concurrent callers miss the same key,
+// only one executes fn(); the others await its result.
+const inFlight = new Map<string, Promise<unknown>>();
+
 // ── Generation counter ──────────────────────────────────────────────────────
 
 /**
@@ -142,8 +139,11 @@ let currentGeneration = 0;
 /** Bump the generation counter (call after config/job mutations). */
 export function bumpGeneration(): void {
   currentGeneration++;
-  // Also clear the local L1 cache for the affected prefix
-  l1.invalidatePrefix(`gen:${currentGeneration - 1}:`);
+  // P11 fix: Match the actual key format emitted by genKey().
+  // genKey produces `${namespace}:v${gen}:${qualifier}`,
+  // so we need to invalidate `:v${oldGen}:` not `gen:${oldGen}:`.
+  // Invalidate ALL entries from the previous generation across all namespaces.
+  l1.invalidatePrefix(`:v${currentGeneration - 1}:`);
 }
 
 /** Get current generation number. */
@@ -172,16 +172,26 @@ export const cache = {
     const hit = l1.get<T>(key);
     if (hit !== undefined) return hit;
 
-    const value = await fn();
+    // LOW fix: Deduplicate concurrent in-flight requests for the same key.
+    // Without this, N concurrent cache misses all execute fn() — thundering herd.
+    const existing = inFlight.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
 
-    if (value == null) {
-      // Cache negative result for shorter time
-      l1.setNegative(key);
+    const promise = fn().then((value) => {
+      inFlight.delete(key);
+      if (value == null) {
+        l1.setNegative(key);
+        return value;
+      }
+      l1.set(key, value, ttlMs);
       return value;
-    }
+    }).catch((err) => {
+      inFlight.delete(key);
+      throw err;
+    });
 
-    l1.set(key, value, ttlMs);
-    return value;
+    inFlight.set(key, promise);
+    return promise;
   },
 
   /** Invalidate a specific key. */

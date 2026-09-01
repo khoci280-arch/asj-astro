@@ -24,7 +24,12 @@ async function run() {
 
   await test('Public page loads', async () => {
     await page.goto(`${BASE}/public/`);
-    await page.waitForSelector('text=ASJ Portal');
+    // Harus menunggu teks yang BENAR-BENAR terlihat di halaman.
+    // Sebelumnya menunggu 'text=ASJ Portal' — string itu HANYA ada di meta
+    // <apple-mobile-web-app-title>, tidak pernah sebagai teks yang terlihat,
+    // jadi assertion ini pasti timeout 30 detik walau halamannya sehat.
+    // 'Lowongan Loker' adalah konten nyata hasil render (ada di HTML statis).
+    await page.waitForSelector('text=Lowongan Loker', { timeout: 15000 });
   });
 
   await test('Tab Lowongan Loker exists', async () => {

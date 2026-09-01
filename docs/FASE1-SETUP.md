@@ -18,14 +18,6 @@
 
 ```
 asj-astro/
-├── legacy/              ← Full codebase lama (255 files, 6MB)
-│   ├── js/              ← TypeScript/JS source
-│   ├── netlify/         ← Backend functions
-│   ├── partials/        ← HTML partials
-│   ├── docs/            ← DEEP docs
-│   ├── e2e/             ← E2E tests
-│   ├── assets/          ← Built bundles
-│   └── *.html           ← Standalone pages
 ├── src/
 │   ├── pages/           ← Astro pages (file-based routing)
 │   │   └── index.astro  ← Landing page
@@ -58,19 +50,18 @@ asj-astro/
 1. **Tailwind v4 via @tailwindcss/vite** — no PostCSS, no config file, just `@import "tailwindcss"`
 2. **Static output** — Astro SSG for fastest load, SSR can be enabled later
 3. **allowJs:true** — allows gradual migration from .js → .ts/.tsx
-4. **Legacy folder** — full old codebase preserved for reference during migration
+4. ~~**Legacy folder**~~ — removed from repo; migration complete
 
-## Migration Strategy
+## Migration Strategy (completed)
 
-Refer to `legacy/` folder when migrating each page:
-1. Read old HTML structure from `legacy/*.html`
-2. Extract layout → `src/layouts/`
-3. Extract components → `src/components/*.tsx` (Preact)
-4. Extract logic → `src/store/` (nanostores)
-5. Create Astro page → `src/pages/*.astro`
+All pages migrated from legacy HTML to Astro + Preact:
+1. ✅ Layout extracted → `src/layouts/`
+2. ✅ Components → `src/components/*.tsx` (Preact)
+3. ✅ State → `src/store/` (nanostores)
+4. ✅ Pages → `src/pages/*.astro`
 
-## Next (Fase 2)
+## Next (Fase 2) ✅ COMPLETE
 
-- Migrasi layout statis: header, footer, navbar → BaseLayout.astro
-- Pindahkan CSS dari `legacy/assets/main.css` → Tailwind utilities
-- Buat placeholder pages untuk setiap rute
+- ✅ Migrasi layout statis: header, footer, navbar → BaseLayout.astro
+- ✅ CSS → Tailwind utilities
+- ✅ Placeholder pages untuk setiap rute

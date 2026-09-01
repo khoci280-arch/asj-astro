@@ -1,0 +1,106 @@
+name: Notify
+
+# Reusable notification sink. Called by CI and the deploy workflows so there is
+# exactly one place to change how the team gets told what happened.
+#
+# Slack is optional: if SLACK_WEBHOOK_URL is not configured the job degrades to
+# a GitHub Actions job summary and exits 0. Notifications must never be the
+# reason a pipeline fails.
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: 'One of: success, failure, cancelled, rollback'
+        required: true
+        type: string
+      title:
+        description: 'Short human-readable headline'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment (staging / production / ci)'
+        required: false
+        type: string
+        default: 'ci'
+      run-url:
+        description: 'Link back to the workflow run'
+        required: false
+        type: string
+        default: ''
+      deploy-url:
+        description: 'The URL that was deployed / rolled back'
+        required: false
+        type: string
+        default: ''
+      details:
+        description: 'Extra context appended to the message'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: false
+
+jobs:
+  notify:
+    name: Send notification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Pick colour and emoji
+        id: meta
+        run: |
+          case "${{ inputs.status }}" in
+            success)   echo "color=#2eb886" >> "$GITHUB_OUTPUT"; echo "emoji=rocket"      >> "$GITHUB_OUTPUT" ;;
+            failure)   echo "color=#d40e0d" >> "$GITHUB_OUTPUT"; echo "emoji=rotating_light" >> "$GITHUB_OUTPUT" ;;
+            cancelled) echo "color=#daa038" >> "$GITHUB_OUTPUT"; echo "emoji=no_bell"    >> "$GITHUB_OUTPUT" ;;
+            rollback)  echo "color=#daa038" >> "$GITHUB_OUTPUT"; echo "emoji=rewind"     >> "$GITHUB_OUTPUT" ;;
+            *)         echo "color=#808080" >> "$GITHUB_OUTPUT"; echo "emoji=bell"       >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## :${{ steps.meta.outputs.emoji }}: ${{ inputs.title }}"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Status | \`${{ inputs.status }}\` |"
+            echo "| Environment | \`${{ inputs.environment }}\` |"
+            echo "| Repository | \`${{ github.repository }}\` |"
+            echo "| Branch | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Actor | \`${{ github.actor }}\` |"
+            [ -n "${{ inputs.deploy-url }}" ] && echo "| Deploy URL | ${{ inputs.deploy-url }} |"
+            [ -n "${{ inputs.run-url }}" ]    && echo "| Run | ${{ inputs.run-url }} |"
+            [ -n "${{ inputs.details }}" ]    && echo "| Details | ${{ inputs.details }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post to Slack
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # Build the payload with jq so titles/details containing quotes or
+          # newlines cannot break the JSON.
+          DEPLOY_LINE=""
+          if [ -n "${{ inputs.deploy-url }}" ]; then
+            DEPLOY_LINE="\n*URL:* ${{ inputs.deploy-url }}"
+          fi
+          RUN_LINE=""
+          if [ -n "${{ inputs.run-url }}" ]; then
+            RUN_LINE="\n*Run:* <${{ inputs.run-url }}|view logs>"
+          fi
+          TEXT=":${{ steps.meta.outputs.emoji }}: *${{ inputs.title }}*\n*Env:* \`${{ inputs.environment }}\` · *Branch:* \`${{ github.ref_name }}\` · *Commit:* \`$(echo '${{ github.sha }}' | cut -c1-8)\` by ${{ github.actor }}${DEPLOY_LINE}${RUN_LINE}"
+          if [ -n "${{ inputs.details }}" ]; then
+            TEXT="${TEXT}\n${{ inputs.details }}"
+          fi
+          jq -n --arg text "$TEXT" --arg color "${{ steps.meta.outputs.color }}" \
+            '{attachments:[{color:$color, text:$text, mrkdwn_in:["text"]}]}' > payload.json
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            --data @payload.json "$SLACK_WEBHOOK_URL"
+
+      - name: No Slack webhook configured
+        if: ${{ secrets.SLACK_WEBHOOK_URL == '' }}
+        run: echo "SLACK_WEBHOOK_URL not set — summary written, skipping Slack."

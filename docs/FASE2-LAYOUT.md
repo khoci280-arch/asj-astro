@@ -6,10 +6,10 @@
 
 | Component | Source | Lines | Purpose |
 |-----------|--------|-------|---------|
-| `Header.astro` | `legacy/partials/header.html` | 95 | Logo, nav modes (admin/kandidat/public), hamburger |
-| `Footer.astro` | `legacy/partials/footer.html` + `social.html` | 42 | Company info, social links, copyright |
-| `BottomNav.astro` | `legacy/partials/bottom-nav.html` | 68 | Mobile nav (admin 6 tabs + kandidat 3 tabs) |
-| `BaseLayout.astro` | `legacy/partials/head.html` + new | 68 | HTML shell, meta tags, fonts, SW registration |
+| `Header.astro` | ~~`legacy/partials/header.html`~~ (migrated) | 95 | Logo, nav modes (admin/kandidat/public), hamburger |
+| `Footer.astro` | ~~`legacy/partials/footer.html`~~ (migrated) | 42 | Company info, social links, copyright |
+| `BottomNav.astro` | ~~`legacy/partials/bottom-nav.html`~~ (migrated) | 68 | Mobile nav (admin 6 tabs + kandidat 3 tabs) |
+| `BaseLayout.astro` | ~~`legacy/partials/head.html`~~ + new | 68 | HTML shell, meta tags, fonts, SW registration |
 
 ## Compatibility Preserved
 
@@ -43,10 +43,10 @@
 
 ## Migration Notes
 
-1. **CSS**: Legacy `main.css` (50KB) → Tailwind v4 utilities (zero-config)
+1. **CSS**: ~~Legacy `main.css` (50KB)~~ → Tailwind v4 utilities (zero-config)
 2. **Fonts**: Local `/fonts/` → Google Fonts CDN (preload Montserrat)
 3. **Font Awesome**: Local `/vendor/font-awesome/` → CDN 6.5.1
-4. **Scripts**: Legacy `<script type="module">` → Astro `<script>` (bundled)
+4. **Scripts**: ~~Legacy `<script type="module">`~~ → Astro `<script>` (bundled)
 5. **Nav modes**: `!hidden` classes preserved for JS toggle (admin/kandidat/public)
 
 ## Next (Fase 3)

@@ -1,7 +1,6 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
 import { request, requestJson, BUDGETS } from '../kernel/http.ts';
-import { breaker, bulkhead } from '../kernel/resilience';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
@@ -38,41 +37,35 @@ async function supabaseJson(method, pathname, opts = {}) {
   const key = overrideKey || supabaseKey();
   if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
 
-  // Circuit breaker: fail fast if PostgREST is down
-  breaker.check('postgrest');
-  const release = await bulkhead.acquire('postgrest');
+  // P13 fix: Don't duplicate breaker/bulkhead here — request() already
+  // applies them for all PostgREST calls (reads AND writes). Acquiring
+  // them here AND in request() double-counted against the limits.
 
-  try {
-    // @ts-expect-error JS→TS migration
-    const qs = opts.query
-      ? '?' +
-        // @ts-expect-error JS→TS migration
-        new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
-      : '';
-    const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
-      method,
-      headers: {
-        apikey: key,
-        Authorization: 'Bearer ' + (overrideAuthKey || key),
-        'Content-Type': 'application/json',
-        // @ts-expect-error JS→TS migration
-        ...(opts.headers || {}),
-      },
+  // @ts-expect-error JS→TS migration
+  const qs = opts.query
+    ? '?' +
       // @ts-expect-error JS→TS migration
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      breaker.failure('postgrest');
-      throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));
-    }
-    breaker.success('postgrest');
+      new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
+    : '';
+  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
+    method,
+    headers: {
+      apikey: key,
+      Authorization: 'Bearer ' + (overrideAuthKey || key),
+      'Content-Type': 'application/json',
+      // @ts-expect-error JS→TS migration
+      ...(opts.headers || {}),
+    },
+    // @ts-expect-error JS→TS migration
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
+  });
+  if (!res.ok) {
     const text = await res.text();
-    return text ? JSON.parse(text) : null;
-  } finally {
-    release();
+    throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));
   }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 // UPSERT via PostgREST: INSERT dengan resolution=merge-duplicates + on_conflict.
@@ -108,9 +101,10 @@ async function supabaseUpsert(
   } catch (e) {
     // 42P10 = unique index di kolom konflik belum ada di DB
     // (migrations/20260825_index_antiduplikat.sql SECTION 4 belum dijalankan).
-    // Fallback INSERT biasa — perilaku lama, race paralel tetap bisa dobel
-    // tapi tidak melempar error baru. Error lain diteruskan.
-    if (!String((e && e.message) || '').includes('42P10')) throw e;
+    // P25 fix: Check for SQLSTATE code in multiple formats — PostgREST may
+    // embed it in the message, the hint, or as a separate field.
+    const errStr = String((e && e.message) || '') + ' ' + String((e && (e as any).hint) || '');
+    if (!errStr.includes('42P10') && !errStr.includes('does not exist')) throw e;
     return supabaseJson('POST', table, {
       ...opts,
       body: row,
@@ -129,7 +123,8 @@ async function supabasePaged(table, qs, { start, end } = {}) {
   const url = supabaseUrl();
   const key = supabaseKey();
   if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
-  const res = await fetch(url.replace(/\/$/, '') + '/rest/v1/' + table + (qs ? '?' + qs : ''), {
+  // P2 fix: Route through request() for timeout + circuit breaker.
+  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + table + (qs ? '?' + qs : ''), {
     method: 'GET',
     headers: {
       apikey: key,
@@ -137,6 +132,7 @@ async function supabasePaged(table, qs, { start, end } = {}) {
       Range: start + '-' + end,
       Prefer: 'count=exact',
     },
+    budgetKey: 'postgrest_read',
   });
   if (!res.ok) {
     throw new Error(table + ' → HTTP ' + res.status + ' ' + (await res.text()).slice(0, 150));
@@ -149,13 +145,15 @@ async function supabasePaged(table, qs, { start, end } = {}) {
 
 // Coba daftar nama tabel sampai satu yang benar-benar ada & mengembalikan baris.
 /** @param {string[]} candidates @param {number} [limit] @returns {Promise<FindTableResult>} */
-async function findTable(candidates, limit = 300) {
+async function findTable(candidates, limit = 1) {
+  // P3 fix: Use limit=1 (was 300) — callers only need to know which table exists.
+  // Stop on first hit instead of trying all candidates.
   for (const t of candidates) {
     try {
       const rows = await supabaseJson('GET', t, {
         query: { select: '*', limit },
       });
-      if (Array.isArray(rows)) return { table: t, rows };
+      if (Array.isArray(rows) && rows.length > 0) return { table: t, rows };
     } catch {
       /* coba tabel berikutnya */
     }

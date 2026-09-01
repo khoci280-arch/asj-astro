@@ -2,7 +2,7 @@ import * as session from './session';
 import * as rateLimit from './kernel/rate-limit';
 import { handleShareData, docTypeOf } from '../contexts/catalog';
 import { toErrorResponse } from './kernel/errors';
-import { log, runWithContext } from './kernel/log';
+import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { getSurfaceHandler } from '../surfaces/index';
 import { supabaseJson } from './db/client';
@@ -76,33 +76,36 @@ function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string
 }
 
 async function handleAction(action: string, payload: unknown[], sessionToken: string, meta: RequestMeta) {
-  const requestId = (globalThis as Record<string, unknown>).__requestId || String(Date.now());
-  return runWithContext({ requestId, action }, async () => {
-    if (action === 'ping') return { statusCode: 200, body: 'pong' };
+  // The wrapper already sets the ALS context (requestId, action, idempotencyKey, traceparent).
+  // Do NOT call runWithContext here — it would overwrite the parent store and drop
+  // idempotencyKey/traceparent. Just read requestId from the existing store.
+  const requestId = (asyncLocalStorage.getStore() as any)?.requestId || String(Date.now());
 
-    const checks = rateLimitChecks(action, meta, sessionToken);
+  if (action === 'ping') return { statusCode: 200, body: 'pong' };
+
+  const checks = rateLimitChecks(action, meta, sessionToken);
+  for (const c of checks) {
+    const r = await rateLimit.check(c.key, c.opts);
+    if (!r.ok) {
+      return { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + r.retryAfter + ' detik.', rateLimited: true, retryAfter: r.retryAfter };
+    }
+  }
+  log.info('handler.start', { action, ip: meta?.ip });
+  const out = await dispatchAction(action, payload, sessionToken);
+  log.info('handler.end', { action, success: out?.success });
+  if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
     for (const c of checks) {
-      const r = await rateLimit.check(c.key, c.opts);
-      if (!r.ok) {
-        return { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + r.retryAfter + ' detik.', rateLimited: true, retryAfter: r.retryAfter };
-      }
+      // @ts-expect-error JS→TS migration
+      if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
     }
-    log.info('handler.start', { action, ip: meta?.ip });
-    const out = await dispatchAction(action, payload, sessionToken);
-    log.info('handler.end', { action, success: out?.success });
-    if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
-      for (const c of checks) {
-        // @ts-expect-error JS→TS migration
-        if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
-      }
-    }
-    metrics.flushMetrics();
-    return out;
-  });
+  }
+  metrics.flushMetrics();
+  return out;
 }
 
 async function dispatchAction(action: string, payload: unknown[], sessionToken: string) {
-  const idempotencyKey = (globalThis as Record<string, unknown>).__idempotencyKey as string | undefined;
+  // B4 fix: Read idempotencyKey from AsyncLocalStorage context, not globalThis.
+  const idempotencyKey = (asyncLocalStorage.getStore() as any)?.idempotencyKey as string | undefined;
   if (idempotencyKey && isMutatingAction(action)) {
     try {
       const existing = await supabaseJson('GET', 'idempotency_keys', {

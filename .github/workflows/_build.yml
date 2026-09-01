@@ -1,0 +1,107 @@
+name: Build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The ONE canonical build. CI, staging and production all call this, so there is
+# a single definition of "how this app is built" under version control.
+#
+# Reproducibility guarantees:
+#   • Node version comes from .nvmrc (never "latest")
+#   • Dependencies come from package-lock.json via `npm ci` (never resolved fresh)
+#   • Emitted files are hashed, and the hash travels with the artifact so every
+#     later stage can prove it is deploying the bytes that were tested
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_call:
+    inputs:
+      retention-days:
+        description: 'How long to keep the uploaded artifact'
+        required: false
+        type: number
+        default: 14
+      node-options:
+        description: 'NODE_OPTIONS for the build'
+        required: false
+        type: string
+        default: '--max-old-space-size=4096'
+    outputs:
+      artifact-name:
+        description: 'Name of the uploaded artifact'
+        value: ${{ jobs.build.outputs.artifact-name }}
+      sha256:
+        description: 'Hash over every emitted file'
+        value: ${{ jobs.build.outputs.sha256 }}
+      file-count:
+        description: 'Number of files emitted'
+        value: ${{ jobs.build.outputs.file-count }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+      sha256: ${{ steps.hash.outputs.sha256 }}
+      file-count: ${{ steps.hash.outputs.file-count }}
+    env:
+      NODE_OPTIONS: ${{ inputs.node-options }}
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+
+      # PUBLIC_* are inlined into client JS at build time. A missing one does not
+      # fail the build — it ships a bundle that talks to `undefined`. Gate here.
+      # These are repository *variables*, not secrets: the Supabase anon key is
+      # public by design and is already visible in the shipped bundle.
+      - name: Gate build-time environment
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run verify:env -- --profile build
+
+      - name: Build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Hash emitted files
+        id: hash
+        run: |
+          HASH=$(find dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          COUNT=$(find dist -type f | wc -l | tr -d ' ')
+          echo "sha256=$HASH" >> "$GITHUB_OUTPUT"
+          echo "file-count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Emitted $COUNT files, aggregate sha256=$HASH"
+
+      - name: Generate build manifest
+        run: |
+          cat > build-manifest.json <<EOF
+          {
+            "sha": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF}",
+            "runId": "${GITHUB_RUN_ID}",
+            "node": "$(node --version)",
+            "npm": "$(npm --version)",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "fileCount": ${{ steps.hash.outputs.file-count }},
+            "sha256": "${{ steps.hash.outputs.sha256 }}"
+          }
+          EOF
+          cat build-manifest.json
+
+      - name: Name artifact
+        id: artifact
+        run: echo "name=dist-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: |
+            dist
+            build-manifest.json
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: error

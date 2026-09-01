@@ -114,19 +114,37 @@ export function toggleSimpleView() {
 }
 
 // ── Fetch from API ───────────────────────────────────────
+// P10 fix: Paginated fetch — request only the current page + filters
+// instead of loading all candidates client-side. The server handles
+// filtering and pagination, reducing payload size and client memory.
 export async function fetchKandidatFromAPI() {
   setKandidatLoading(true);
   try {
+    const search = adminSearch.get();
+    const gender = adminFilterGender.get();
+    const jft = adminFilterJft.get();
+    const page = adminPage.get();
     const res = await fetch('/.netlify/functions/get-app-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
+      body: JSON.stringify({
+        action: "getAppData",
+        args: ["admin"],
+        sessionToken: authStore.get().sessionToken || "",
+        // Pass pagination params for server-side filtering
+        _page: page,
+        _pageSize: PAGE_SIZE,
+        _search: search || undefined,
+        _gender: gender !== 'all' ? gender : undefined,
+        _jft: jft !== 'all' ? jft : undefined,
+      }),
     });
     const data = await res.json();
     if (data.success) {
       const k = data.kandidat || [];
       setKandidatList(k);
-      setAllKandidatList(data.allKandidat || k);
+      // Only store allKandidat if server returns it (backward compat)
+      if (data.allKandidat) setAllKandidatList(data.allKandidat);
     }
   } catch (err) {
     console.error('[adminStore] fetchKandidat failed:', err);

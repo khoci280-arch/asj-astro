@@ -28,6 +28,8 @@ interface LogContext {
   requestId: string;
   action?: string;
   surface?: string;
+  idempotencyKey?: string;
+  traceparent?: string;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<LogContext>();
@@ -41,6 +43,9 @@ export function runWithContext<T>(ctx: LogContext, fn: () => T): T {
 function getContext(): Partial<LogContext> {
   return asyncLocalStorage.getStore() ?? {};
 }
+
+/** Export for reading context values from other modules. */
+export { asyncLocalStorage };
 
 // ── PII hashing ──────────────────────────────────────────────────────────────
 // Never log raw: no_wa, nik, no_pasport, tokens, passwords, session tokens.

@@ -32,6 +32,8 @@ import type { Job } from './_lib/kernel/job-queue';
 // Each handler receives the job payload and executes the actual work.
 // Import from the same contexts the surfaces use.
 
+const NOT_IMPL = { success: false, message: 'Fungsi ini belum diimplementasi di backend rebuild.' };
+
 const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unknown>> = {
   'ai.interview': async (payload) => {
     const { handleProcessAiInterview } = await import('./_lib/ai/chat');
@@ -40,19 +42,9 @@ const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unk
     return handleProcessAiInterview(p, s);
   },
 
-  'ingest.parse': async (payload) => {
-    const { handleParseDokumenBiodata } = await import('./_lib/actions-ingest');
-    const p = payload.payload as unknown[];
-    const s = payload.sessionToken as string;
-    return handleParseDokumenBiodata(p, s);
-  },
-
-  'wa.broadcast': async (payload) => {
-    const { handleKirimTawaranMassal } = await import('./_lib/actions-wa');
-    const p = payload.payload as unknown[];
-    const s = payload.sessionToken as string;
-    return handleKirimTawaranMassal(p, s);
-  },
+  // Stub-only handlers — inlined to remove dead actions-ingest/actions-wa modules.
+  'ingest.parse': async () => NOT_IMPL,
+  'wa.broadcast': async () => NOT_IMPL,
 };
 
 // ── Sweep logic ───────────────────────────────────────────────────────────────

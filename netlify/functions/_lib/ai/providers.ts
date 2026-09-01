@@ -8,7 +8,10 @@ import { breaker } from '../kernel/resilience';
 // Timeout per-model (ms): model yang menggantung tidak boleh menghabiskan
 // budget fungsi Netlify (limit sinkron ±10 dtk) — kalau model pertama lambat/
 // hang, langsung fallback ke model berikutnya.
-const MODEL_TIMEOUT_MS = 7000;
+const MODEL_TIMEOUT_MS = 4000;
+// P1 fix: Total AI budget must fit within Netlify's 10s synchronous limit.
+// Gemini race (4s) + Grok fallback (5s) = 9s worst case, leaving 1s for overhead.
+const TOTAL_AI_BUDGET_MS = 9000;
 
 // Model saat ini (Agt 2026): gemini-1.5-flash & 2.0-flash sudah dihapus Google (404),
 // gemini-2.5-flash & 2.5-pro sudah tidak tersedia untuk key baru (404),
@@ -32,14 +35,18 @@ function trimTrailingModelTurn(contents) {
 async function fetchGemini(model, key, contents) {
   breaker.check('gemini');
   try {
+    // S11 fix: Use header instead of URL query string for API key.
+    // Query strings appear in access logs and error reports.
     const res = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/' +
         model +
-        ':generateContent?key=' +
-        key,
+        ':generateContent',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
+        },
         body: JSON.stringify({ contents }),
         signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
       },
@@ -131,19 +138,29 @@ async function geminiGenerate(systemPrompt, history) {
     if (h && h.content) contents.push({ role, parts: [{ text: String(h.content) }] });
   }
   const body = trimTrailingModelTurn(contents);
-  let lastErr = null;
-  for (const model of MODELS) {
-    try {
-      const text = await fetchGemini(model, key, body);
-      if (text) return { reply: text };
-    } catch (e) {
-      lastErr = e;
+
+  // P1 fix: Race all Gemini models in parallel with Promise.any() instead of
+  // sequential fallback. Cuts worst case from 3×7s=21s to 4s (single timeout).
+  const geminiStart = Date.now();
+  try {
+    const text = await Promise.any(
+      MODELS.map(model => fetchGemini(model, key, body))
+    );
+    if (text) return { reply: text };
+  } catch (aggregateErr) {
+    // All Gemini models failed — try Grok as fallback if budget remains
+    const elapsed = Date.now() - geminiStart;
+    if (elapsed < TOTAL_AI_BUDGET_MS - 5000) {
+      const grokResult = await grokGenerate(systemPrompt, history);
+      if (grokResult) return grokResult;
     }
-  }
-  // All Gemini models failed — try Grok as fallback
-    const grokResult = await grokGenerate(systemPrompt, history);
-    if (grokResult) return grokResult;
+    // Re-throw AggregateError or last error
+    const lastErr = aggregateErr instanceof AggregateError
+      ? aggregateErr.errors[aggregateErr.errors.length - 1]
+      : aggregateErr;
     throw lastErr || new Error('Gemini dan Grok tidak tersedia');
+  }
+  throw new Error('Gemini returned empty response');
   }
 
 async function geminiParseFile(systemPrompt, file) {
@@ -157,16 +174,19 @@ async function geminiParseFile(systemPrompt, file) {
       parts: [{ inlineData: { mimeType: file.mimeType, data: file.data } }, { text: systemPrompt }],
     },
   ];
-  let lastErr = null;
-  for (const model of MODELS) {
-    try {
-      const text = await fetchGemini(model, key, contents);
-      if (text) return text;
-    } catch (e) {
-      lastErr = e;
-    }
+  // P1 fix: Race Gemini models in parallel.
+  try {
+    const text = await Promise.any(
+      MODELS.map(model => fetchGemini(model, key, contents))
+    );
+    if (text) return text;
+  } catch (aggregateErr) {
+    const lastErr = aggregateErr instanceof AggregateError
+      ? aggregateErr.errors[aggregateErr.errors.length - 1]
+      : aggregateErr;
+    throw lastErr || new Error('Gemini tidak tersedia');
   }
-  throw lastErr || new Error('Gemini tidak tersedia');
+  throw new Error('Gemini returned empty response');
 }
 
 function parseJsonLoose(text) {

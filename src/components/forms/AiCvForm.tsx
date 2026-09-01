@@ -205,7 +205,7 @@ export default function AiCvForm() {
                 <img src={JEKLIN_IMG} alt="Jeklin" class="w-8 h-8 rounded-full object-cover shadow-sm border border-amber-400 flex-shrink-0 mt-1" />
               )}
               <div class={`${msg.role === 'user' ? 'bg-sky-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 border border-amber-500/20 rounded-tl-none'} rounded-2xl px-4 py-2.5 max-w-[80%] shadow-md`}>
-                <p class="text-xs leading-relaxed whitespace-pre-wrap m-0" dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }}></p>
+                <p class="text-xs leading-relaxed whitespace-pre-wrap m-0" dangerouslySetInnerHTML={{ __html: sanitizeAiHtml(msg.text).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }}></p>
                 <p class={`text-[9px] mt-1 ${msg.role === 'user' ? 'text-sky-200' : 'text-slate-500'}`}>{msg.time}</p>
               </div>
             </div>

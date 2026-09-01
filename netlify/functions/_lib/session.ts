@@ -6,7 +6,7 @@ import { env } from './env';
 // ditandatangani dengan secret dari env; semua aksi admin/kandidat
 // memvalidasinya kembali. Tidak ada penyimpanan status server-side.
 
-/** @typedef {{ role: string, wa?: string, name?: string, kind?: string }} SessionPayload */
+/** @typedef {{ role: string, wa?: string, name?: string, kind?: string, exp?: number }} SessionPayload */
 
 /** Memoized secret — computed once per process lifetime. */
 let _secret: string | null = null;
@@ -15,13 +15,9 @@ let _secret: string | null = null;
 function secret() {
   if (_secret) return _secret;
 
-  const s =
-    env('SESSION_SECRET') ||
-    env('ADMIN_PASSWORD') ||
-    env('ASJ_ADMIN_PASSWORD') ||
-    env('ADMIN_MASTER_PIN') ||
-    env('PIN_KHOCI') ||
-    '';
+  // S3 fix: Only use SESSION_SECRET — never fall back to admin passwords.
+  // Passwords are for authentication, not for token signing.
+  const s = env('SESSION_SECRET') || '';
 
   if (s) {
     _secret = s;
@@ -36,8 +32,9 @@ function secret() {
 
   if (isProd) {
     throw new Error(
-      'SESSION_SECRET (or ADMIN_PASSWORD / ADMIN_MASTER_PIN) is not set. ' +
-      'Token signing is impossible — refusing to start with a guessable secret.'
+      'SESSION_SECRET is not set. ' +
+      'Token signing is impossible — refusing to start with a guessable secret. ' +
+      'Set SESSION_SECRET in your environment variables.'
     );
   }
 
@@ -53,7 +50,16 @@ function secret() {
 
 /** @param {SessionPayload} payload @returns {string} */
 function signToken(payload) {
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  // S2 fix: Add expiry if not already set (24 hours for session tokens)
+  const tokenPayload = { ...payload };
+  if (!tokenPayload.exp && tokenPayload.kind !== 'refresh') {
+    // Session tokens expire in 24 hours
+    tokenPayload.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+  } else if (!tokenPayload.exp && tokenPayload.kind === 'refresh') {
+    // Refresh tokens expire in 7 days
+    tokenPayload.exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  }
+  const body = Buffer.from(JSON.stringify(tokenPayload)).toString('base64url');
   const sig = crypto.createHmac('sha256', secret()).update(body).digest('base64url');
   return body + '.' + sig;
 }
@@ -69,7 +75,16 @@ function verifyToken(token) {
   const b = Buffer.from(expect);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
-    return JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    // S2 fix: Check token expiry
+    if (payload.exp && typeof payload.exp === 'number') {
+      const now = Math.floor(Date.now() / 1000);
+      if (now > payload.exp) {
+        // Token expired
+        return null;
+      }
+    }
+    return payload;
   } catch {
     return null;
   }

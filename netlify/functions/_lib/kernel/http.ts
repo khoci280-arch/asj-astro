@@ -104,8 +104,18 @@ export async function request(
     ? AbortSignal.any([fetchInit.signal, controller.signal])
     : controller.signal;
 
+  const startTime = Date.now();
+  const dep = detectDependency(url);
+
+  // P13 fix: Always apply circuit breaker + bulkhead for any dependency,
+  // not just reads. This prevents writes from overwhelming a failing service.
+  // Retry is still gated on isRead — non-idempotent writes should NOT retry here.
+  const isRead = !fetchInit.method || fetchInit.method.toUpperCase() === 'GET';
+  const shouldProtect = !!dep;
+
   // Phase 7: propagate traceparent for distributed tracing (§10.3)
-  const traceparent = (globalThis as any).__traceparent as string | undefined;
+  // B4 fix: read from AsyncLocalStorage instead of globalThis.
+  const traceparent = asyncLocalStorage.getStore()?.traceparent;
   const headers = new Headers(fetchInit.headers as HeadersInit | undefined);
   if (traceparent && !headers.has('traceparent')) {
     headers.set('traceparent', traceparent);
@@ -120,26 +130,19 @@ export async function request(
     }
   }
 
-  const startTime = Date.now();
-  const dep = detectDependency(url);
-
-  // Retry reads (GET) with circuit breaker. Non-idempotent writes (POST/PATCH/DELETE)
-  // should NOT be retried at this level — the caller controls idempotency.
-  const isRead = !fetchInit.method || fetchInit.method.toUpperCase() === 'GET';
-  const shouldProtect = isRead && !!dep;
-
-  // Acquire bulkhead slot
-  const release = shouldProtect ? await acquireBulkhead(dep) : null;
-
+  // P16 fix: Move bulkhead acquire inside try block so clearTimeout(timer)
+  // runs even if acquireBulkhead or checkBreaker throws.
+  let release: (() => void) | null = null;
   try {
     if (shouldProtect) {
-      checkBreaker(dep);
+      release = await bulkhead.acquire(dep);
+      breaker.check(dep);
     }
 
     const res = await fetch(url, { ...fetchInit, headers, signal });
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
-    if (shouldProtect) recordBreakerSuccess(dep);
+    if (shouldProtect) breaker.success(dep);
     metrics.increment('dependency.call', { dep, outcome: 'success' });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -157,7 +160,7 @@ export async function request(
   } catch (e: unknown) {
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
-    if (shouldProtect) recordBreakerFailure(dep);
+    if (shouldProtect) breaker.failure(dep);
     metrics.increment('dependency.call', { dep, outcome: 'error' });
     if (e instanceof HttpError) throw e;
     if (e instanceof DOMException && e.name === 'AbortError') {
@@ -246,8 +249,10 @@ export async function requestJsonWithRetry<T = unknown>(
 // ── Dependency detection ──────────────────────────────────────────────────────
 
 function detectDependency(url: string): string {
+  // P14 fix: Check 'storage' before 'supabase' — Storage URLs are
+  // https://<project>.supabase.co/storage/v1/... which contain 'supabase'.
+  if (url.includes('/storage/') || url.includes('storage/v1')) return 'storage';
   if (url.includes('supabase')) return 'postgrest';
-  if (url.includes('storage')) return 'storage';
   if (url.includes('generativelanguage') || url.includes('gemini')) return 'gemini';
   if (url.includes('fonnte') || url.includes('api.fonnte')) return 'fonnte';
   if (url.includes('fcm') || url.includes('fcm.googleapis')) return 'fcm';
@@ -255,78 +260,11 @@ function detectDependency(url: string): string {
   return 'other';
 }
 
-// ── Circuit breaker + bulkhead (inline, no import from resilience to avoid circular) ─
-// These are lightweight in-process state — acceptable for fail-fast decisions.
-// The full resilience module provides withRetry + callWithProtection for handler use.
 
-type BreakerState = 'closed' | 'open' | 'half-open';
-interface BreakerRecord { state: BreakerState; failures: number; windowStart: number; openedAt: number; }
-const breakers = new Map<string, BreakerRecord>();
-const BREAKER_CONFIGS: Record<string, { threshold: number; windowMs: number; coolDownMs: number }> = {
-  postgrest: { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
-  gemini:    { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
-  fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
-  fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
-  storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },
-};
 
-function checkBreaker(dep: string): void {
-  const cfg = BREAKER_CONFIGS[dep];
-  if (!cfg) return;
-  const rec = breakers.get(dep);
-  if (!rec) return;
-  const now = Date.now();
-  if (rec.state === 'open' && now - rec.openedAt >= cfg.coolDownMs) {
-    rec.state = 'half-open';
-    log.info('breaker.half-open', { dep });
-    return;
-  }
-  if (rec.state === 'open' || rec.state === 'half-open') {
-    throw new AppError('SERVICE_UNAVAILABLE', { message: `Circuit breaker open for ${dep}`, retryable: false });
-  }
-}
-
-function recordBreakerSuccess(dep: string): void {
-  const rec = breakers.get(dep);
-  if (!rec) return;
-  if (rec.state === 'half-open') { breakers.delete(dep); log.info('breaker.closed', { dep }); return; }
-  const now = Date.now();
-  const cfg = BREAKER_CONFIGS[dep];
-  if (cfg && now - rec.windowStart >= cfg.windowMs) { rec.failures = 0; rec.windowStart = now; }
-}
-
-function recordBreakerFailure(dep: string): void {
-  const cfg = BREAKER_CONFIGS[dep];
-  if (!cfg) return;
-  const now = Date.now();
-  let rec = breakers.get(dep);
-  if (!rec) { rec = { state: 'closed', failures: 0, windowStart: now, openedAt: 0 }; breakers.set(dep, rec); }
-  if (now - rec.windowStart >= cfg.windowMs) { rec.failures = 0; rec.windowStart = now; }
-  if (rec.state === 'half-open') { rec.state = 'open'; rec.openedAt = now; log.warn('breaker.reopened', { dep }); return; }
-  rec.failures++;
-  if (rec.failures >= cfg.threshold) { rec.state = 'open'; rec.openedAt = now; log.warn('breaker.opened', { dep, failures: rec.failures }); }
-}
-
-// Bulkhead: limit concurrent in-flight calls per dependency
-const bulkheadInflight = new Map<string, number>();
-const BULKHEAD_MAX = 8;
-
-async function acquireBulkhead(dep: string): Promise<(() => void) | null> {
-  const current = bulkheadInflight.get(dep) ?? 0;
-  if (current >= BULKHEAD_MAX) {
-    throw new AppError('SERVICE_UNAVAILABLE', { message: `Bulkhead limit for ${dep}`, retryable: true });
-  }
-  bulkheadInflight.set(dep, current + 1);
-  let released = false;
-  return () => {
-    if (released) return;
-    released = true;
-    bulkheadInflight.set(dep, Math.max(0, (bulkheadInflight.get(dep) ?? 1) - 1));
-  };
-}
-
-import { AppError } from './errors';
 import { metrics } from './metrics';
+import { log, asyncLocalStorage } from './log';
+import { breaker, bulkhead } from './resilience';
 
 // ── Dependency call logging ───────────────────────────────────────────────────
 // Writes to dependency_calls table. Fire-and-forget: never blocks the caller.
@@ -340,6 +278,9 @@ async function logDependencyCall(
   outcome: string,
   statusCode?: number,
 ): Promise<void> {
+  // B7 fix: Skip logging PostgREST calls to break the recursion cycle.
+  // logDependencyCall → supabaseJson → request → logDependencyCall (unbounded).
+  if (dep === 'postgrest') return;
   try {
     await supabaseJson('POST', 'dependency_calls', {
       body: {

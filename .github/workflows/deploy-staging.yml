@@ -1,0 +1,144 @@
+name: Deploy · Staging
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Every push to `develop` lands on staging automatically — no human in the loop,
+# because staging exists precisely to be broken safely.
+#
+# Note this workflow RE-BUILDS via the shared reusable build rather than
+# downloading CI's artifact. That is deliberate: the build is fully reproducible
+# (pinned Node + `npm ci` from the lockfile), so rebuilding is safe, and it keeps
+# each workflow self-contained instead of coupling them through artifact plumbing.
+# The emitted-file hash is still carried through and verified.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      skip-db-gate:
+        description: 'Skip the database contract gate (emergency use only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never cancel a deploy mid-flight — a half-finished upload is worse than a
+  # queued one. Serialise deployments instead.
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  # Pinned so the deploy tool is as reproducible as the app dependencies.
+  NETLIFY_CLI_VERSION: '27.4.2'
+
+jobs:
+  build:
+    name: Build artifact
+    uses: ./.github/workflows/_build.yml
+
+  deploy:
+    name: Deploy to staging
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.deploy-url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+
+      # Fail before deploying if a secret is missing, so we never publish a
+      # release that is structurally complete but functionally dead.
+      - name: Gate environment
+        run: npm run verify:env -- --profile staging
+
+      # ── Database contract ────────────────────────────────────────────────────
+      # The database ships independently of the code. Code that assumes a table or
+      # RPC function which was never created does NOT throw — PostgREST answers
+      # 200 with an empty result and the feature silently no-ops. The B5/B6
+      # atomicity fixes are exactly this shape: the TypeScript is only live if the
+      # matching SQL was applied. Fail here, before publishing, not after a user
+      # reports that nothing works.
+      #
+      # The gate refuses to pass when it cannot verify anything (unreachable DB,
+      # wrong URL, key without OpenAPI access): an unverified check must never
+      # look like a green one.
+      - name: Gate database contract
+        if: ${{ !inputs.skip-db-gate }}
+        run: npm run verify:db -- --json db-contract.json
+
+      - name: Upload database contract report
+        if: ${{ always() && !inputs.skip-db-gate }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-contract-staging-${{ github.sha }}
+          path: db-contract.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Verify artifact integrity
+        run: |
+          EXPECTED=$(node -e "console.log(require('./build-manifest.json').sha256)")
+          ACTUAL=$(find dist -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          echo "expected: $EXPECTED"; echo "actual  : $ACTUAL"
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::Artifact hash mismatch"; exit 1; }
+
+      - name: Install Netlify CLI
+        run: npm i -g netlify-cli@${{ env.NETLIFY_CLI_VERSION }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          set -o pipefail
+          netlify deploy \
+            --dir=dist \
+            --functions=netlify/functions \
+            --alias=staging \
+            --message="staging ${GITHUB_SHA} (run ${GITHUB_RUN_ID})" \
+            --json | tee deploy.json
+          URL=$(node -e "
+            const j = require('./deploy.json');
+            console.log(j.deploy_url || j.url || j.deploy_ssl_url || '');
+          ")
+          if [ -z "$URL" ]; then
+            echo "::error::Could not determine deploy URL from netlify output"
+            exit 1
+          fi
+          echo "deploy-url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $URL"
+
+      # Longer backoff than CI: a freshly published Netlify deploy can take a few
+      # seconds to propagate across edges.
+      - name: Smoke test staging
+        run: npm run smoke -- --url "${{ steps.deploy.outputs.deploy-url }}" --expect "Lowongan Loker" --retries 6 --backoff 3000
+
+  notify:
+    name: Notify
+    needs: deploy
+    if: always() && needs.deploy.result != 'skipped'
+    uses: ./.github/workflows/_notify.yml
+    with:
+      status: ${{ needs.deploy.result }}
+      title: ${{ needs.deploy.result == 'success' && 'Staging deploy succeeded' || 'Staging deploy failed' }}
+      environment: staging
+      deploy-url: ${{ needs.deploy.outputs.deploy-url }}
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      details: 'Commit `${{ github.sha }}`'
+    secrets: inherit

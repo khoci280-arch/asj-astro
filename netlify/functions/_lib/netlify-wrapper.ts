@@ -1,39 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { handleAction } from './handlers';
 import { runWithContext } from './kernel/log';
+import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helpers';
 // netlify-wrapper.js — factory handler Netlify standar.
 //
 // Setiap file di netlify/functions/<nama>.js hanyalah:
 //   exports.handler = makeHandler();
 // dan seluruh logika dipusatkan di _lib/handlers.js (dispatch per action).
-
-// Ambil IP klien dari header standar proxy/Netlify untuk rate limit (M3).
-function clientIp(event) {
-  const h = (event && event.headers) || {};
-  const fwd = h['x-forwarded-for'];
-  if (fwd) return String(fwd).split(',')[0].trim();
-  return h['client-ip'] || h['x-real-ip'] || null;
-}
-
-/**
- * Ambil session token dari request.
- *
- * Secara historis backend HANYA membaca `body.sessionToken`. Padahal banyak
- * pemanggil di src/ mengirim token lewat header `Authorization: Bearer <token>`
- * (lihat apiClient.ts dan puluhan fetch mentah di komponen admin). Akibatnya
- * token itu diabaikan dan handler yang dijaga requireAdmin/requireRole menolak
- * permintaan yang sebenarnya sah.
- *
- * Urutan prioritas: body.sessionToken → header Authorization → query string.
- */
-function sessionTokenFrom(event, body) {
-  if (body && body.sessionToken) return body.sessionToken;
-  const h = (event && event.headers) || {};
-  const auth = h.authorization || h.Authorization || '';
-  const m = /^Bearer\s+(.+)$/i.exec(String(auth).trim());
-  if (m) return m[1];
-  const q = (event && event.queryStringParameters) || {};
-  return q.sessionToken || undefined;
-}
 
 function makeHandler() {
   return async (event) => {
@@ -56,20 +29,16 @@ function makeHandler() {
     const idempotencyKey = (event && event.headers)
       ? (event.headers['idempotency-key'] || event.headers['Idempotency-Key'] || undefined)
       : undefined;
-    if (idempotencyKey) (globalThis as any).__idempotencyKey = String(idempotencyKey);
-    else delete (globalThis as any).__idempotencyKey;
 
     // Phase 7: extract traceparent for distributed tracing (§10.3)
     const traceparent = (event && event.headers)
       ? (event.headers['traceparent'] || event.headers['Traceparent'] || undefined)
       : undefined;
-    const requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
-    (globalThis as any).__requestId = requestId;
-    (globalThis as any).__traceparent = traceparent;
+    const requestId = randomUUID();
 
     let out;
     try {
-      out = await runWithContext({ requestId, action: body.action }, () =>
+      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent }, () =>
         handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
           ip: clientIp(event),
         }),
@@ -77,10 +46,10 @@ function makeHandler() {
     } catch (e) {
       out = { success: false, message: 'Error internal: ' + e.message };
     }
-    const baseHeaders = {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-    };
+    const requestOrigin = (event && event.headers)
+      ? (event.headers.origin || event.headers.Origin || '')
+      : '';
+    const baseHeaders = corsHeaders(requestOrigin);
     // Respons RAW dari handler (action 'ping': { statusCode: 200, body: 'pong' })
     // diteruskan apa adanya — tanpa JSON.stringify, tanpa bungkus tambahan.
     if (

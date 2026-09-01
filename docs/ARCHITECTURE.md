@@ -84,7 +84,6 @@ asj-astro/
 │   ├── test-admin.mjs
 │   ├── test-public.mjs
 │   └── test-supabase-auth.mjs
-├── legacy/                      # Full legacy codebase (reference only)
 ├── docs/                        # Documentation
 │   ├── ARCHITECTURE.md          # This file
 │   ├── FASE1-SETUP.md          # Phase 1: Foundation

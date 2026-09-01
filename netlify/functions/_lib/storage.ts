@@ -1,5 +1,6 @@
 import { supabaseKey, supabaseUrl } from './db/client';
 import { env } from './env';
+import { request, BUDGETS } from './kernel/http';
 // storage.js — helper Supabase Storage (upload base64, hapus varian lama,
 // actions-extra.js, perilaku TIDAK berubah.
 
@@ -12,7 +13,8 @@ async function storageRequest(method, pathname, opts = {}) {
   const url = supabaseUrl();
   const key = supabaseKey();
   if (!url || !key) throw new Error('Supabase belum dikonfigurasi');
-  const res = await fetch(url.replace(/\/$/, '') + '/storage/v1/' + pathname, {
+  // P2 fix: Route through request() for timeout + circuit breaker.
+  const res = await request(url.replace(/\/$/, '') + '/storage/v1/' + pathname, {
     method,
     headers: {
       apikey: key,
@@ -22,6 +24,7 @@ async function storageRequest(method, pathname, opts = {}) {
     },
     // @ts-expect-error JS→TS migration
     body: opts.body,
+    budgetKey: 'storage',
   });
   if (!res.ok) {
     const text = await res.text();
@@ -151,11 +154,34 @@ async function uploadBase64(data, folder, fileName) {
   return publicUrl(path);
 }
 
+// S5 fix: Only allow URLs from trusted hosts to prevent tracking/injection.
+const ALLOWED_URL_HOSTS = [
+  'supabase.co',
+  'cloudinary.com',
+  'res.cloudinary.com',
+  'storage.googleapis.com',
+];
+
+function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return ALLOWED_URL_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch {
+    return false;
+  }
+}
+
 // Jalur Cloudinary (2026-08-17): nilai sudah URL string (hasil upload langsung
 // dari browser) → dipakai apa adanya. Base64 (jalur lama Frontend → Netlify →
 // Storage) tetap didukung sebagai fallback untuk klien yang belum dimigrasi.
 async function resolveFileUrl(value, folder, fileName) {
   if (typeof value === 'string' && /^https?:\/\//i.test(value.trim())) {
+    // S5 fix: Validate URL is from allowed host
+    if (!isAllowedUrl(value.trim())) {
+      throw new Error('URL not from allowed host: ' + new URL(value.trim()).hostname);
+    }
     return value.trim();
   }
   return uploadBase64(value, folder, fileName);

@@ -1,0 +1,99 @@
+{
+  "$comment": [
+    "Database contract enforced by scripts/ci/verify-migrations.mjs before every deploy.",
+    "",
+    "WHY THIS EXISTS",
+    "  The application is deployed independently of the database. Shipping code that",
+    "  assumes a table or RPC function which was never created does not raise an error",
+    "  - PostgREST answers 200 with an empty result, the UI renders blank, and the",
+    "  failure is silent. This file is the machine-readable list of what the code",
+    "  REQUIRES to be present, so CI can refuse to deploy against a database that",
+    "  has not been migrated.",
+    "",
+    "HOW TO MAINTAIN",
+    "  Add an entry here in the SAME commit that adds code depending on it.",
+    "  Removing an entry is a deliberate act: the code must stop depending on it first.",
+    "",
+    "SEVERITY",
+    "  required - deploy is BLOCKED when missing. Core to serving requests.",
+    "  optional - reported as a warning. Feature degrades, site still serves."
+  ],
+
+  "tables": {
+    "database_candidate": {
+      "severity": "required",
+      "note": "Core candidate records. Without it the admin board is empty."
+    },
+    "master_database_candidate": {
+      "severity": "required",
+      "note": "169-column master record; backs lookup by WhatsApp number."
+    },
+    "database_asj_form": {
+      "severity": "required",
+      "note": "Submitted application forms."
+    },
+    "job_database": {
+      "severity": "required",
+      "note": "Job postings; the public board renders from this."
+    },
+    "sys_config": {
+      "severity": "required",
+      "note": "Runtime configuration; loadPublicBase() reads it on every page."
+    },
+    "database_schedule": {
+      "severity": "required",
+      "note": "Interview schedule."
+    },
+    "database_tugas": {
+      "severity": "required",
+      "note": "Task assignments."
+    },
+    "pemberkasan_checklist": {
+      "severity": "required",
+      "note": "Document checklist."
+    },
+    "fcm_tokens": {
+      "severity": "optional",
+      "note": "Push notification tokens. Absent = notifications silently skip."
+    },
+    "job_queue": {
+      "severity": "required",
+      "note": "Async job queue (kernel/job-queue.ts). Created by 2026-09-01-job-queue.sql."
+    },
+    "rate_counters": {
+      "severity": "required",
+      "note": "Rate limit state (kernel/rate-limit.ts). Created by 2026-09-01-rate-counters.sql."
+    },
+    "dependency_calls": {
+      "severity": "optional",
+      "note": "Observability log of outbound calls (kernel/log.ts). Absent = no call telemetry."
+    },
+    "idempotency_keys": {
+      "severity": "optional",
+      "note": "Idempotency ledger. Absent = duplicate submissions are not suppressed."
+    }
+  },
+
+  "rpc": {
+    "claim_next_job": {
+      "severity": "required",
+      "migration": "netlify/functions/migrations/002_atomic_job_claim.sql",
+      "note": "B5 fix. Atomic FOR UPDATE SKIP LOCKED claim. Without it two concurrent workers can run the same job - duplicated WhatsApp sends and doubled AI spend."
+    },
+    "rate_limit_check": {
+      "severity": "required",
+      "migration": "netlify/functions/migrations/001_atomic_rate_limit.sql",
+      "note": "B6 fix. Atomic increment. Without it the read-modify-write race in rate-limit.ts lets the limit be bypassed under concurrency - this guards login and OTP."
+    },
+    "rate_limit_fail": {
+      "severity": "required",
+      "migration": "netlify/functions/migrations/001_atomic_rate_limit.sql",
+      "note": "B6 fix. Atomic failure counter with lockout."
+    },
+    "reclaim_stuck_jobs": {
+      "severity": "optional",
+      "migration": "netlify/functions/migrations/002_atomic_job_claim.sql",
+      "note": "Reaps jobs orphaned by a crashed worker. Absent = jobs can hang in 'running' forever."
+    }
+  }
+}

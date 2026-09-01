@@ -24,6 +24,7 @@
 import crypto from 'crypto';
 import { env } from '../env';
 import { log } from './log';
+import { verifyToken } from '../session';
 
 // ── Configuration ───────────────────────────────────────────────────────────
 
@@ -49,16 +50,21 @@ const SERVICE_ROLE_ALLOWLIST = new Set([
 function createSupabaseJwt(claims: { role: string; wa?: string; name?: string }): string {
   const secret = env('SUPABASE_JWT_SECRET');
   if (!secret) {
-    // No JWT secret configured — return empty string (RLS will treat as anon)
-    log.debug('supabase_jwt.no_secret', { op: claims.role });
+    // B9 fix: Log at error level so this is visible in production.
+    // Without this, every RLS query silently returns zero rows — the UI
+    // appears to work but shows no data, with no error message.
+    log.error('supabase_jwt.no_secret', {
+      op: claims.role,
+      impact: 'RLS queries will return zero rows. Set SUPABASE_JWT_SECRET.',
+    });
     return '';
   }
 
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
   const payload = Buffer.from(JSON.stringify({
-    role: 'authenticated',
     ...claims,
+    role: claims.role || 'authenticated',
     iat: now,
     exp: now + 3600, // 1 hour expiry
   })).toString('base64url');
@@ -113,23 +119,27 @@ export function userClient(sessionToken?: string): ClientInfo {
     return { url: supabaseUrl(), apikey: anonKey, authKey: anonKey, label: 'anon' };
   }
 
-  // Decode our custom session token to extract claims
-  // (It's base64url(JSON).signature — same format as our JWT)
+  // B8 fix: VERIFY the HMAC signature before trusting any claims.
+  // The old code decoded parts[0] without checking parts[1], allowing
+  // an attacker to craft arbitrary tokens with any role/wa claim.
+  const verified = verifyToken(sessionToken);
+  if (!verified) {
+    log.warn('db.userClient.invalid_token', {});
+    return { url: supabaseUrl(), apikey: anonKey, authKey: anonKey, label: 'anon' };
+  }
+
+  // Token is cryptographically verified — safe to extract claims.
   try {
-    const parts = sessionToken.split('.');
-    if (parts.length === 2) {
-      const claims = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-      const supabaseJwt = createSupabaseJwt({
-        role: claims.role || 'authenticated',
-        wa: claims.wa,
-        name: claims.name,
-      });
-      if (supabaseJwt) {
-        return { url: supabaseUrl(), apikey: anonKey, authKey: supabaseJwt, label: 'user' };
-      }
+    const supabaseJwt = createSupabaseJwt({
+      role: verified.role || 'authenticated',
+      wa: verified.wa,
+      name: verified.name,
+    });
+    if (supabaseJwt) {
+      return { url: supabaseUrl(), apikey: anonKey, authKey: supabaseJwt, label: 'user' };
     }
   } catch {
-    // Invalid token — fall back to anon
+    // JWT creation failed — fall back to anon
   }
 
   return { url: supabaseUrl(), apikey: anonKey, authKey: anonKey, label: 'anon' };

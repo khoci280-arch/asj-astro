@@ -48,38 +48,57 @@ interface CounterRow {
 
 const TABLE = 'rate_counters';
 
-/**
- * Read current counter from Postgres. Returns null if not found or on error.
- */
-async function readCounter(bucket: string): Promise<CounterRow | null> {
+// B6 fix: Use atomic RPC function instead of non-atomic read-modify-write
+// The rate_limit_check function atomically increments and checks limits
+
+async function atomicRateLimitCheck(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   try {
-    const rows = await supabaseJson('GET', TABLE, {
-      query: {
-        select: '*',
-        bucket: 'eq.' + bucket,
-        limit: '1',
+    const result = await supabaseJson('POST', 'rpc/rate_limit_check', {
+      body: {
+        p_bucket: key,
+        p_limit: limit,
+        p_window_ms: windowMs,
       },
     });
-    if (Array.isArray(rows) && rows.length > 0) return rows[0] as CounterRow;
-    return null;
+    
+    // PostgREST rpc/ returns a JSON array even for single-row results.
+    // Unwrap to get the actual row object.
+    const row = Array.isArray(result) ? result[0] : result;
+
+    if (row && typeof row === 'object') {
+      if (row.locked) {
+        return { ok: false, retryAfter: row.retry_after || 60, locked: true };
+      }
+      if (!row.ok) {
+        return { ok: false, retryAfter: row.retry_after || 60 };
+      }
+      return { ok: true };
+    }
+    return memoryCheck(key, { limit, windowMs });
   } catch {
-    return null;
+    return memoryCheck(key, { limit, windowMs });
   }
 }
 
-/**
- * Upsert counter in Postgres. Uses PUT (upsert) with on_conflict.
- */
-async function upsertCounter(row: CounterRow): Promise<boolean> {
+async function atomicRateLimitFail(key: string, lockoutAfter: number, lockoutMs: number): Promise<void> {
   try {
-    await supabaseJson('POST', TABLE, {
-      query: { on_conflict: 'bucket' },
-      body: row,
-      headers: { Prefer: 'resolution=merge-duplicates' },
+    await supabaseJson('POST', 'rpc/rate_limit_fail', {
+      body: {
+        p_bucket: key,
+        p_lockout_after: lockoutAfter,
+        p_lockout_ms: lockoutMs,
+      },
     });
-    return true;
   } catch {
-    return false;
+    // Fallback to in-memory on error
+    const b = memBuckets.get(key);
+    if (b) {
+      b.fails++;
+      if (b.fails >= lockoutAfter) {
+        b.lockUntil = Date.now() + lockoutMs;
+        b.fails = 0;
+      }
+    }
   }
 }
 
@@ -94,65 +113,9 @@ export async function check(
 ): Promise<RateLimitResult> {
   const limit = opts.limit ?? 5;
   const windowMs = opts.windowMs ?? 60_000;
-  const lockoutMs = opts.lockoutMs ?? 0;
-  const now = Date.now();
-  const windowStart = new Date(now).toISOString();
-
-  // Try Postgres first
-  const row = await readCounter(key);
-
-  if (!row) {
-    // First request in this window — create counter
-    const created = await upsertCounter({
-      bucket: key,
-      window_start: windowStart,
-      count: 1,
-      fails: 0,
-      locked_until: null,
-    });
-    if (!created) return memoryCheck(key, opts); // DB failed, fallback
-    return { ok: true };
-  }
-
-  // Check lockout
-  if (row.locked_until) {
-    const lockExpiry = new Date(row.locked_until).getTime();
-    if (now < lockExpiry) {
-      return { ok: false, retryAfter: Math.ceil((lockExpiry - now) / 1000), locked: true };
-    }
-    // Lock expired — reset
-    await upsertCounter({
-      ...row,
-      count: 0,
-      fails: 0,
-      locked_until: null,
-      window_start: windowStart,
-    });
-  }
-
-  // Check window expiry
-  const rowWindowStart = new Date(row.window_start).getTime();
-  if (now >= rowWindowStart + windowMs) {
-    // Window expired — reset
-    await upsertCounter({
-      bucket: key,
-      window_start: windowStart,
-      count: 1,
-      fails: 0,
-      locked_until: null,
-    });
-    return { ok: true };
-  }
-
-  // Within window — increment and check
-  const newCount = row.count + 1;
-  if (newCount > limit) {
-    const retryAfter = Math.ceil((rowWindowStart + windowMs - now) / 1000);
-    return { ok: false, retryAfter };
-  }
-
-  await upsertCounter({ ...row, count: newCount });
-  return { ok: true };
+  
+  // B6 fix: Use atomic RPC function instead of non-atomic read-modify-write
+  return atomicRateLimitCheck(key, limit, windowMs);
 }
 
 /**
@@ -163,33 +126,13 @@ export async function fail(
   key: string,
   opts: RateLimitOpts = {},
 ): Promise<void> {
-  const windowMs = opts.windowMs ?? 60_000;
   const lockoutAfter = opts.lockoutAfter ?? 0;
   const lockoutMs = opts.lockoutMs ?? 0;
-  const now = Date.now();
 
   if (lockoutAfter <= 0) return;
 
-  const row = await readCounter(key);
-  if (!row) {
-    await upsertCounter({
-      bucket: key,
-      window_start: new Date(now).toISOString(),
-      count: 0,
-      fails: 1,
-      locked_until: null,
-    });
-    return;
-  }
-
-  const newFails = row.fails + 1;
-  if (newFails >= lockoutAfter) {
-    const lockUntil = new Date(now + lockoutMs).toISOString();
-    await upsertCounter({ ...row, fails: 0, locked_until: lockUntil });
-    log.warn('rate-limit.lockout', { key, fails: newFails, lockoutMs });
-  } else {
-    await upsertCounter({ ...row, fails: newFails });
-  }
+  // B6 fix: Use atomic RPC function
+  await atomicRateLimitFail(key, lockoutAfter, lockoutMs);
 }
 
 // ── In-memory fallback (when Postgres is down) ───────────────────────────────
@@ -204,6 +147,7 @@ interface MemBucket {
 }
 
 const memBuckets = new Map<string, MemBucket>();
+const MAX_MEM_BUCKETS = 256;
 
 function memoryCheck(key: string, opts: RateLimitOpts): RateLimitResult {
   const now = Date.now();
@@ -211,6 +155,11 @@ function memoryCheck(key: string, opts: RateLimitOpts): RateLimitResult {
   const windowMs = opts.windowMs ?? 60_000;
   let b = memBuckets.get(key);
   if (!b) {
+    // P8 fix: Evict oldest entry when at capacity to prevent unbounded growth.
+    if (memBuckets.size >= MAX_MEM_BUCKETS) {
+      const oldest = memBuckets.keys().next().value;
+      if (oldest !== undefined) memBuckets.delete(oldest);
+    }
     b = { count: 0, fails: 0, resetAt: now + windowMs, lockUntil: 0 };
     memBuckets.set(key, b);
   }
