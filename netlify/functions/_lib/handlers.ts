@@ -4,7 +4,7 @@ import { handleShareData, docTypeOf } from '../contexts/catalog';
 import { toErrorResponse } from './kernel/errors';
 import { log, runWithContext } from './kernel/log';
 import { metrics } from './kernel/metrics';
-import { SURFACE_HANDLERS } from '../surfaces/index';
+import { getSurfaceHandler } from '../surfaces/index';
 import { supabaseJson } from './db/client';
 import { handleGetJobStatus } from './actions-job-status';
 
@@ -96,8 +96,10 @@ async function dispatchAction(action: string, payload: any[], sessionToken: stri
   }
 
   let result: unknown;
-  const surfaceHandler = SURFACE_HANDLERS[action];
+  const stop = metrics.histogram('handler.dispatch', { action });
+  const surfaceHandler = await getSurfaceHandler(action);
   if (!surfaceHandler) {
+    stop();
     return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
   }
   try {
@@ -117,20 +119,38 @@ async function dispatchAction(action: string, payload: any[], sessionToken: stri
     } catch { /* Storage failure must not affect the response */ }
   }
 
+  stop();
   return result;
 }
 
 function isMutatingAction(action: string): boolean {
   const MUTATING = new Set([
+    // Auth
     'daftarKandidat', 'gantiPasswordKandidat', 'loginKandidat',
-    'handleSimpanJobBaru', 'handleEditLokerFull', 'handleUbahStatusJob',
-    'handleHapusJobData', 'handleUpdateTahapanDbJob', 'handleUpdateDokumenShare',
-    'handleTandaiGagalJob', 'handleReviewForm', 'handleApproveForm',
-    'handleRejectForm', 'handleDeleteForm', 'handleUpdateCatatanKandidat',
-    'handleUpdateKandidatSuper', 'handleSimpanWaTemplate', 'handleHapusWaTemplate',
-    'kirimSatuPesanFonnte', 'kirimTawaranMassal', 'handleSubmitMasterForm',
-    'handleSetTugasStatus', 'handleHapusJadwal', 'handleSimpanJadwal',
-    'handleUpdateSysConfig', 'processUploadDoc', 'processAiFormSubmit',
+    // Jobs
+    'simpanJobBaru', 'editLokerFull', 'ubahStatusJob',
+    'hapusJobData', 'updateTahapanDbJob', 'updateDokumenShare',
+    'tandaiGagalJob',
+    // Mail
+    'reviewForm', 'approveForm', 'rejectForm', 'deleteForm',
+    // Candidates
+    'updateCatatanKandidat', 'updateKandidatSuper',
+    // Notify
+    'simpanWaTemplate', 'hapusWaTemplate',
+    'kirimSatuPesanFonnte', 'kirimTawaranMassal',
+    // Master
+    'submitMasterForm',
+    // Schedule
+    'setTugasStatus', 'hapusJadwal', 'simpanJadwalBaru',
+    // Config
+    'updateSysConfig',
+    // AI
+    'processUploadDoc', 'processAiFormSubmit',
+    // Docs
+    'submitFormPelamar', 'simpanBiodataLengkap',
+    'simpanKandidatDanUpload', 'simpanBerkasTahapan', 'simpanRevisiKandidat',
+    // Register
+    'submitDaftarSiswa',
   ]);
   return MUTATING.has(action);
 }
