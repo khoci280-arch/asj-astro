@@ -121,30 +121,24 @@ export async function fetchKandidatFromAPI() {
   setKandidatLoading(true);
   try {
     const search = adminSearch.get();
-    const gender = adminFilterGender.get();
-    const jft = adminFilterJft.get();
     const page = adminPage.get();
-    const res = await fetch('/.netlify/functions/get-app-data', {
+    const token = authStore.get().sessionToken || '';
+    const res = await fetch('/.netlify/functions/candidates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: "getAppData",
-        args: ["admin"],
-        sessionToken: authStore.get().sessionToken || "",
-        // Pass pagination params for server-side filtering
-        _page: page,
-        _pageSize: PAGE_SIZE,
-        _search: search || undefined,
-        _gender: gender !== 'all' ? gender : undefined,
-        _jft: jft !== 'all' ? jft : undefined,
+        action: 'getCandidatesPage',
+        payload: [{ page: page + 1, pageSize: PAGE_SIZE, q: search || '' }],
+        sessionToken: token,
       }),
     });
     const data = await res.json();
     if (data.success) {
       const k = data.candidates || data.kandidat || [];
-      setKandidatList(k);
-      // Only store allKandidat if server returns it (backward compat)
-      if (data.allKandidat) setAllKandidatList(data.allKandidat);
+      setKandidatList(page === 0 ? k : [...kandidatList.get(), ...k]);
+      setAllKandidatList(data.allKandidat || k);
+    } else if (data.sessionInvalid) {
+      setKandidatList([]);
     }
   } catch (err) {
     console.error('[adminStore] fetchKandidat failed:', err);
