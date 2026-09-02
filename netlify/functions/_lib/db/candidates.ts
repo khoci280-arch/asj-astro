@@ -15,6 +15,7 @@ function mapCandidate(row) {
     pick(row, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']),
   ).replace(/\D/g, '');
   const idKandidat = toText(pick(row, ['id_kandidat', 'id', 'kandidat_id', 'uid']));
+  const catatanInt = toText(pick(row, ['catatan_internal', 'catatan_int']));
   const tb = toText(pick(row, ['tb']));
   const bb = toText(pick(row, ['bb']));
   const tempatLahir = toText(pick(row, ['tempat_lahir', 'tempatLahir']));
@@ -42,7 +43,7 @@ function mapCandidate(row) {
     alamat: toText(pick(row, ['alamat_lengkap', 'alamat', 'address'])),
     jftText: toText(pick(row, ['nilai_jft_text', 'jft_text'])),
     sswText: toText(pick(row, ['bidang_ssw_text', 'ssw_text'])),
-    catatanInt: toText(pick(row, ['catatan_internal', 'catatan_int'])),
+    catatanInt,
     catatanExt: toText(pick(row, ['catatan_external', 'catatan_ext'])),
     catatan: toText(pick(row, ['catatan_admin'])),
     // Single source of truth for ASJ student status — matches legacy
@@ -115,14 +116,11 @@ const CAND_MAP_COLS =
 // Return: array (tabel ditemukan, boleh kosong) | undefined (tidak dikenal —
 // caller fallback scan penuh). Urutan TIDAK dijamin — caller tetap dedupe+sort.
 async function findAllCandidatesLight() {
-  for (const t of CAND_TABLES) {
-    try {
-      return await fetchPagedAll(t, CAND_LIGHT_COLS);
-    } catch {
-      /* kolom/tabel tidak cocok — coba tabel berikutnya */
-    }
+  try {
+    return await fetchPagedAll(TABLE_CANDIDATE, CAND_LIGHT_COLS);
+  } catch {
+    return undefined;
   }
-  return undefined;
 }
 
 // Baris PENUH untuk daftar id (halaman daftar admin) — pengganti scan 300
