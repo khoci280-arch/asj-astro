@@ -22,6 +22,7 @@ import bcrypt from 'bcryptjs';
 import { normalizeWa } from '../../shared/wa-rules';
 import * as session from '../../_lib/session';
 import * as repo from './repository';
+import { env } from '../../_lib/env';
 
 // ── Admin auth ───────────────────────────────────────────────────────────────
 
