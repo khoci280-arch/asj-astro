@@ -15,11 +15,13 @@ interface Props {
     tmplahir?: string;
     tgllahir?: string;
     fisik?: string;
+    bb?: string;
     pendidikan?: string;
     jft?: string;
     ssw?: string;
     tahapan?: string;
     status?: string;
+    catatan?: string;
     isVIP?: boolean;
   };
   isOpen: boolean;
@@ -30,21 +32,33 @@ const GENDER_OPTIONS = ['', 'LAKI-LAKI', 'PEREMPUAN'];
 const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'D1', 'D2', 'D3', 'S1', 'S2', 'S3'];
 const TAHAPAN_OPTIONS = ['', 'Baru', 'Pendaftaran', 'LIST', 'MCU PARPOR', 'Wawancara', 'LULUS'];
 const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
+const DOC_FIELDS = [
+  { key: 'pas_photo', label: 'Pas Photo', accept: 'image/*' },
+  { key: 'file_cv', label: 'CV / Rirekisho', accept: '.pdf,.doc,.docx,.xls,.xlsx,image/*' },
+  { key: 'jft', label: 'Sertif JFT', accept: '.pdf,image/*' },
+  { key: 'ssw', label: 'Sertif SSW', accept: '.pdf,image/*' },
+  { key: 'ktp', label: 'KTP', accept: '.pdf,image/*' },
+  { key: 'kk', label: 'KK', accept: '.pdf,image/*' },
+];
 
 export default function EditCandidateModal({ candidate, isOpen, onClose }: Props) {
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [form, setForm] = useState({
     gender: candidate.gender || '',
     usia: candidate.usia || '',
     tempatLahir: candidate.tmplahir || '',
     tglLahir: candidate.tgllahir || '',
     tb: candidate.fisik || '',
+    bb: candidate.bb || '',
     pendidikan: candidate.pendidikan || '',
     jftText: candidate.jft || '',
     sswText: candidate.ssw || '',
     tahapan: candidate.tahapan || '',
     status: candidate.status || '',
+    catatan: candidate.catatan || '',
   });
+  const [isVIP, setIsVIP] = useState(() => /\[(?:VIP|KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(candidate.catatan || ''));
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   useEffect(() => {
@@ -55,14 +69,26 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
         tempatLahir: candidate.tmplahir || '',
         tglLahir: candidate.tgllahir || '',
         tb: candidate.fisik || '',
+        bb: candidate.bb || '',
         pendidikan: candidate.pendidikan || '',
         jftText: candidate.jft || '',
         sswText: candidate.ssw || '',
         tahapan: candidate.tahapan || '',
         status: candidate.status || '',
+        catatan: candidate.catatan || '',
       });
+      setIsVIP(/\[(?:VIP|KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(candidate.catatan || ''));
     }
   }, [isOpen, candidate]);
+
+  const toggleVIP = () => {
+    const newVIP = !isVIP;
+    setIsVIP(newVIP);
+    let cat = form.catatan || '';
+    if (newVIP) { if (!/\[VIP\]/i.test(cat)) cat = '[VIP] ' + cat; }
+    else { cat = cat.replace(/\[VIP\]\s*/gi, ''); }
+    setField('catatan', cat);
+  };
 
   const setField = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -82,6 +108,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
             tempatLahir: form.tempatLahir,
             tglLahir: form.tglLahir,
             tb: form.tb,
+            bb: form.bb,
             jftText: form.jftText,
             sswText: form.sswText,
             tahapan: form.tahapan,
@@ -92,6 +119,14 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
       });
       const data = await res.json();
       if (data.success) {
+        if (form.catatan !== (candidate.catatan || '')) {
+          try {
+            await fetch(getEndpoint('updateCatatanKandidat'), {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'updateCatatanKandidat', args: [{ wa: candidate.wa, catatan: form.catatan }], sessionToken }),
+            });
+          } catch { /* non-fatal */ }
+        }
         showToast('Data kandidat berhasil disimpan!', 'success');
         onClose();
       } else {
@@ -102,6 +137,13 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleFileUpload = async (docKey: string, file: File) => {
+    setUploading(docKey);
+    try { await uploadToCloudinary(file); showToast(docKey + ' berhasil diupload!', 'success'); }
+    catch (e) { showToast('Gagal upload ' + docKey + ': ' + (e instanceof Error ? e.message : String(e)), 'error'); }
+    finally { setUploading(null); }
   };
 
   if (!isOpen) return null;
@@ -118,6 +160,16 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
         </h2>
         <p class="text-xs text-slate-400 mb-4">{candidate.nama} — {candidate.wa}</p>
 
+        <div class="flex items-center gap-3 mb-4 p-2 bg-slate-800/30 rounded-xl border border-slate-700/50">
+          <span class="text-xs text-slate-400 font-bold">Privilege Tag:</span>
+          <button onClick={toggleVIP} class={`relative w-11 h-6 rounded-full transition-colors ${isVIP ? 'bg-amber-500' : 'bg-slate-600'}`}>
+            <span class={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isVIP ? 'translate-x-5' : ''}`} />
+          </button>
+          <span class={`text-xs font-bold ${isVIP ? 'text-amber-400' : 'text-slate-500'}`}>
+            {isVIP ? '[VIP] Aktif' : 'Non-VIP'}
+          </span>
+        </div>
+
         <div class="space-y-3">
           {/* Gender */}
           <div>
@@ -127,15 +179,19 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
             </select>
           </div>
 
-          {/* Usia + TB */}
-          <div class="grid grid-cols-2 gap-3">
+          {/* Usia + TB + BB */}
+          <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="text-[10px] text-slate-500 uppercase font-bold">Usia</label>
               <input type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Tinggi Badan (cm)</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">TB (cm)</label>
               <input type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">BB (kg)</label>
+              <input type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
@@ -184,6 +240,28 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
               <select value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '- Pilih -'}</option>)}
               </select>
+            </div>
+          </div>
+          {/* Catatan */}
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Catatan</label>
+            <textarea value={form.catatan} onInput={e => setField('catatan', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder="Catatan admin tentang kandidat..." />
+          </div>
+
+          {/* Document Upload */}
+          <div class="border-t border-slate-700/50 pt-3 mt-3">
+            <label class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1 mb-2">
+              <Icon name="file-arrow-up" class="text-sky-400" /> Upload Dokumen
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+              {DOC_FIELDS.map(doc => (
+                <label key={doc.key} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
+                  <Icon name="upload" class="text-slate-500 text-xs" />
+                  <span class="text-xs text-slate-400 truncate">{doc.label}</span>
+                  <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.key, f); }} />
+                  {uploading === doc.key && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
+                </label>
+              ))}
             </div>
           </div>
         </div>
