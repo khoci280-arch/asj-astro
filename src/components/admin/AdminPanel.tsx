@@ -58,20 +58,36 @@ export default function AdminPanel() {
     var h = window.location.hash.replace('#', '');
     return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
   });
+
+  // Listen for hash changes from BottomNav
+  useEffect(() => {
+    const onHashChange = () => {
+      var h = window.location.hash.replace('#', '');
+      if (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h)) {
+        setActiveTab(h as Tab);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   useEffect(() => {
     const onAiCopilot = (e: Event) => aiCopilot.show((e as CustomEvent).detail);
     const onEdit = (e: Event) => { const d = (e as CustomEvent).detail; editModal.show(d); };
     const onHistory = (e: Event) => { const d = (e as CustomEvent).detail; profile.show({ wa: d.wa, nama: d.nama }); };
     const onUndangan = () => undangan.show();
     const onMatchmaking = (e: Event) => matchmaking.show((e as CustomEvent).detail);
+    const onPemberkasan = (e: Event) => { const d = (e as CustomEvent).detail; pemberkasan.show(d); };
     window.addEventListener('openAdminAiCopilot', onAiCopilot);
     window.addEventListener('openUndanganKelas', onUndangan);
+    window.addEventListener('openPemberkasan', onPemberkasan);
       window.addEventListener('openMatchmaking', onMatchmaking);
     window.addEventListener('openCandidateEdit', onEdit);
     window.addEventListener('showCandidateHistory', onHistory);
     return () => {
       window.removeEventListener('openAdminAiCopilot', onAiCopilot);
       window.removeEventListener('openUndanganKelas', onUndangan);
+      window.removeEventListener('openPemberkasan', onPemberkasan);
       window.removeEventListener('openMatchmaking', onMatchmaking);
       window.removeEventListener('openCandidateEdit', onEdit);
       window.removeEventListener('showCandidateHistory', onHistory);

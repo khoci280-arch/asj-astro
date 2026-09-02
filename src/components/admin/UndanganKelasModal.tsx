@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useState, useCallback } from "preact/hooks";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
+import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 
@@ -104,4 +105,4 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
         sending ? t("ui.sending") : t("ui.start_send_invite"))));
 }
 
-declare function showToast(msg: string, type: string): void;
+

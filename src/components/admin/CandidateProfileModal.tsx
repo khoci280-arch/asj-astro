@@ -256,6 +256,16 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
               <Icon name="edit" /> Edit Data Cepat
             </button>
 
+            {/* 3b. Pemberkasan & Biodata */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openPemberkasan', { detail: { wa: data.wa, nama: data.nama } }));
+              }}
+              class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <Icon name="folder-open" /> Lengkapi Pemberkasan & Biodata
+            </button>
+
             {/* 4. Job Yang Dilamar */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Job / Bidang Yang Dilamar</h3>
