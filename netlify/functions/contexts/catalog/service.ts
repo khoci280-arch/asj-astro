@@ -21,7 +21,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
     let t: any = null;
     if (mode === 'admin' || mode === 'kandidat') {
       const role = mode === 'admin' ? 'admin' : 'kandidat';
-      const { session } = await import('../../_lib/session');
+      const session = await import('../../_lib/session');
       t = session.verifyToken(sessionToken || '');
       const waPayload = String((payload && payload[1]) || '').replace(/\D/g, '');
       const valid = t && t.role === role && (mode !== 'kandidat' || (t.wa || '') === waPayload || waPayload === '');

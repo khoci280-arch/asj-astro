@@ -9,6 +9,7 @@ import { showToast } from '../Toast';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import MatchmakingModal from './MatchmakingModal';
+import ListKandidatModal from './ListKandidatModal';
 import { useStore } from '@nanostores/preact';
 import { allKandidatList, fetchKandidatFromAPI } from '../../store/adminStore';
 import Icon from '../ui/Icon';
@@ -36,6 +37,7 @@ export default function TabDbJob() {
   const [editJob, setEditJob] = useState<DbJob | null>(null);
   const [shareJob, setShareJob] = useState<DbJob | null>(null);
   const [matchJob, setMatchJob] = useState<DbJob | null>(null);
+  const [listJobCode, setListJobCode] = useState<string | null>(null);
   const allCandidates = useStore(allKandidatList);
 
   useEffect(() => { fetchLoker(); }, []);
@@ -140,7 +142,13 @@ export default function TabDbJob() {
                       <span class="text-amber-300"><Icon name="map-marker-alt" class="text-red-400 mr-1" />{db.lokasi || '-'}</span>
                     </div>
                   </td>
-                  <td class="p-4 text-center"><div class="inline-block px-4 py-1.5 bg-sky-900/30 rounded-lg"><span class="text-sky-400 font-bold text-lg">-</span></div></td>
+                  {(() => { const cCount = allCandidates.filter((c: any) => c.idLoker && c.idLoker.includes(db.code)).length; return (
+                  <td class="p-4 text-center cursor-pointer group" onClick={() => setListJobCode(db.code)}>
+                    <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-all">
+                      <span class="text-sky-400 group-hover:text-white font-bold text-lg">{cCount}</span>
+                    </div>
+                  </td>
+                ); })()}
                   <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">
                     <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button>
@@ -156,6 +164,7 @@ export default function TabDbJob() {
       )}
       {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
+      {listJobCode && <ListKandidatModal jobCode={listJobCode} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} />}
       {matchJob && <MatchmakingModal job={matchJob} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} />}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} job internal</p>
     </div>
