@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # index.astro + admin.astro + public.astro - Deep Analysis
 
 > Halaman utama yang memakai App.tsx (header + nav + login).

@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # AI Wawancara - Deep Analysis
 
 ## Candidate: Start (VIP guard) -> processAiInterview -> Gemini 14 questions

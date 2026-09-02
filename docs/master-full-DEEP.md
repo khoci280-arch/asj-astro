@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # master.astro - Deep Analysis
 
 > Form master biodata 5 langkah + login gate. 154 kolom.

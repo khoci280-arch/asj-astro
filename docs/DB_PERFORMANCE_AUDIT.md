@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Technical reference document.
+
 # Audit Performa Database — ASJ Portal v2 (TERUKUR)
 
 **Tanggal:** 2026-09-01

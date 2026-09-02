@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03. Current test count: 235/235. Admin panel: 8 tabs + 12 modals. Backend: Netlify Functions with circuit breaker, rate limiter, job queue.
+
 # ASJ Astro — Architecture Deep Dive
 
 ## Tech Stack

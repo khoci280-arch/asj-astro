@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03. All 9 pages are live. Admin panel fully functional with real Supabase data.
+
 # Pages — Quick Reference (Astro + Preact)
 
 > Index ringkas semua halaman. Detail lengkap ada di docs/*-DEEP.md.

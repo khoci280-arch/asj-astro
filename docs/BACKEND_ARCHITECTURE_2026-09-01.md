@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Technical reference document.
+
 # ASJ Portal v2 — Target Backend Architecture
 
 **Date:** 2026-09-01

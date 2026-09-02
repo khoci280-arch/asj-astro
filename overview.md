@@ -1,3 +1,7 @@
+> 📅 **Historical Document** — Technical notes from 2026-09-01/02 sessions. Architecture decisions and CI/CD pipeline notes are still valid. Some specific numbers (test counts, error counts) may have changed.
+
+---
+
 # Database Optimization — Overview
 
 ## What was done

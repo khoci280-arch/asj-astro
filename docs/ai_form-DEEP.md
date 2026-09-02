@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # ai-cv.astro - Deep Analysis
 
 > AI CV (Qween Jeklin) - Chat AI + Form CV Bilingual.

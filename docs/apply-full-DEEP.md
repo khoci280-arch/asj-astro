@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # apply.astro - Deep Analysis
 
 > Form lamaran loker 3 langkah.

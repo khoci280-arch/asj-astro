@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Technical reference document.
+
 # CI/CD Pipeline
 
 Automated build, test and deployment for **ASJ Portal v2** (Astro 5 + Preact + Netlify Functions).

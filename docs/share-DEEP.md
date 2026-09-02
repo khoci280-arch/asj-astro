@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # share.astro - Deep Analysis
 
 > Public Share Viewer untuk Kaisha.

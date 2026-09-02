@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — AI feature documentation.
+
 # AI CV Full Flow - End-to-End
 
 ## Flow:

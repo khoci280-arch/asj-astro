@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Analysis may not reflect recent code changes.
+
 # AI Submit + TTD Naitei - Deep Analysis
 
 ## Submit: saveToDatabase() -> upload Cloudinary -> bridge-links/submitDataAsj

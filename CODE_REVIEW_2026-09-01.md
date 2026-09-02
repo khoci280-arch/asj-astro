@@ -1,3 +1,7 @@
+> 📅 **Historical Document** — Review dated 2026-09-01. Some findings have been fixed in subsequent sessions (see git log). Key fixes include: admin login broken import, data loading pipeline, catatan save API contract, getPath traversal bug, and modal wiring.
+
+---
+
 # Code Review — asj-portal-v2
 
 **Date:** 2026-09-01

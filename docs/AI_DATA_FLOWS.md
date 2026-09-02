@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — AI feature documentation.
+
 # AI Data Flows - Complete Reference
 
 ## 10 AI Features:

@@ -1,3 +1,5 @@
+> **Last updated:** 2026-09-03 — Technical reference document.
+
 # Database Optimization Overview — 2026-09-01
 
 ## Summary
