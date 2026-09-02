@@ -50,6 +50,8 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     nilai_jft_text: data.jftText !== undefined ? data.jftText : undefined,
     bidang_ssw_text: data.sswText !== undefined ? data.sswText : undefined,
     id_loker_pilihan: data.idLoker !== undefined && data.idLoker !== null ? String(data.idLoker).trim() : undefined,
+    tahapan_seleksi: data.tahapan !== undefined ? data.tahapan : undefined,
+    status_kandidat: data.status !== undefined ? data.status : undefined,
   };
   for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
   try {

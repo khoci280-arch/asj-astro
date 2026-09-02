@@ -24,6 +24,7 @@ import UndanganKelasModal from "./UndanganKelasModal";
 import TabConfig from './TabConfig.tsx';
 import AdminAiCopilot from "./AdminAiCopilot";
 import CandidateProfileModal from './CandidateProfileModal';
+import EditCandidateModal from './EditCandidateModal';
 import Icon from '../ui/Icon';
 
 function useModal<T = void>() {
@@ -58,7 +59,7 @@ export default function AdminPanel() {
   });
   useEffect(() => {
     const onAiCopilot = (e: Event) => aiCopilot.show((e as CustomEvent).detail);
-    const onEdit = (e: Event) => showToast('Edit kandidat: ' + (e as CustomEvent).detail.nama, 'info');
+    const onEdit = (e: Event) => { const d = (e as CustomEvent).detail; editModal.show(d); };
     const onHistory = (e: Event) => { const d = (e as CustomEvent).detail; profile.show({ wa: d.wa, nama: d.nama }); };
     const onUndangan = () => undangan.show();
     window.addEventListener('openAdminAiCopilot', onAiCopilot);
@@ -84,6 +85,7 @@ export default function AdminPanel() {
   const aiCopilot = useModal<{wa: string; nama: string}>();
   const pemberkasan = useModal<{wa: string; nama: string}>();
   const profile = useModal<{wa: string; nama: string}>();
+  const editModal = useModal<any>();
 
   return (
     <div class="space-y-6">
@@ -176,6 +178,7 @@ export default function AdminPanel() {
       {undangan.isOpen && <UndanganKelasModal isOpen={undangan.isOpen} onClose={undangan.hide} />}
       {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.nama} onClose={aiCopilot.hide} />}
       {profile.isOpen && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} isOpen={profile.isOpen} onClose={profile.hide} />}
+      {editModal.isOpen && editModal.target && <EditCandidateModal candidate={editModal.target} isOpen={editModal.isOpen} onClose={editModal.hide} />}
     </div>
   );
 }

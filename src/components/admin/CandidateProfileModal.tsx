@@ -249,7 +249,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
             {/* 3. Edit Data Cepat */}
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: { wa: data.wa, nama: data.nama } }));
+                window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: data }));
               }}
               class="w-full mb-4 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
