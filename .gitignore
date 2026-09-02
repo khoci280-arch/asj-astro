@@ -4,6 +4,7 @@ dist/
 .env
 .env.*
 *.log
+*.log.err
 .DS_Store
 .env.server
 .netlify/
