@@ -25,6 +25,7 @@ import TabConfig from './TabConfig.tsx';
 import AdminAiCopilot from "./AdminAiCopilot";
 import CandidateProfileModal from './CandidateProfileModal';
 import EditCandidateModal from './EditCandidateModal';
+import MatchmakingModal from './MatchmakingModal';
 import Icon from '../ui/Icon';
 
 function useModal<T = void>() {
@@ -62,13 +63,16 @@ export default function AdminPanel() {
     const onEdit = (e: Event) => { const d = (e as CustomEvent).detail; editModal.show(d); };
     const onHistory = (e: Event) => { const d = (e as CustomEvent).detail; profile.show({ wa: d.wa, nama: d.nama }); };
     const onUndangan = () => undangan.show();
+    const onMatchmaking = (e: Event) => matchmaking.show((e as CustomEvent).detail);
     window.addEventListener('openAdminAiCopilot', onAiCopilot);
     window.addEventListener('openUndanganKelas', onUndangan);
+      window.addEventListener('openMatchmaking', onMatchmaking);
     window.addEventListener('openCandidateEdit', onEdit);
     window.addEventListener('showCandidateHistory', onHistory);
     return () => {
       window.removeEventListener('openAdminAiCopilot', onAiCopilot);
       window.removeEventListener('openUndanganKelas', onUndangan);
+      window.removeEventListener('openMatchmaking', onMatchmaking);
       window.removeEventListener('openCandidateEdit', onEdit);
       window.removeEventListener('showCandidateHistory', onHistory);
     };
@@ -86,6 +90,7 @@ export default function AdminPanel() {
   const pemberkasan = useModal<{wa: string; nama: string}>();
   const profile = useModal<{wa: string; nama: string}>();
   const editModal = useModal<any>();
+  const matchmaking = useModal<{job: any; candidates: any[]}>();
 
   return (
     <div class="space-y-6">
@@ -179,6 +184,7 @@ export default function AdminPanel() {
       {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.nama} onClose={aiCopilot.hide} />}
       {profile.isOpen && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} isOpen={profile.isOpen} onClose={profile.hide} />}
       {editModal.isOpen && editModal.target && <EditCandidateModal candidate={editModal.target} isOpen={editModal.isOpen} onClose={editModal.hide} />}
+      {matchmaking.isOpen && matchmaking.target && <MatchmakingModal job={matchmaking.target.job} candidates={matchmaking.target.candidates} isOpen={matchmaking.isOpen} onClose={matchmaking.hide} />}
     </div>
   );
 }

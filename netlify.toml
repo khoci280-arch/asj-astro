@@ -16,7 +16,7 @@
 
 # Phase 5: Job queue sweep every 2 minutes
 [functions."sweep-queue"]
-  schedule = "@every 2m"
+  schedule = "*/2 * * * *"
 
 # Cache headers
 [[headers]]
@@ -28,11 +28,6 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
-
-[[redirects]]
-  from = "/admin"
-  to = "/index.html"
-  status = 200
 
 [[redirects]]
   from = "/candidate"

@@ -4,6 +4,7 @@ import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 
 interface Props {
   candidate: {

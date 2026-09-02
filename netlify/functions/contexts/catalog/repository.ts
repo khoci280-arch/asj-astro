@@ -27,7 +27,9 @@ import {
   mapCandidate,
 } from '../../_lib/db/candidates';
 import { findJobs, mapJob } from '../../_lib/db/jobs';
-import { findForms, findFormsByWa, findFormsByWaList, findFormsLight, mapForm, parseDocs } from '../../_lib/db/forms';
+import { findForms, findFormsByWa, findFormsByWaList, findFormsLight, mapForm as _mapForm, parseDocs } from '../../_lib/db/forms';
+const mapForm = _mapForm;
+export { _mapForm as mapForm };
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { findAssets, findSettings } from '../../_lib/db/misc';
 import { findJobByCodeFiltered } from '../../_lib/db/jobs';

@@ -8,6 +8,9 @@ import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
+import MatchmakingModal from './MatchmakingModal';
+import { useStore } from '@nanostores/preact';
+import { allKandidatList, fetchKandidatFromAPI } from '../../store/adminStore';
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
 
@@ -32,8 +35,11 @@ export default function TabDbJob() {
   const [loading, setLoading] = useState(true);
   const [editJob, setEditJob] = useState<DbJob | null>(null);
   const [shareJob, setShareJob] = useState<DbJob | null>(null);
+  const [matchJob, setMatchJob] = useState<DbJob | null>(null);
+  const allCandidates = useStore(allKandidatList);
 
   useEffect(() => { fetchLoker(); }, []);
+  useEffect(() => { fetchKandidatFromAPI(); }, []);
 
   async function fetchLoker() {
     try {
@@ -139,6 +145,7 @@ export default function TabDbJob() {
                   <td class="p-4 text-center">
                     <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button>
                     <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="share-alt" /> Share</button>
+                    <button onClick={() => setMatchJob(db)} class="ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="search" /> Match</button>
                     <button onClick={async () => { try { const r = await fetch(getEndpoint('downloadJobDocs'), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"downloadJobDocs", args:[db.code]}) }); const d = await r.json(); if(d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(d.error||"Gagal","error");} } catch(e: unknown) {showToast("Error: " + (e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
@@ -149,6 +156,7 @@ export default function TabDbJob() {
       )}
       {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
+      {matchJob && <MatchmakingModal job={matchJob} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} />}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} job internal</p>
     </div>
   );

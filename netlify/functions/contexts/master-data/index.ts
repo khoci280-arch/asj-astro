@@ -13,3 +13,5 @@ export {
   buildAiOverflow,
   mergeAiOverflow,
 } from './service';
+// Alias: simpanUpdateMaster maps to handleSubmitMasterForm
+export { handleSubmitMasterForm as handleSimpanUpdateMaster } from './service';
