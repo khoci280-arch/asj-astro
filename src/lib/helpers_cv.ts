@@ -7,7 +7,10 @@
 /** Deep path getter: getPath(obj, "identitas.nama_lengkap") */
 export function getPath(obj: unknown, path: string): unknown {
   return path.split(".").reduce(
-    (o: Record<string, unknown> | undefined, k: string) => (o || {}) as Record<string, unknown> | undefined,
+    (o: Record<string, unknown> | undefined, k: string) => {
+      if (o == null || typeof o !== 'object') return undefined;
+      return (o as Record<string, unknown>)[k] as Record<string, unknown> | undefined;
+    },
     obj as Record<string, unknown>,
   ) as unknown;
 }
