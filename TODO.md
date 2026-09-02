@@ -87,6 +87,14 @@
 
 ## ✅ DONE (Recent Sessions)
 
+### Architecture Implementation (Previously Completed)
+- [x] Backend architecture — 15 surfaces, 14 contexts, 13 kernel files
+- [x] DB timeout + circuit breaker (Phase 1)
+- [x] Rate limiter (Postgres-backed)
+- [x] Retry + jitter + bulkhead
+- [x] Structured logging infrastructure
+- [x] Frontend architecture — 9 pages, 12 modals
+
 ### 2026-09-03 Session
 - [x] Fix getPath() deep traversal bug — [object Object] di CV
 - [x] Wire modal triggers — PemberkasanModal, UndanganKelasModal
@@ -113,10 +121,13 @@
 |--------|-------|
 | Pages | 9/9 ✅ |
 | Admin Modals | 12/12 ✅ |
-| Backend Files | 117 |
+| Backend Surfaces | 15/15 ✅ |
+| Backend Contexts | 14/14 ✅ |
+| Kernel Files | 13/13 ✅ |
 | Tests | 235/235 ✅ |
 | Build Time | 3s ✅ |
 | TypeScript Errors | 0 ✅ |
+| Architecture | ✅ Fully implemented |
 | Known Bugs | 5 (all low/medium) |
 | Missing Features | ~15 (see above) |
 
@@ -124,11 +135,12 @@
 
 ## 🎯 Recommended Next Steps
 
-### Week 1: Security + Stability
-1. Audit RLS policies
-2. Add error boundaries
-3. Test cold start
+### Week 1: Security + Production Readiness
+1. Audit RLS policies (security blocking issue)
+2. Add error boundaries (UX polish)
+3. Test cold start performance
 4. Fix known bugs
+5. Verify env vars in Netlify production
 
 ### Week 2: Core Features
 1. Email notifications

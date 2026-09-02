@@ -1,4 +1,21 @@
-> **Last updated:** 2026-09-03. Current test count: 235/235. Admin panel: 8 tabs + 12 modals. Backend: Netlify Functions with circuit breaker, rate limiter, job queue.
+# ASJ Astro — Architecture
+
+> **✅ IMPLEMENTATION STATUS (2026-09-03)**
+> 
+> Frontend architecture is **FULLY IMPLEMENTED**:
+> - ✅ 9 pages (all routes)
+> - ✅ 12 admin modals (all functionality)
+> - ✅ Preact islands with client:load
+> - ✅ Nanostores for state management
+> - ✅ Zod validation at API edge
+> - ✅ 235 unit tests passing
+> 
+> **Remaining gaps:**
+> - ⚠️ Error boundaries not added globally
+> - ⚠️ Loading skeletons incomplete
+> - ⚠️ PWA manifest needs completion
+
+---
 
 # ASJ Astro — Architecture Deep Dive
 
