@@ -19,10 +19,27 @@ export async function handleUpdateCatatanKandidat(payload: unknown[], sessionTok
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
-  const [id, intNote, extNote, updatedAt] = payload || [];
+  // Support both formats:
+  // Legacy positional: [id, intNote, extNote, updatedAt]
+  // Frontend object: [{ wa, catatan }]
+  let id: string | number | undefined;
+  let intNote = '';
+  let updatedAt: string | undefined;
+  const first = payload?.[0];
+  if (first && typeof first === 'object') {
+    // Frontend format: { wa, catatan }
+    const data = first as Record<string, unknown>;
+    const row = await findCandidateByWa(String(data.wa || ''));
+    if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
+    id = row.id;
+    intNote = String(data.catatan || '');
+  } else {
+    // Legacy positional format
+    [id, intNote, , updatedAt] = payload || [];
+  }
   if (!id) return { success: false, error: 'ID kandidat tidak ditemukan.' };
   try {
-    await patchCandidate(String(id), { catatan_internal: intNote || '', catatan_external: extNote || '' }, updatedAt, sessionToken);
+    await patchCandidate(String(id), { catatan_admin: intNote || '' }, updatedAt, sessionToken);
     return { success: true };
   } catch (e: unknown) {
     const msg = String(e instanceof Error ? e.message : e);

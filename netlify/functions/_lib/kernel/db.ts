@@ -38,6 +38,7 @@ const SERVICE_ROLE_ALLOWLIST = new Set([
   'documents.signUpload',       // Storage signing
   'documents.signDownload',     // Storage signing
   'configuration.migrate',      // Schema changes
+  'registry.patchCandidate',     // Admin catatan/field updates
   'ingestion.parseDocument',    // Cross-table writes
   'scheduling.dueReminders',    // Cross-table reads
 ]);
