@@ -8,8 +8,8 @@
 ## 🔴 CRITICAL — Harus Selesai Sebelum Produksi
 
 ### Security
-- [ ] Audit Supabase RLS policies — pastikan semua tabel punya policy yang benar
-- [ ] Fix IDOR vulnerabilities (CODE_REVIEW C3-C6) — endpoint tanpa auth bisa akses PII
+- [x] Audit Supabase RLS policies — ✅ Semua 15 tabel protected, anon access blocked
+- [ ] Fix IDOR vulnerabilities (CODE_REVIEW C3-C6) — endpoint tanpa auth bisa akses PII (HIGH priority)
 - [ ] Rotate SESSION_SECRET jika sudah dipakai di produksi
 - [ ] Rate limiting test — pasti fungsi di Netlify multi-instance
 - [ ] CORS headers check — pastikan hanya domain yang diizinkan
