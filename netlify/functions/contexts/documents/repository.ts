@@ -3,7 +3,7 @@
  *
  * Owns: Storage buckets, berkas, pemberkasan_checklist
  */
-import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from '../../_lib/db/client';
+import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, hasBackend, supabaseUrl } from '../../_lib/db/client';
 import { findFormsByWa, findForms, upsertFormRow } from '../../_lib/db/forms';
 import { findCandidateByWaFiltered, findCandidates, findCandidatesByJobFiltered, mapCandidate } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
@@ -62,11 +62,11 @@ export async function findCandidatesByJob(code: string): Promise<import("../../_
   return candidates || [];
 }
 
-export async function fetchAllMasters(waList: string[]): Promise<import("../../_lib/db/row-types").AnyRawRow[]> {
+export async function fetchAllMasters(waList: string[]): Promise<import("../../_lib/db/row-types").AnyRawRow[] | null> {
   return waList.length ? await fetchMasterByWa(waList) : [];
 }
 
 export {
-  normalizeWa, pick, toText, supabaseJson, supabaseUpsert,
-  findFormsByWa, findForms, upsertFormRow, mapCandidate, nextCandidateId,
+  normalizeWa, pick, toText, supabaseJson, supabaseUpsert, hasBackend, supabaseUrl,
+  findFormsByWa, findForms, upsertFormRow, mapCandidate, nextCandidateId, findCandidates,
 };

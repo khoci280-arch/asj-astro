@@ -5,13 +5,13 @@ import crypto from 'crypto';
 // =============================================================================
 
 // Cache token untuk performa
-let _oauthToken = null;
+let _oauthToken: string | null = null;
 let _tokenExpiry = 0;
 
 /**
  * Membuat JWT untuk menukar OAuth2 token dari Google API (tanpa dependency luar).
  */
-function getGoogleAuthToken(serviceAccount) {
+function getGoogleAuthToken(serviceAccount: { client_email: string; private_key: string }) {
   return new Promise((resolve, reject) => {
     if (_oauthToken && Date.now() < _tokenExpiry) {
       return resolve(_oauthToken);
@@ -28,7 +28,7 @@ function getGoogleAuthToken(serviceAccount) {
       iat: iat,
     };
 
-    const toBase64Url = (obj) =>
+    const toBase64Url = (obj: unknown) =>
       Buffer.from(JSON.stringify(obj))
         .toString('base64')
         .replace(/=/g, '')
@@ -78,7 +78,7 @@ function getGoogleAuthToken(serviceAccount) {
  * @param {string} body - Isi notifikasi
  * @param {string} url - URL tujuan saat notifikasi di-klik (opsional)
  */
-async function sendPushNotification(token, title, body, url = '/') {
+async function sendPushNotification(token: string, title: string, body: string, url = '/') {
   const envRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!envRaw) return false;
 
@@ -116,7 +116,7 @@ async function sendPushNotification(token, title, body, url = '/') {
     }
     return true;
   } catch (e) {
-    console.error('[FCM] Catch Error:', e.message);
+    console.error('[FCM] Catch Error:', (e as Error).message);
     return false;
   }
 }
@@ -125,7 +125,7 @@ async function sendPushNotification(token, title, body, url = '/') {
  * Mengirim notifikasi ke daftar token. Token yang tidak valid akan di-return
  * agar bisa dihapus dari database.
  */
-async function sendMulticast(tokens, title, body, url = '/') {
+async function sendMulticast(tokens: string[], title: string, body: string, url = '/') {
   const invalidTokens = [];
   for (let token of tokens) {
     if (!token) continue;
@@ -136,7 +136,7 @@ async function sendMulticast(tokens, title, body, url = '/') {
   return { successCount: tokens.length - invalidTokens.length, invalidTokens };
 }
 
-export function buildPushPayload(token, title, body, url = '/') {
+export function buildPushPayload(token: string, title: string, body: string, url = '/') {
   return {
     message: {
       token: String(token),

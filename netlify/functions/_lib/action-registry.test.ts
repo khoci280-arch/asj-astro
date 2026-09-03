@@ -126,4 +126,10 @@ describe('regresi — action yang pernah tidak terdaftar', () => {
   it('saveSignature (CandidateDash) terdaftar', () => {
     expect(typeof SURFACE_HANDLERS.saveSignature).toBe('function');
   });
+
+  it('getJobStatus (polling background job) terdaftar + menolak payload kosong', async () => {
+    expect(typeof SURFACE_HANDLERS.getJobStatus).toBe('function');
+    // Deterministic without a DB: missing jobId throws the kernel validation error.
+    await expect(SURFACE_HANDLERS.getJobStatus([])).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
 });

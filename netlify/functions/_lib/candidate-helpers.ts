@@ -3,7 +3,7 @@ import { normalizeWa, pick, supabaseJson } from './db/client';
 // auth, job, form). Dipisah dari handlers.js (Fase 1.1b) supaya tidak ada
 // saling-require antar modul action.
 
-import { findCandidateByWaFiltered } from './db/candidates';
+import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 
 // Kolom WA yang dikenali di tabel kandidat (urutan prioritas).
 const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
@@ -34,14 +34,14 @@ async function nextCandidateId(): Promise<string> {
 }
 
 // Cari baris kandidat berdasarkan WA (format fleksibel 0xx / 62xx).
-async function findCandidateByWa(wa) {
+async function findCandidateByWa(wa: string) {
   const want = normalizeWa(wa);
   // Jalur cepat: query server-side (filter kolom WA) — tanpa tarik 300 baris.
   const hit = await findCandidateByWaFiltered(want);
   if (hit !== undefined) return hit;
   // Fallback: scan penuh (skema kolom WA tidak dikenal).
   const found = await findCandidates();
-  return found.rows.find((r) => normalizeWa(pick(r, CAND_WA_COLS) || '') === want) || null;
+  return found.rows.find((r: any) => normalizeWa(pick(r, CAND_WA_COLS) || '') === want) || null;
 }
 
 export { CAND_WA_COLS, findCandidateByWa, nextCandidateId };

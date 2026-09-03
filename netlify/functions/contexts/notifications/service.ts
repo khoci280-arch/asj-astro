@@ -3,10 +3,9 @@
  *
  * Other contexts and surfaces import ONLY from index.ts.
  */
-import { normalizeWa } from '../../_lib/db/client';
 import { env } from '../../_lib/env';
 import { requireRole } from '../identity';
-import { upsertWaTemplate, deleteWaTemplate, getWaTemplates } from './repository';
+import { normalizeWa, upsertWaTemplate, deleteWaTemplate, getWaTemplates } from './repository';
 
 async function fonnteSend(target: string, message: string): Promise<any> {
   const token = env('FONNTE_TOKEN') || env('FONNTE_API_KEY');

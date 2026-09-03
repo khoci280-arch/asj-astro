@@ -6,5 +6,5 @@
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
 exports.handler = makeSurfaceHandler([
-  'simpanWaTemplate', 'hapusWaTemplate', 'kirimSatuPesanFonnte', 'kirimTawaranMassal',
+  'simpanWaTemplate', 'hapusWaTemplate', 'kirimSatuPesanFonnte', 'kirimTawaranMassal', 'getJobStatus',
 ]);

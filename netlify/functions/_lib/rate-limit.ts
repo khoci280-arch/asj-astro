@@ -11,16 +11,16 @@
 //   fail(key, { lockoutAfter, lockoutMs }) — catat kegagalan (mis. PIN salah);
 //     setelah `lockoutAfter` kegagalan dalam window → lockout `lockoutMs`.
 
-/** @typedef {{ count: number, fails: number, resetAt: number, lockUntil: number }} Bucket */
-/** @typedef {{ limit?: number, windowMs?: number, lockoutAfter?: number, lockoutMs?: number }} RateLimitOpts */
-/** @typedef {{ ok: true, retryAfter?: undefined, locked?: undefined } | { ok: false, retryAfter: number, locked?: boolean }} RateLimitResult */
+interface Bucket { count: number; fails: number; resetAt: number; lockUntil: number }
+interface RateLimitOpts { limit?: number; windowMs?: number; lockoutAfter?: number; lockoutMs?: number }
+type RateLimitResult = { ok: true; retryAfter?: undefined; locked?: undefined } | { ok: false; retryAfter: number; locked?: boolean }
 
 /** @type {Map<string, Bucket>} */
-const buckets = new Map();
+const buckets = new Map<string, Bucket>();
 const MAX_BUCKETS = 20000;
 
 /** @param {number} now */
-function prune(now) {
+function prune(now: number): void {
   if (buckets.size < MAX_BUCKETS) return;
   for (const [k, b] of buckets) {
     if (b.resetAt < now && b.lockUntil < now) buckets.delete(k);
@@ -28,7 +28,7 @@ function prune(now) {
 }
 
 /** @param {string} key @param {number} now @returns {Bucket} */
-function getBucket(key, now) {
+function getBucket(key: string, now: number): Bucket {
   let b = buckets.get(key);
   if (!b) {
     b = { count: 0, fails: 0, resetAt: now, lockUntil: 0 };
@@ -39,7 +39,7 @@ function getBucket(key, now) {
 }
 
 /** @param {string} key @param {RateLimitOpts} opts @returns {RateLimitResult} */
-function check(key, opts) {
+function check(key: string, opts: RateLimitOpts): RateLimitResult {
   const now = Date.now();
   const limit = opts.limit || 5;
   const windowMs = opts.windowMs || 60000;
@@ -61,7 +61,7 @@ function check(key, opts) {
 }
 
 /** @param {string} key @param {RateLimitOpts} opts @returns {void} */
-function fail(key, opts) {
+function fail(key: string, opts: RateLimitOpts): void {
   const now = Date.now();
   const windowMs = opts.windowMs || 60000;
   const lockoutAfter = opts.lockoutAfter || 0;

@@ -30,7 +30,7 @@ const DEMO_ASSETS = {
   },
 };
 
-function demoRincian(includeList, excludeList, benefitList, persyaratanList, tahapanList, total) {
+function demoRincian(includeList: string[], excludeList: string[], benefitList: string[], persyaratanList: string[], tahapanList: Array<{ nomor: string | number; nama: string; nominal: string }>, total: string) {
   const lines = [];
   lines.push('INCLUDE');
   includeList.forEach((i) => lines.push('- ' + i));
@@ -253,7 +253,7 @@ const DEMO_JOBS = [
   },
 ];
 
-function demoGetAppData(mode) {
+function demoGetAppData(mode: string) {
   const isAdmin = mode === 'admin';
   const jobs = isAdmin ? DEMO_JOBS : DEMO_JOBS.filter((j) => j.status !== 'CLOSE');
   return {

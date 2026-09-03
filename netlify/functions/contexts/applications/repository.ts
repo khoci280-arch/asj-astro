@@ -33,7 +33,7 @@ export async function getFormsByWa(wa: string): Promise<import("../../_lib/db/ro
   return Array.isArray(rows) ? rows : [];
 }
 
-export async function patchForm(id: string, body: Record<string, unknown>, sessionToken?: string): Promise<void> {
+export async function patchForm(id: string | number, body: Record<string, unknown>, sessionToken?: string): Promise<void> {
   const client = clientFor('applications.patchForm', sessionToken);
   await supabaseJson('PATCH', 'database_asj_form', {
     query: { id: 'eq.' + id },
@@ -44,7 +44,7 @@ export async function patchForm(id: string, body: Record<string, unknown>, sessi
   } as Record<string, unknown>);
 }
 
-export async function deleteForm(id: string, sessionToken?: string): Promise<void> {
+export async function deleteForm(id: string | number, sessionToken?: string): Promise<void> {
   const client = clientFor('applications.deleteForm', sessionToken);
   await supabaseJson('DELETE', 'database_asj_form', {
     query: { id: 'eq.' + id },

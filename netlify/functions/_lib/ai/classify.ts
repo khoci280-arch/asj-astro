@@ -50,10 +50,10 @@ const PARSE_SYSTEM_PROMPT = [
   'Kembalikan HANYA objek JSON valid.',
 ].join(' ');
 
-async function handleParseDokumenBiodata(payload, sessionToken) {
+async function handleParseDokumenBiodata(payload: unknown, sessionToken: string | undefined) {
   const guard = requireRole(sessionToken, 'admin');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = (payload && (payload as any[])[0]) || {};
   const file = d.file || {};
   const name = String(file.name || '').trim();
   const mimeType = String(file.mimeType || file.type || '').trim();
@@ -62,7 +62,7 @@ async function handleParseDokumenBiodata(payload, sessionToken) {
   let buf;
   try {
     buf = Buffer.from(data, 'base64');
-  } catch (e) {
+  } catch (e: any) {
     return { success: false, error: 'File tidak bisa dibaca.' };
   }
   if (buf.length > PARSE_MAX_BYTES) {
@@ -103,7 +103,7 @@ async function handleParseDokumenBiodata(payload, sessionToken) {
   try {
     const m = await findMasterByWa(wa);
     if (m) namaSekarang = String(m.nama_lengkap || '');
-  } catch (e) {
+  } catch (e: any) {
     /* opsional */
   }
 
@@ -138,7 +138,7 @@ async function handleParseDokumenBiodata(payload, sessionToken) {
         keluarga: Array.isArray(parsed.keluarga) ? parsed.keluarga.length : 0,
       },
     };
-  } catch (e) {
+  } catch (e: any) {
     console.error('[AI] parseDokumenBiodata error:', e && e.message ? e.message : e);
     return {
       success: false,

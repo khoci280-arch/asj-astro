@@ -10,13 +10,13 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./env.js', () => {
   const SECRET = 'test-secret-for-session-' + process.env.TEST_SESSION_SECRET;
   return {
-    env: (key) => (key === 'SESSION_SECRET' ? SECRET : ''),
+    env: (key: string) => (key === 'SESSION_SECRET' ? SECRET : ''),
     debugFileEnvKeys: () => ({}),
     debugFileStructure: () => ({}),
   };
 });
 
-import { signToken, verifyToken } from './session';
+import { signToken, verifyToken, type SessionPayload } from './session';
 
 describe('session — signToken + verifyToken', () => {
   // signToken intentionally injects `exp` when the caller does not supply one
@@ -26,8 +26,8 @@ describe('session — signToken + verifyToken', () => {
   // the roundtrip untouched.
   const nowSec = () => Math.floor(Date.now() / 1000);
 
-  function expectRoundtrip(payload) {
-    const result = verifyToken(signToken(payload));
+  function expectRoundtrip(payload: SessionPayload) {
+    const result = verifyToken(signToken(payload)) as SessionPayload & { exp: number };
     expect(typeof result.exp).toBe('number');
     expect(result.exp).toBeGreaterThan(nowSec());
     const { exp, ...rest } = result;
@@ -56,12 +56,12 @@ describe('session — signToken + verifyToken', () => {
 
   it('exp eksplisit dari caller tidak ditimpa', () => {
     const custom = nowSec() + 3600; // 1 hour
-    const result = verifyToken(signToken({ role: 'admin', exp: custom }));
+    const result = verifyToken(signToken({ role: 'admin', exp: custom })) as SessionPayload & { exp: number };
     expect(result.exp).toBe(custom);
   });
 
   it('refresh token mendapat exp ~7 hari', () => {
-    const result = verifyToken(signToken({ role: 'admin', kind: 'refresh' }));
+    const result = verifyToken(signToken({ role: 'admin', kind: 'refresh' })) as SessionPayload & { exp: number };
     const days = (result.exp - nowSec()) / 86400;
     expect(days).toBeGreaterThan(6.9);
     expect(days).toBeLessThanOrEqual(7);
@@ -142,7 +142,7 @@ describe('session — edge cases', () => {
 describe('session — timing safe comparison', () => {
   it('verify uses timingSafeEqual (same-length buffers)', () => {
     const token = signToken({ role: 'admin' });
-    const result = verifyToken(token);
+    const result = verifyToken(token)!;
     expect(result).not.toBeNull();
     expect(result.role).toBe('admin');
   });

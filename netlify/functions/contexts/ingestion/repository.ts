@@ -22,13 +22,13 @@ export async function patchMaster(id: string, body: Record<string, unknown>): Pr
     query: { id: 'eq.' + id },
     body,
     headers: { Prefer: 'return=representation' },
-  });
+  }) as Promise<Record<string, unknown>>;
 }
 
 export async function upsertMaster(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   return supabaseUpsert('master_database_candidate', body, ['no_wa'], {
     headers: { Prefer: 'return=representation' },
-  });
+  }) as Promise<Record<string, unknown>>;
 }
 
 export async function nextCandidateId(): Promise<string> {

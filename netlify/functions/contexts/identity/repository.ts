@@ -91,3 +91,5 @@ export async function findCandidateForRefresh(wa: string): Promise<CandidateAuth
     return null;
   }
 }
+
+export { supabaseJson };

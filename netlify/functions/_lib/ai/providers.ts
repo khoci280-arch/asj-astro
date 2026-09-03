@@ -26,13 +26,13 @@ const MODELS = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5
 // Gemini API menolak request yang berakhiran giliran model ("Requests ending
 // with a model turn are not supported") — buang giliran model di akhir history
 // sebelum dikirim (bisa terjadi kalau history frontend terakumulasi asinkron).
-function trimTrailingModelTurn(contents) {
+function trimTrailingModelTurn(contents: Array<{ role: string }>) {
   const out = contents.slice();
   while (out.length > 1 && out[out.length - 1].role === 'model') out.pop();
   return out;
 }
 
-async function fetchGemini(model, key, contents) {
+async function fetchGemini(model: string, key: string, contents: Array<{ role: string }>) {
   breaker.check('gemini');
   try {
     // S11 fix: Use header instead of URL query string for API key.
@@ -62,7 +62,7 @@ async function fetchGemini(model, key, contents) {
       j.candidates[0] &&
       j.candidates[0].content &&
       j.candidates[0].content.parts
-      ? j.candidates[0].content.parts.map((p) => p.text || '').join('')
+      ? j.candidates[0].content.parts.map((p: { text?: unknown }) => p.text || '').join('')
       : '';
   } catch (e) {
     if (e instanceof Error && e.message.startsWith('Gemini HTTP')) throw e;
@@ -78,7 +78,7 @@ async function fetchGemini(model, key, contents) {
 // ---------------------------------------------------------------------------
 const GROK_TIMEOUT_MS = 10000;
 
-async function fetchGrok(key, systemPrompt, history) {
+async function fetchGrok(key: string, systemPrompt: string, history: Array<{ role?: string; content?: unknown }>) {
   breaker.check('grok');
   const messages = [{ role: 'system', content: systemPrompt }];
   for (const h of Array.isArray(history) ? history : []) {
@@ -114,7 +114,7 @@ async function fetchGrok(key, systemPrompt, history) {
   }
 }
 
-async function grokGenerate(systemPrompt, history) {
+async function grokGenerate(systemPrompt: string, history: Array<{ role?: string; content?: unknown }>) {
   const key = env('XAI_API_KEY');
   if (!key) return null;
   try {
@@ -124,7 +124,7 @@ async function grokGenerate(systemPrompt, history) {
   return null;
 }
 
-async function geminiGenerate(systemPrompt, history) {
+async function geminiGenerate(systemPrompt: string, history: Array<{ role?: string; content?: unknown }>) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
     return {
@@ -163,7 +163,7 @@ async function geminiGenerate(systemPrompt, history) {
   throw new Error('Gemini returned empty response');
   }
 
-async function geminiParseFile(systemPrompt, file) {
+async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; data?: unknown }) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
     throw new Error('GEMINI_API_KEY belum dikonfigurasi');
@@ -189,7 +189,7 @@ async function geminiParseFile(systemPrompt, file) {
   throw new Error('Gemini returned empty response');
 }
 
-function parseJsonLoose(text) {
+function parseJsonLoose(text: unknown) {
   let t = String(text || '').trim();
   t = t
     .replace(/^```(?:json)?\s*/i, '')

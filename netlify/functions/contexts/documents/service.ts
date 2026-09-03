@@ -7,17 +7,15 @@ import bcrypt from 'bcryptjs';
 import {
   normalizeWa, pick, supabaseJson, supabaseUpsert, toText,
   findFormByWa, findFormByWaJob, findCandidateRow, findMasterByWa,
-  findCandidatesByJob, fetchAllMasters,
+  findCandidatesByJob, fetchAllMasters, findCandidates,
   findFormsByWa, findForms, upsertFormRow, mapCandidate, nextCandidateId,
+  hasBackend, supabaseUrl,
 } from './repository';
 import { requireRole, isOwnerOrAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
 import { syncFormMailDariUpload } from '../applications';
 import { cacheClear } from '../../_lib/cache';
-import {
-  hasBackend, supabaseUrl,
-} from '../../_lib/db/client';
-import { findJobByCodeFiltered, findJobs, pick as dbPick } from '../../_lib/db/jobs';
+import { findJobByCodeFiltered, findJobs } from '../../_lib/db/jobs';
 import * as session from '../../_lib/session';
 
 const APPLY_WA_COLS = ['no_wa', 'wa', 'whatsapp'];
@@ -253,7 +251,7 @@ export async function handleSubmitApply(payload: any[]) {
     } catch { /* non-fatal */ }
     const PARSEABLE_EXTS = new Set(['pdf', 'docx', 'xlsx', 'xls', 'csv', 'txt']);
     const ingestFiles: any[] = [];
-    const collectIngest = (fileUrl: string) => { if (!fileUrl) return; const ext = String(fileUrl).split('.').pop().split('?')[0].toLowerCase(); if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl, fileType: ext }); };
+    const collectIngest = (fileUrl: string) => { if (!fileUrl) return; const ext = (String(fileUrl).split('.').pop() || '').split('?')[0].toLowerCase(); if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl, fileType: ext }); };
     collectIngest(d.cvFile || d.oldCv); collectIngest(d.jftFile || d.oldJft); collectIngest(d.sswFile || d.oldSsw);
     (d.extraFiles || []).forEach((x: any) => collectIngest(x && x.url));
     if (ingestFiles.length && wa) fireIngest(ingestFiles.map((f) => ({ ...f, wa })), undefined);
@@ -293,7 +291,7 @@ export async function handleSimpanKandidatDanUpload(payload: any[], sessionToken
       if (!f) continue;
       const label = String(f.label || '').toUpperCase();
       let url = String(f.url || '').trim();
-      if (!url && f.data) { const ext = String(f.name || 'file').split('.').pop() || 'jpg'; url = await uploadBase64(f.data, folder, (label || 'FILE') + '.' + ext); }
+      if (!url && f.data) { const ext = String(f.name || 'file').split('.').pop() || 'jpg'; url = (await uploadBase64(f.data, folder, (label || 'FILE') + '.' + ext)) ?? ''; }
       if (url) { fileUrls[label] = url; uploaded.push(label); }
     }
     const now = new Date().toISOString();
@@ -339,7 +337,7 @@ export async function handleSimpanKandidatDanUpload(payload: any[], sessionToken
     }
     const PARSEABLE_EXTS = new Set(['pdf', 'docx', 'xlsx', 'xls', 'csv', 'txt']);
     const ingestFiles: any[] = [];
-    for (const f of files) { if (!f) continue; const fUrl = String(f.url || '').trim(); if (!fUrl) continue; const ext = fUrl.split('.').pop().split('?')[0].toLowerCase(); if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl: fUrl, fileType: ext }); }
+    for (const f of files) { if (!f) continue; const fUrl = String(f.url || '').trim(); if (!fUrl) continue; const ext = (fUrl.split('.').pop() || '').split('?')[0].toLowerCase(); if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl: fUrl, fileType: ext }); }
     if (ingestFiles.length && wa) fireIngest(ingestFiles.map((f) => ({ ...f, wa })), sessionToken);
     // Emit domain event for each uploaded file
     if (wa) {
@@ -379,7 +377,7 @@ export async function handleSimpanBerkasTahapan(payload: any[], sessionToken?: s
     let url = directUrl;
     if (!url) {
       const { uploadBase64 } = await import('../../_lib/storage');
-      url = await uploadBase64(f.data, folder, fileName);
+      url = (await uploadBase64(f.data, folder, fileName)) ?? '';
       if (!url) return { success: false, error: 'Upload gagal.' };
     }
     try {
@@ -440,7 +438,7 @@ export async function handleSimpanRevisiKandidat(payload: any[], sessionToken?: 
     let url = directUrl;
     if (!url) {
       const { uploadBase64 } = await import('../../_lib/storage');
-      url = await uploadBase64(f.data, folder, fileName);
+      url = (await uploadBase64(f.data, folder, fileName)) ?? '';
       if (!url) return { success: false, error: 'Upload gagal.' };
     }
     try { await syncFormMailDariUpload(wa, nama, 'CV', url, cvJobCode); } catch { /* non-fatal */ }

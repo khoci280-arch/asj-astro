@@ -12,7 +12,7 @@ import {
 export async function handleSimpanJobBaru(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const data = (payload && payload[0]) || {};
+  const data = ((payload && payload[0]) || {}) as Record<string, any>;
   if (!data.pekerjaan) return { success: false, error: 'Nama pekerjaan wajib diisi.' };
   if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
   try {
@@ -27,7 +27,7 @@ export async function handleSimpanJobBaru(payload: unknown[], sessionToken?: str
 export async function handleEditLokerFull(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const data = (payload && payload[0]) || {};
+  const data = ((payload && payload[0]) || {}) as Record<string, any>;
   if (!data.code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
   try {
@@ -49,7 +49,7 @@ export async function handleEditLokerFull(payload: unknown[], sessionToken?: str
 export async function handleUbahStatusJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, status, updatedAt] = payload || [];
+  const [code, status, updatedAt] = (payload || []) as [string, string, string | undefined];
   if (!code || !status) return { success: false, error: 'Data tidak lengkap.' };
   try {
     await patchJob(code, { status }, updatedAt, sessionToken);
@@ -66,7 +66,7 @@ export async function handleUbahStatusJob(payload: unknown[], sessionToken?: str
 export async function handleHapusJobData(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code] = payload || [];
+  const [code] = (payload || []) as [string];
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   try {
     const adaTerkait = await countCandidatesForJob(code);
@@ -75,7 +75,7 @@ export async function handleHapusJobData(payload: unknown[], sessionToken?: stri
     }
     if (adaTerkait === undefined) {
       const cands = await findCandidates();
-      const terkait = cands.rows.some((r) => String(r.id_loker_pilihan || '') === String(code));
+      const terkait = cands.rows.some((r: Record<string, unknown>) => String(r.id_loker_pilihan || '') === String(code));
       if (terkait) return { success: false, error: 'Gagal hapus loker. Mungkin masih ada kandidat terkait.' };
     }
     await deleteJob(code);
@@ -88,7 +88,7 @@ export async function handleHapusJobData(payload: unknown[], sessionToken?: stri
 export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, tahapan, status] = payload || [];
+  const [code, tahapan, status] = (payload || []) as [string, unknown, unknown];
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   const body: Record<string, unknown> = {};
   if (tahapan !== undefined && tahapan !== null) body.tahapan = tahapan;
@@ -104,7 +104,7 @@ export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?
 export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, joined] = payload || [];
+  const [code, joined] = (payload || []) as [string, unknown];
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   try {
     await patchJob(code, { dokumen_share: joined || '' }, undefined, sessionToken);
@@ -117,7 +117,7 @@ export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?
 export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [wa, jobCode] = payload || [];
+  const [wa, jobCode] = (payload || []) as [string, string];
   if (!wa || !jobCode) return { success: false, error: 'Data tidak lengkap.' };
   cacheClear();
   try {

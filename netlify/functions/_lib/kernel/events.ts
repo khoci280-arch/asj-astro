@@ -145,7 +145,7 @@ export function emit(event: DomainEvent): void {
   log.info('event.emitted', {
     type: event.type,
     // Hash PII fields for safe logging
-    wa: event.wa ? hashForLog(event.wa) : undefined,
+    wa: 'wa' in event && event.wa ? hashForLog(event.wa) : undefined,
     jobCode: 'jobCode' in event ? (event as any).jobCode : undefined,
   });
 

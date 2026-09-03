@@ -1,12 +1,11 @@
 import { supabaseJson, pick, toText, findTable } from './client';
-import { JOB_MAP_COLS } from './schema.generated';
 // db/jobs.js — repo lowongan (job_database/loker): mapJob, findJobs, lookup by kode.
 
 // Kolom asli tabel job_database (hasil introspeksi):
 //   code_job, tsk, kategori, pekerjaan, lokasi, gender, kuota, jumlah_kandidat,
 //   status, syarat, keterangan, tahapan, format_cv, link_pamflet,
 //   total_biaya, rincian_biaya, dokumen_share
-function mapJob(row) {
+function mapJob(row: any) {
   const pekerjaan = pick(row, [
     'pekerjaan',
     'nama_pekerjaan',
@@ -75,7 +74,7 @@ async function findJobs() {
 }
 
 // Ada kandidat yang masih terikat ke job code? (cek hapus loker) — server-side.
-async function countCandidatesForJob(code) {
+async function countCandidatesForJob(code: string) {
   try {
     const rows = await supabaseJson('GET', 'database_candidate', {
       query: { select: 'id', id_loker_pilihan: 'eq.' + String(code), limit: '1' },
@@ -100,7 +99,7 @@ const JOB_MAP_COLS =
 
 // Cari baris job per kode (code_job / code) — 1 baris, bukan scan semua loker.
 // OPTIMIZED: pakai JOB_MAP_COLS alih-alih SELECT *; fallback SELECT *.
-async function findJobByCodeFiltered(code) {
+async function findJobByCodeFiltered(code: string) {
   const want = String(code || '').trim();
   if (!want) return undefined;
   let anyOk = false;

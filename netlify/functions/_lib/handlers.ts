@@ -6,7 +6,7 @@ import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { getSurfaceHandler } from '../surfaces/index';
 import { supabaseJson } from './db/client';
-import { handleGetJobStatus } from './actions-job-status';
+import { handleGetJobStatus } from './kernel/job-queue';
 
 // Register domain event handlers (side-effect import)
 import { initEventHandlers } from './event-handlers';

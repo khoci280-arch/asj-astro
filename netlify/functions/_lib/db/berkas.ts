@@ -15,7 +15,7 @@ import { fetchMasterLightByWa } from './master';
 // Kandidat kolom per dokumen — urut: pemberkasan_checklist → master → legacy.
 // pemberkasan_checklist (dibuat rebuild) bisa kosong untuk data lama, jadi
 // master_database_candidate (*_url) dipakai sebagai fallback.
-const BERKAS_COLUMNS = [
+const BERKAS_COLUMNS: [string, string[]][] = [
   ['kk', ['kk_url', 'kk']],
   ['akte', ['akte_url', 'akte']],
   ['sd', ['sd_url', 'ijazah_sd_url', 'ijazah_sd', 'sd']],
@@ -36,7 +36,7 @@ const BERKAS_COLUMNS = [
   ['psikotes', ['psikotes_url', 'psikotes']],
 ];
 
-const BIO_COLUMNS = [
+const BIO_COLUMNS: [string, string[]][] = [
   ['email', ['email']],
   ['tmplahir', ['tempat_lahir', 'tmplahir']],
   ['tgllahir', ['tgl_lahir', 'tgllahir']],
@@ -58,7 +58,7 @@ const BIO_COLUMNS = [
 ];
 
 // Tarik pemberkasan_checklist hanya untuk WA di daftar (fallback: null → scan).
-async function fetchBerkasByWa(waList) {
+async function fetchBerkasByWa(waList: string[]) {
   try {
     const rows = await supabaseJson('GET', 'pemberkasan_checklist', {
       query: { select: '*', limit: '500', wa: 'in.(' + waList.join(',') + ')' },
@@ -69,7 +69,7 @@ async function fetchBerkasByWa(waList) {
   }
 }
 
-async function attachBerkasBio(candidates) {
+async function attachBerkasBio(candidates: any[]) {
   if (!Array.isArray(candidates) || candidates.length === 0) return candidates;
   try {
     // Filter server-side: tarik hanya baris yang WA-nya ada di daftar kandidat
@@ -137,7 +137,6 @@ async function attachBerkasBio(candidates) {
             }
             if (v) break;
           }
-          // @ts-expect-error JS→TS migration
           berkas[key] = v && v !== '-' ? toText(v) : '';
         }
         c.berkas = berkas;
@@ -148,7 +147,6 @@ async function attachBerkasBio(candidates) {
         const bio: Record<string, any> = {};
         for (const [key, cols] of BIO_COLUMNS) {
           const v = pick(mr, cols);
-          // @ts-expect-error JS→TS migration
           bio[key] = v && v !== '-' ? toText(v) : '';
         }
         c.bio = bio;
@@ -165,7 +163,7 @@ async function attachBerkasBio(candidates) {
 // Daftar file dalam folder Supabase Storage (bucket asj-files). Dipakai
 // share-data untuk menampilkan dokumen folder master (KK/KTP/ijazah/dll),
 // persis perilaku backend lama (produksi). Non-fatal: error → daftar kosong.
-async function listStorageFolder(prefix) {
+async function listStorageFolder(prefix: string) {
   if (!prefix) return [];
   try {
     const j = await storageRequest('POST', 'object/list/' + bucket(), {

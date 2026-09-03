@@ -8,5 +8,5 @@ import { handleGetAppConfig, handleReportWebVital } from '../contexts/diagnostic
 
 export const DIAGNOSTICS_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   getAppConfig: (p, s) => handleGetAppConfig(p, s),
-  reportWebVital: (p, s) => handleReportWebVital(p as any),
+  reportWebVital: async (p, s) => handleReportWebVital(p as any),
 };

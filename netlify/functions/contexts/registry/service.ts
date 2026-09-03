@@ -35,7 +35,7 @@ export async function handleUpdateCatatanKandidat(payload: unknown[], sessionTok
     intNote = String(data.catatan || '');
   } else {
     // Legacy positional format
-    [id, intNote, , updatedAt] = payload || [];
+    [id, intNote, , updatedAt] = (payload || []) as [string | number | undefined, string, unknown, string | undefined];
   }
   if (!id) return { success: false, error: 'ID kandidat tidak ditemukan.' };
   try {
@@ -54,7 +54,7 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
-  const data = (payload && payload[0]) || {};
+  const data = ((payload && payload[0]) || {}) as Record<string, unknown>;
   if (!data.wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   const updatedAt = data.updated_at as string | undefined;
   const body: Record<string, any> = {
@@ -72,14 +72,14 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
   };
   for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
   try {
-    const row = await findCandidateByWa(data.wa);
+    const row = await findCandidateByWa(data.wa as string);
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
-    const { normalizeWa } = await import('../../_lib/db/client');
+    const { normalizeWa } = await import('./repository');
     await patchCandidate(row.id, body, updatedAt, sessionToken);
 
     // Emit stage-changed event if status_kandidat was modified
     if (body.status_kandidat && String(body.status_kandidat) !== String(row.status_kandidat || '')) {
-      emit({ type: 'candidate.stageChanged', wa: data.wa, from: String(row.status_kandidat || ''), to: String(body.status_kandidat), at: new Date().toISOString() });
+      emit({ type: 'candidate.stageChanged', wa: data.wa as string, from: String(row.status_kandidat || ''), to: String(body.status_kandidat), at: new Date().toISOString() });
     }
     try {
       const labels: string[] = [];
@@ -91,7 +91,7 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
         if (newVal !== oldVal) labels.push(label);
       }
       if (labels.length) {
-        await syncBiodataKeMail(data.wa, String(row.nama_lengkap || row.nama || 'KANDIDAT'), labels);
+        await syncBiodataKeMail(data.wa as string, String(row.nama_lengkap || row.nama || 'KANDIDAT'), labels, sessionToken);
       }
     } catch { /* sync mail is best-effort */ }
     return { success: true };
@@ -107,10 +107,10 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
 export async function handleGetCandidatesPage(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const opts = (payload && payload[0]) || {};
+  const opts = ((payload && payload[0]) || {}) as Record<string, unknown>;
   try {
     const { candidates, total } = await getCandidatesPageRepo({
-      q: opts.q || '',
+      q: (opts.q || '') as string,
       page: Number(opts.page) || 1,
       pageSize: Number(opts.pageSize) || 50,
     });

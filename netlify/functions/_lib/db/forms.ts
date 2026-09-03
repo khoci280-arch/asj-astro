@@ -7,7 +7,7 @@ import { FORM_LIGHT_COLS } from './schema.generated';
 // usia, tb, bb, pas_photo, jft, ssw, file_cv, folder_name, folder_id,
 // folder_url, status, email, tempat_lahir, tgl_lahir, alamat_lengkap,
 // created_at, updated_at, keterangan, ai_data_json, feedback_berkas
-function mapForm(row, i) {
+function mapForm(row: Record<string, any>, i: number) {
   return {
     rowIndex: i,
     id: row.id,
@@ -32,8 +32,8 @@ function mapForm(row, i) {
 }
 
 // Parse keterangan mail menjadi daftar dokumen {nama, url} (format NAMA:URL;...).
-function parseDocs(keterangan) {
-  const out = [];
+function parseDocs(keterangan: string) {
+  const out: { nama: string; url: string }[] = [];
   String(keterangan || '')
     .split(';')
     .forEach((chunk) => {
@@ -84,10 +84,10 @@ async function findFormsLight() {
 // sama dengan findForms() supaya "baris pertama" konsisten.
 // OPTIMIZED: pakai FORM_LIGHT_COLS alih-alih SELECT * — mapForm &
 // attachApplications hanya membaca kolom di proyeksi ini.
-async function findFormsByWa(wa) {
+async function findFormsByWa(wa: string) {
   const want = normalizeWa(wa);
   if (!want) return [];
-  const tryQuery = async (query) => {
+  const tryQuery = async (query: Record<string, string>) => {
     try {
       const light = await supabaseJson('GET', 'database_asj_form', {
         query: { ...query, select: FORM_LIGHT_COLS },
@@ -120,7 +120,7 @@ async function findFormsByWa(wa) {
 // constraint dibuat via:
 //   ALTER TABLE database_asj_form
 //   ADD CONSTRAINT database_asj_form_no_wa_code_job_key UNIQUE (no_wa, code_job);
-async function upsertFormRow(body) {
+async function upsertFormRow(body: Record<string, unknown>) {
   try {
     await supabaseJson('POST', 'database_asj_form', {
       query: { on_conflict: 'no_wa,code_job' },
@@ -129,7 +129,7 @@ async function upsertFormRow(body) {
     });
   } catch (e) {
     // Constraint belum ada → INSERT biasa (perilaku lama). Error lain diteruskan.
-    if (!String(e.message || '').includes('42P10')) throw e;
+    if (!String((e as Error).message || '').includes('42P10')) throw e;
     await supabaseJson('POST', 'database_asj_form', {
       body,
       headers: { Prefer: 'return=minimal' },
@@ -140,7 +140,7 @@ async function upsertFormRow(body) {
 // Baris mail pada posisi index urutan timestamp.desc — pengganti scan 500
 // baris untuk aksi admin yang menerima rowIndex dari frontend (review/approve/
 // reject/hapus/tandai dibaca).
-async function findFormByIndexFiltered(idx) {
+async function findFormByIndexFiltered(idx: number) {
   const i = Number(idx);
   if (!Number.isInteger(i) || i < 0) return undefined;
   try {
@@ -157,13 +157,13 @@ async function findFormByIndexFiltered(idx) {
 // attachApplications halaman kandidat. Hanya membaca kolom ringan
 // (keterangan/no_wa/dll.), jadi proyeksi FORM_LIGHT_COLS dicoba dulu;
 // fallback select * bila kolom tidak cocok; undefined → scan penuh.
-async function findFormsByWaList(waList) {
+async function findFormsByWaList(waList: string[]) {
   const list = [
     ...new Set((Array.isArray(waList) ? waList : []).map((w) => normalizeWa(w)).filter(Boolean)),
   ];
   if (!list.length) return [];
   const inList = list.join(',');
-  const tryQuery = async (query) => {
+  const tryQuery = async (query: Record<string, string>) => {
     try {
       const light = await supabaseJson('GET', 'database_asj_form', {
         query: { ...query, select: FORM_LIGHT_COLS },

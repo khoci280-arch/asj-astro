@@ -57,6 +57,14 @@ module.exports = {
       from: { path: '^netlify/functions/surfaces/' },
       to: { path: '^netlify/functions/_lib/actions-' },
     },
+    // block new SCCs among contexts/ (design §5.4)
+    {
+      name: 'no-circular',
+      comment: 'contexts/ must not form cycles — go through the owner index or _lib (§5.4)',
+      severity: 'error',
+      from: { path: '^netlify/functions/contexts/' },
+      to: { circular: true },
+    },
   ],
   options: {
     doNotFollow: {

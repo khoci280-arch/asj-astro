@@ -196,7 +196,7 @@ export async function handleCheckAndSendAgendaReminders() {
         // Fallback: per-WA query
         for (const wa of waList) {
           try {
-            const { supabaseJson } = await import('../../_lib/db/client');
+            const { supabaseJson } = await import('./repository');
             const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
               query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
             });

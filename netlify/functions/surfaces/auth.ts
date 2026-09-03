@@ -68,10 +68,7 @@ export const AUTH_ACTIONS: Record<string, (payload: unknown[], sessionToken?: st
     return identity.changePassword(wa, lama, baru);
   },
 
-  registerFcmToken: async (payload, sessionToken) => {
-    const { registerFcmToken } = await import('../_lib/actions-auth');
-    return registerFcmToken(payload, sessionToken);
-  },
+  registerFcmToken: (payload, sessionToken) => identity.registerFcmToken(payload, sessionToken),
 
   logout: async () => ({ success: true }),
 };

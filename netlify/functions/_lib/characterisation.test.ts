@@ -1,5 +1,5 @@
 /**
- * kernel/characterisation.test.ts — Characterisation tests (Phase 0 item 5)
+ * _lib/characterisation.test.ts — Characterisation tests (Phase 0 item 5)
  *
  * These tests lock down the CURRENT BEHAVIOUR of the 6 most critical
  * business-logic paths. They act as a regression net: if a refactor
@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 // ── 1. normalizeWa ──────────────────────────────────────────────────────────
-import { normalizeWa, isValidWaFormat, normalizeGender } from '../../shared/wa-rules';
+import { normalizeWa, isValidWaFormat, normalizeGender } from '../shared/wa-rules';
 
 describe('normalizeWa — characterisation', () => {
   describe('Indonesian numbers (08xx → 628xx)', () => {
@@ -84,7 +84,7 @@ describe('normalizeWa — characterisation', () => {
 });
 
 // ── 2. session sign/verify ──────────────────────────────────────────────────
-import { signToken, verifyToken } from '../session';
+import { signToken, verifyToken } from './session';
 
 describe('session sign/verify — characterisation', () => {
   it('roundtrips a basic admin token', () => {
@@ -125,8 +125,8 @@ describe('session sign/verify — characterisation', () => {
 });
 
 // ── 3. validatePayload ──────────────────────────────────────────────────────
-import { validatePayload, schemas } from './validate';
-import { AppError } from './errors';
+import { validatePayload, schemas } from './kernel/validate';
+import { AppError } from './kernel/errors';
 
 describe('validatePayload — characterisation', () => {
   it('extracts valid PIN from array', () => {
@@ -157,7 +157,7 @@ describe('validatePayload — characterisation', () => {
 });
 
 // ── 4. requireRole / requireAdmin ────────────────────────────────────────────
-import { requireRole, requireAdmin, isOwnerOrAdmin } from '../../contexts/identity/service';
+import { requireRole, requireAdmin, isOwnerOrAdmin } from '../contexts/identity/service';
 
 describe('requireRole — characterisation', () => {
   it('returns token payload for valid admin session', () => {
@@ -226,7 +226,7 @@ describe('isOwnerOrAdmin — characterisation', () => {
 });
 
 // ── 6. mailStatusUntukUpdate — mail inbox transitions ────────────────────────
-import { mailStatusUntukUpdate, appendFeedback } from '../../contexts/applications/service';
+import { mailStatusUntukUpdate, appendFeedback } from '../contexts/applications/service';
 
 describe('mailStatusUntukUpdate — characterisation', () => {
   it('unprocessed statuses stay MENUNGGU', () => {

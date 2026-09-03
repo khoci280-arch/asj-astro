@@ -47,7 +47,7 @@ export class AppError extends Error {
   }
 
   /** Serialize for API response (never leaks internals). */
-  toJSON() {
+  toJSON(): { success: false; error: string; code?: string; retryAfter?: number } {
     return {
       success: false,
       error: this.message,
@@ -58,7 +58,7 @@ export class AppError extends Error {
 }
 
 // ── Error code → HTTP status mapping ─────────────────────────────────────────
-function codeToStatus(code: string): number {
+export function codeToStatus(code: string): number {
   const map: Record<string, number> = {
     VALIDATION_FAILED: 400,
     UNAUTHORIZED: 401,

@@ -4,20 +4,20 @@
  * Phase 5: Actions that exceed 10s budget are enqueued as background jobs.
  * Returns 202 + jobId. Client polls via getJobStatus.
  */
-import { enqueue } from '../_lib/kernel/job-queue';
+import { enqueue, handleGetJobStatus } from '../_lib/kernel/job-queue';
 import { log } from '../_lib/kernel/log';
 
 /** Actions that must run in background (> 10s budget) */
 const BACKGROUND_ACTIONS = new Set(['processAiInterview']);
 
-export const AI_ACTIONS: Record<string, Function> = {
+export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   processAIChat: async (p: unknown[], s?: string) => {
     const ai = await import('../contexts/ai-orchestration');
     return ai.handleProcessAIChat(p, s);
   },
   processSiswaAIChat: async (p: unknown[], s?: string) => {
     const ai = await import('../contexts/ai-orchestration');
-    return ai.handleProcessSiswaAIChat(p, s);
+    return ai.handleProcessSiswaAIChat(p);
   },
   processAiInterview: async (p: unknown[], s?: string) => {
     const jobId = await enqueue('ai.interview', { payload: p, sessionToken: s });
@@ -68,4 +68,5 @@ export const AI_ACTIONS: Record<string, Function> = {
     success: false,
     message: 'processUploadDoc has been moved to /ingest function',
   }),
+  getJobStatus: async (p: unknown[], s?: string) => handleGetJobStatus(p, s),
 };

@@ -16,5 +16,5 @@ exports.handler = makeSurfaceHandler([
   'processAiInterview', 'processAiFormSubmit', 'processUploadDoc',
   'generateWawancaraModel', 'simpanHasilWawancara', 'selesaikanWawancara',
   'getHasilWawancara', 'getAdminAiContext', 'buildAdminAiCandidateSummary',
-  'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature',
+  'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature', 'getJobStatus',
 ]);

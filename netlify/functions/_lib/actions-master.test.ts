@@ -42,7 +42,7 @@ describe('buildAiOverflow — nilai form yang kolomnya tidak ada di tabel', () =
       kenalanNama: 'KENJI',
       kenalanAlamat: 'TOKYO',
       kenalanUsia: '',
-    });
+    }) as Record<string, any>;
     expect(o.kenalan_jepang).toEqual({
       nama_id: 'KENJI',
       alamat_id: 'TOKYO',
@@ -58,7 +58,7 @@ describe('buildAiOverflow — nilai form yang kolomnya tidak ada di tabel', () =
         {},
         {},
       ],
-    });
+    }) as Record<string, any>;
     expect(o.pendidikan).toHaveLength(1);
     expect(o.pendidikan[0]).toEqual({
       slot: 0,
@@ -76,7 +76,7 @@ describe('buildAiOverflow — nilai form yang kolomnya tidak ada di tabel', () =
         {},
         {},
       ],
-    });
+    }) as Record<string, any>;
     expect(o.pekerjaan).toEqual([{ slot: 2, entry: { perusahaan: 'PT X', gaji: '5.000.000' } }]);
     expect(o.keluarga).toEqual([
       { slot: 1, entry: { nama: 'B', umur: '50', usia: '50', hubungan: 'IBU', pekerjaan: 'IRT' } },

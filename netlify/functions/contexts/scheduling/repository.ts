@@ -113,4 +113,4 @@ export async function getFcmTokensForWaList(waList: string[]): Promise<string[]>
   return [];
 }
 
-export { toText };
+export { toText, supabaseJson };

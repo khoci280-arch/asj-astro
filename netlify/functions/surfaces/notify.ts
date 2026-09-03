@@ -4,10 +4,10 @@
  * Phase 5: Bulk notifications enqueued as background jobs.
  * Single messages run synchronously if fast; bulk always background.
  */
-import { enqueue } from '../_lib/kernel/job-queue';
+import { enqueue, handleGetJobStatus } from '../_lib/kernel/job-queue';
 import { log } from '../_lib/kernel/log';
 
-export const NOTIFY_ACTIONS: Record<string, Function> = {
+export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   simpanWaTemplate: async (p: unknown[], s?: string) => {
     const notifications = await import('../contexts/notifications');
     return notifications.handleSimpanWaTemplate(p, s);
@@ -26,4 +26,5 @@ export const NOTIFY_ACTIONS: Record<string, Function> = {
     log.info('notify.background-enqueued', { jobId });
     return { success: true, status: 'accepted', jobId, message: 'Pengiriman massal sedang diproses. Gunakan getJobStatus untuk mengecek.' };
   },
+  getJobStatus: async (p: unknown[], s?: string) => handleGetJobStatus(p, s),
 };

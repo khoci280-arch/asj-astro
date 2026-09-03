@@ -65,7 +65,7 @@ export const CAND_MAP_COLS =
   'catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,' +
   'no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,' +
   'catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,' +
-  'created_at,updated_at,password_diubah' as const;
+  'created_at,updated_at,password_diubah';
 
 /** Master data list — for admin attachBerkasBio (document URLs) */
 export const MASTER_LIGHT_COLS =
@@ -79,7 +79,7 @@ export const FORM_LIGHT_COLS =
 export const JOB_MAP_COLS =
   'code_job,tsk,kategori,pekerjaan,lokasi,gender,kuota,jumlah_kandidat,' +
   'status,syarat,keterangan,tahapan,format_cv,link_pamflet,' +
-  'total_biaya,rincian_biaya,dokumen_share' as const;
+  'total_biaya,rincian_biaya,dokumen_share';
 
 // ── Lookup columns (legacy aliases kept for backward compat) ─────────────────
 // These are the columns that MIGHT exist in older schema variants.

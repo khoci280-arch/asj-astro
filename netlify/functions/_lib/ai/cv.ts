@@ -1,4 +1,4 @@
-import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
+import { normalizeWa, pick, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import { requireRole, isOwnerOrAdmin } from '../../contexts/identity';
 import { buildMasterNested } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
@@ -20,7 +20,7 @@ import {
 // Label seksi AI form untuk ringkasan mail ("[BIODATA] fisik & ukuran, medis") —
 // samakan dengan fix sync biodata (submitMasterForm/updateKandidatSuper) supaya
 // admin tahu bagian mana yang di-update kandidat lewat ai_form.
-const AI_SEKSI_LABEL = {
+const AI_SEKSI_LABEL: Record<string, string> = {
   identitas: 'identitas',
   fisik: 'fisik & ukuran',
   medis: 'medis',
@@ -31,9 +31,7 @@ const AI_SEKSI_LABEL = {
   wawancara: 'wawancara',
 };
 
-const APPLY_WA_COLS = ['no_wa', 'wa', 'whatsapp'];
-
-async function findMasterByWa(wa) {
+async function findMasterByWa(wa: string) {
   const want = normalizeWa(wa);
   const rows = await dbFetchMasterByWa([want]);
   if (!Array.isArray(rows)) return null;
@@ -45,14 +43,14 @@ async function findMasterByWa(wa) {
 // Ringkasan data kandidat (bentuk nested dari buildMasterNested) yang disuntikkan
 // ke system prompt processAIChat — supaya Jeklin TAHU data yang sudah terisi
 // (TB/BB, NIK, paspor, dll) dan tidak menanyakan ulang data yang ada di database.
-function buildRingkasData(cur) {
+function buildRingkasData(cur: any) {
   const id = (cur && cur.identitas) || {};
   const fs = (cur && cur.fisik) || {};
   const md = (cur && cur.medis) || {};
   const st = (cur && cur.sertifikasi) || {};
   const ww = (cur && cur.wawancara) || {};
-  const lines = [];
-  const add = (label, val) => {
+  const lines: string[] = [];
+  const add = (label: string, val: unknown) => {
     const s = val === undefined || val === null ? '' : String(val).trim();
     if (s && s !== '' && s !== '-') lines.push(label + ': ' + s);
   };
@@ -102,7 +100,7 @@ function buildRingkasData(cur) {
     add(
       'Pendidikan',
       pend
-        .map((p) =>
+        .map((p: any) =>
           [
             p.tingkat,
             p.sekolah || p.nama_sekolah,
@@ -120,7 +118,7 @@ function buildRingkasData(cur) {
     add(
       'Pengalaman kerja',
       pek
-        .map((p) =>
+        .map((p: any) =>
           [
             p.perusahaan || p.nama_perusahaan,
             p.jabatan,
@@ -137,7 +135,7 @@ function buildRingkasData(cur) {
     add(
       'Keluarga',
       klg
-        .map((k) =>
+        .map((k: any) =>
           [k.hubungan, k.nama, k.usia ? k.usia + ' th' : '', k.pekerjaan]
             .filter(Boolean)
             .join(' - '),
@@ -148,10 +146,10 @@ function buildRingkasData(cur) {
   return lines.join('\n');
 }
 
-async function handleGetAdminAiContext(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'admin');
+async function handleGetAdminAiContext(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   const wa = String(d.wa || d.waTarget || '');
   try {
     let row = null;
@@ -172,14 +170,13 @@ async function handleGetAdminAiContext(payload, sessionToken) {
       if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
     }
     if (!row) return { success: true, data: null };
-    // @ts-expect-error JS→TS migration
     return { success: true, data: buildMasterNested(row) };
   } catch (e) {
     return { success: false, error: 'Terjadi kesalahan saat mengambil data kandidat.' };
   }
 }
 
-async function handleBuildAdminAiCandidateSummary(payload, sessionToken) {
+async function handleBuildAdminAiCandidateSummary(payload: unknown[], sessionToken?: string) {
   const ctx = await handleGetAdminAiContext(payload, sessionToken);
   if (!ctx.success) return ctx;
   // @ts-expect-error JS→TS migration
@@ -201,22 +198,22 @@ async function handleBuildAdminAiCandidateSummary(payload, sessionToken) {
 // ---------------------------------------------------------------------------
 // submitDataAsj — simpan data AI form (ai_form.html) ke ai_form_submissions
 // ---------------------------------------------------------------------------
-async function handleSubmitDataAsj(payload, sessionToken) {
-  const d = payload || {};
+async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
+  const d = (payload || {}) as Record<string, any>;
   const ctx = d.context || {};
   const identitas = d.identitas || {};
   const wa = normalizeWa(String(ctx.wa || identitas.hp || ''));
   if (!wa) return { success: false, message: 'Nomor WA tidak ditemukan.' };
   // Accept BOTH admin and kandidat sessions.
-  const adminGuard = requireRole(sessionToken, 'admin');
-  const kandidatGuard = requireRole(sessionToken, 'kandidat');
+  const adminGuard = requireRole(sessionToken as string, 'admin');
+  const kandidatGuard = requireRole(sessionToken as string, 'kandidat');
   const isAdmin = !adminGuard.error;
   const isKandidat = !kandidatGuard.error;
   if (!isAdmin && !isKandidat) {
     return { success: false, message: 'Sesi tidak valid. Silakan login ulang.' };
   }
   // IDOR fix: kandidat hanya boleh submit data untuk dirinya sendiri.
-  if (isKandidat && !isOwnerOrAdmin(sessionToken, wa)) {
+  if (isKandidat && !isOwnerOrAdmin(sessionToken as string, wa)) {
     return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   }
   const submittedBy = isAdmin ? 'admin:' + (adminGuard.token?.name || 'unknown') : 'kandidat';
@@ -285,7 +282,7 @@ async function handleSubmitDataAsj(payload, sessionToken) {
     }
     try {
       const m = await findMasterByWa(wa);
-      let aiOut = aiData;
+      let aiOut = aiData as Record<string, any>;
       let prev = null;
       if (m && m.id !== undefined) {
         try {
@@ -295,12 +292,11 @@ async function handleSubmitDataAsj(payload, sessionToken) {
               ? JSON.parse(prevRaw)
               : null;
           if (prev && typeof prev === 'object') {
-            // @ts-expect-error JS→TS migration
-            aiOut = {};
+                    aiOut = {};
             for (const k of Object.keys(prev)) {
-              if (!AI_MANAGED_KEYS.has(k)) aiOut[k] = prev[k];
+              if (!AI_MANAGED_KEYS.has(k)) aiOut[k] = (prev as Record<string, unknown>)[k];
             }
-            for (const k of Object.keys(aiData)) aiOut[k] = aiData[k];
+            for (const k of Object.keys(aiData)) aiOut[k] = (aiData as Record<string, unknown>)[k];
           }
         } catch (e) {
           prev = null;
@@ -426,8 +422,8 @@ async function handleSubmitDataAsj(payload, sessionToken) {
           const labels = [];
           for (const [key, label] of Object.entries(AI_SEKSI_LABEL)) {
             const oldVal =
-              prev && typeof prev === 'object' ? JSON.stringify(prev[key] || {}) : null;
-            const newVal = JSON.stringify(aiData[key] || {});
+              prev && typeof prev === 'object' ? JSON.stringify((prev as Record<string, unknown>)[key] || {}) : null;
+            const newVal = JSON.stringify((aiData as Record<string, unknown>)[key] || {});
             if (oldVal !== newVal) labels.push(label);
           }
           if (labels.length) {
@@ -435,6 +431,7 @@ async function handleSubmitDataAsj(payload, sessionToken) {
               wa,
               String(identitas.nama_lengkap || identitas.nama || '').trim() || 'KANDIDAT',
               labels,
+              sessionToken,
             );
           }
         } catch (e) {
@@ -443,7 +440,7 @@ async function handleSubmitDataAsj(payload, sessionToken) {
       } else {
         // Baris baru — buat mail entry jika belum ada
         try {
-          await syncBiodataKeMail(wa, nama, ['CV AI Baru']);
+          await syncBiodataKeMail(wa, nama, ['CV AI Baru'], sessionToken);
         } catch (e) {}
       }
 
@@ -465,6 +462,7 @@ async function handleSubmitDataAsj(payload, sessionToken) {
             'AI_CV',
             d.fotoFile || '',
             jobCode,
+            sessionToken,
           );
         }
       } catch (e) {
@@ -485,7 +483,7 @@ async function handleSubmitDataAsj(payload, sessionToken) {
 // (bentuk array [wa, dataUrl] dari CandidateDash) supaya hanya ada satu jalur
 // penulisan ke tabel esignatures / fallback ai_form_submissions.
 // ---------------------------------------------------------------------------
-async function simpanEsignature(wa, data) {
+async function simpanEsignature(wa: string, data: Record<string, unknown>) {
     try {
       const rows = await supabaseJson('GET', 'esignatures', {
         query: { select: '*', wa: 'eq.' + wa, limit: '10' },
@@ -529,14 +527,14 @@ async function simpanEsignature(wa, data) {
  * Bentuk payload: objek { wa, ttd1, nama1, ttd2, nama2 }.
  * Hanya kandidat yang bersangkutan (atau admin) yang boleh menulis.
  */
-async function handleSimpanDataTtdNaitei(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
+async function handleSimpanDataTtdNaitei(payload: unknown, sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
-  const d = payload || {};
+  const d = (payload || {}) as Record<string, any>;
   const wa = normalizeWa(String(d.wa || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   // Cegah IDOR: kandidat hanya boleh menandatangani atas nama dirinya sendiri.
-  if (!isOwnerOrAdmin(sessionToken, wa)) {
+  if (!isOwnerOrAdmin(sessionToken as string, wa)) {
     return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   }
   try {
@@ -562,8 +560,8 @@ async function handleSimpanDataTtdNaitei(payload, sessionToken) {
  * Sekarang didelegasikan ke jalur penulisan yang sama dengan
  * simpanDataTtdNaitei, lengkap dengan pengecekan kepemilikan.
  */
-async function handleSaveSignature(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
+async function handleSaveSignature(payload: unknown, sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
   const arr = Array.isArray(payload) ? payload : [];
   const wa = normalizeWa(String(arr[0] || ''));
@@ -573,7 +571,7 @@ async function handleSaveSignature(payload, sessionToken) {
     return { success: false, error: 'Format tanda tangan tidak valid.' };
   }
   // Cegah IDOR — kandidat tidak boleh menimpa tanda tangan kandidat lain.
-  if (!isOwnerOrAdmin(sessionToken, wa)) {
+  if (!isOwnerOrAdmin(sessionToken as string, wa)) {
     return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   }
   try {

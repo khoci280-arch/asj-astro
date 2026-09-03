@@ -7,7 +7,7 @@
 import { enqueue } from '../_lib/kernel/job-queue';
 import { log } from '../_lib/kernel/log';
 
-export const INGEST_ACTIONS: Record<string, Function> = {
+export const INGEST_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   parseDokumenBiodata: async (p: unknown[], s?: string) => {
     // Document parsing is slow — enqueue as background job
     const jobId = await enqueue('ingest.parse', { payload: p, sessionToken: s });

@@ -35,9 +35,9 @@ export async function handleGetDaftarSiswaBaru(payload: any[], sessionToken?: st
   }
 }
 
-export async function handleSubmitDaftarSiswa(payload: any[]) {
+export async function handleSubmitDaftarSiswa(payload: unknown) {
   cacheClear();
-  const d = payload || {};
+  const d = (payload || {}) as Record<string, any>;
   const nama = String(d.nama || '').trim();
   if (!nama) return { success: false, message: 'Nama wajib diisi.' };
   try {

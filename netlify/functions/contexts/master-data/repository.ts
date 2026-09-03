@@ -3,7 +3,7 @@
  *
  * Owns: master_database_candidate
  */
-import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from '../../_lib/db/client';
+import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, APPLY_WA_COLS } from '../../_lib/db/client';
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
@@ -44,4 +44,4 @@ export async function findCandidateRow(wa: string): Promise<any | null> {
   return c;
 }
 
-export { normalizeWa, pick, toText, supabaseJson, nextCandidateId };
+export { normalizeWa, pick, toText, supabaseJson, supabaseUpsert, nextCandidateId, APPLY_WA_COLS };

@@ -17,6 +17,7 @@ import {
   supabaseJson,
   tablesFromSchema,
   toText,
+  supabaseUrl,
 } from '../../_lib/db/client';
 import {
   attachApplications,
@@ -129,7 +130,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
   const page = Number(opts.page) || 1;
   const pageSize = Number(opts.pageSize) || 50;
   const cacheKey = 'cand:' + String(q || '') + '|p' + page + '|s' + pageSize;
-  const cached = cacheGet(cacheKey);
+  const cached = cacheGet<{ rows: Record<string, unknown>[]; total: number }>(cacheKey);
   if (cached) return cached;
 
   const start = (page - 1) * pageSize;
@@ -142,7 +143,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
     urutkan(uniq);
     const total = uniq.length;
     const slice = uniq.slice(start, start + pageSize);
-    const full = await findCandidatesByIds(slice.map((r) => r.id));
+    const full = await findCandidatesByIds(slice.map((r) => r.id as string | number));
     if (full !== undefined) {
       const byId = new Map(full.map((r) => [String(r.id), r]));
       if (slice.every((r) => byId.has(String(r.id)))) {
@@ -163,7 +164,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
 const PUBLIC_CACHE_TTL_MS = 20_000;
 
 async function loadPublicBase(mode: string): Promise<Record<string, unknown>> {
-  const cached = cacheGet('public-base');
+  const cached = cacheGet<Record<string, unknown>>('public-base');
   if (cached) return cached;
 
   const base = demo.demoGetAppData(mode || 'public');
@@ -247,5 +248,5 @@ export {
   findCandidateByWaFiltered, findCandidates, attachApplications, attachBerkasBio,
   findJobs, mapJob, findAssets, findSettings, findJobByCodeFiltered,
   findCandidatesByJobFiltered, listStorageFolder, BERKAS_COLUMNS,
-  supabaseJson, docTypeOf, docAge,
+  supabaseJson, docTypeOf, docAge, supabaseUrl,
 };

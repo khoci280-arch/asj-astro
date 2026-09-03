@@ -86,12 +86,12 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
         const myJobCodes = new Set(
           (Array.isArray(myForms) ? myForms : []).map((f) => String(pick(f, ['code_job', 'code']) || '').toUpperCase()).filter(Boolean),
         );
-        result.mySchedules = allSched.filter((s) => {
+        result.mySchedules = allSched.filter((s: any) => {
           const kandidatList = String(s.kandidat || '').split(/[\n,;]+/).map((x) => normalizeWa(x)).filter(Boolean);
           const inDaftar = kandidatList.length > 0 && kandidatList.some((k) => k === w || k.endsWith(w.slice(-9)));
           const lokerSama = String(s.idLoker || '').toUpperCase() !== '-' && myJobCodes.has(String(s.idLoker || '').toUpperCase());
           return inDaftar || lokerSama;
-        }).map((s) => ({
+        }).map((s: any) => ({
           agenda: s.namaAgenda || '', status: s.status || 'AKTIF', waktu: s.waktu || '',
           lokasi: s.link && s.link !== '-' ? s.link : '-', link: s.link && s.link !== '-' ? s.link : '',
         }));
@@ -132,13 +132,13 @@ export async function handleShareData(jobCode: string) {
   try {
     let jobRow: any = await findJobByCodeFiltered(code);
     if (jobRow === undefined) {
-      const { findJobs, pick, toText } = await import('../../_lib/db/client');
+      const { findJobs, pick, toText } = await import('./repository');
       const found = await findJobs();
       jobRow = found.rows.find((r) => String(pick(r, ['code_job', 'code']) || '') === code) || null;
     }
     if (!jobRow) return { error: 'Kode job tidak ditemukan: ' + code };
     const name = toText(pick(jobRow, ['pekerjaan', 'nama_pekerjaan', 'judul', 'title']));
-    let candRows: any[] = await findCandidatesByJobFiltered(code);
+    let candRows: any[] | undefined = await findCandidatesByJobFiltered(code);
     if (candRows === undefined) {
       const cands = await findCandidates();
       candRows = cands.rows;
@@ -148,7 +148,7 @@ export async function handleShareData(jobCode: string) {
     );
     const mapped = rows.map(mapCandidate);
 
-    const { normalizeWa, supabaseUrl } = await import('../../_lib/db/client');
+    const { normalizeWa, supabaseUrl } = await import('./repository');
     const storageBase = supabaseUrl().replace(/\/$/, '');
     const pubBase = storageBase + '/storage/v1/object/public/asj-files/';
     const waList = mapped.map((c) => normalizeWa(String(c.wa || ''))).filter(Boolean);
@@ -203,7 +203,7 @@ export async function handleShareData(jobCode: string) {
     for (const c of mapped) {
       const folder = 'master/' + String(c.nama || '').toUpperCase().replace(/\s+/g, '_') + '/';
       const names = folderNamesMap.get(folder) || [];
-      const mainBasenames = [c.pasPhoto, c.fileCv, c.jft, c.ssw].map((u) => { try { return decodeURIComponent(String(u || '').split('/').pop()); } catch { return String(u || '').split('/').pop(); } }).filter(Boolean);
+      const mainBasenames = [c.pasPhoto, c.fileCv, c.jft, c.ssw].map((u) => { try { return decodeURIComponent(String(u || '').split('/').pop() || ''); } catch { return String(u || '').split('/').pop() || ''; } }).filter(Boolean);
       const mainTypes = new Set(['CV', 'JFT', 'SSW', 'PHOTO']);
       for (const b of mainBasenames) { const t = docTypeOf(b); if (t) mainTypes.add(t); }
       const byType = new Map();
@@ -216,8 +216,8 @@ export async function handleShareData(jobCode: string) {
       }
       const rawExtraDocs = [...byType.values()];
       const extraDocs = showAllDocs ? rawExtraDocs : rawExtraDocs.filter((d) => { const t = docTypeOf(d.name); return allowedDocTypes.has(t); });
-      const formDocs = (byWa.get(normalizeWa(String(c.wa || ''))) || []).filter((d) => showAllDocs || allowedDocTypes.has(docTypeOf(d.name)));
-      const seenUrl = new Set(extraDocs.map((d) => d.url));
+      const formDocs = (byWa.get(normalizeWa(String(c.wa || ''))) || []).filter((d: any) => showAllDocs || allowedDocTypes.has(docTypeOf(d.name)));
+      const seenUrl = new Set(extraDocs.map((d: any) => d.url));
       for (const d of formDocs) { if (!seenUrl.has(String(d.url))) { seenUrl.add(String(d.url)); extraDocs.push(d); } }
       const pRow = pByWa.get(normalizeWa(String(c.wa || '')));
       const mRow = mByWa.get(normalizeWa(String(c.wa || '')));

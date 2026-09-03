@@ -9,7 +9,7 @@ function bucket() {
 }
 
 // Request ke Supabase Storage (di luar /rest/v1).
-async function storageRequest(method, pathname, opts = {}) {
+async function storageRequest(method: string, pathname: string, opts: { headers?: Record<string, string>; body?: unknown } = {}) {
   const url = supabaseUrl();
   const key = supabaseKey();
   if (!url || !key) throw new Error('Supabase belum dikonfigurasi');
@@ -19,7 +19,6 @@ async function storageRequest(method, pathname, opts = {}) {
     headers: {
       apikey: key,
       Authorization: 'Bearer ' + key,
-      // @ts-expect-error JS→TS migration
       ...(opts.headers || {}),
     },
     // @ts-expect-error JS→TS migration
@@ -34,24 +33,24 @@ async function storageRequest(method, pathname, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-function publicUrl(path) {
+function publicUrl(path: string) {
   return supabaseUrl().replace(/\/$/, '') + '/storage/v1/object/public/' + bucket() + '/' + path;
 }
 
 // Terima base64 (boleh dengan prefix data:*) → kembalikan Buffer.
-function b64ToBuffer(data) {
+function b64ToBuffer(data: unknown) {
   let s = String(data || '');
   const comma = s.indexOf(',');
   if (comma >= 0 && /^data:/i.test(s.slice(0, comma + 1))) s = s.slice(comma + 1);
   return Buffer.from(s, 'base64');
 }
 
-function mimeFromName(name, fallback) {
+function mimeFromName(name: string, fallback?: string) {
   const ext = String(name || '')
     .split('.')
-    .pop()
+    .pop()!
     .toLowerCase();
-  const map = {
+  const map: Record<string, string> = {
     pdf: 'application/pdf',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -77,9 +76,9 @@ function mimeFromName(name, fallback) {
 // Alias nama file per jenis — semua jalur upload (apply-full, dashboard,
 // master form, admin) dijamin memakai stem yang sama, sehingga file lama
 // ikut terhapus & tidak ada dokumen dobel (mis. KTP 2 / KK 2 di share view).
-function stemAliases(stem) {
+function stemAliases(stem: string) {
   const u = String(stem || '').toUpperCase();
-  const m = {
+  const m: Record<string, string[]> = {
     PAS_PHOTO: ['PHOTOFILE', 'PASPHOTO', 'FOTO'],
     PHOTOFILE: ['PAS_PHOTO', 'PASPHOTO', 'FOTO'],
     PASPHOTO: ['PAS_PHOTO', 'PHOTOFILE', 'FOTO'],
@@ -101,7 +100,7 @@ function stemAliases(stem) {
 // alias-nya). Dipanggil SEBELUM upload supaya selalu menimpa file lama.
 // Catatan API: object/list mengembalikan nama RELATIF terhadap prefix, jadi
 // filter + delete harus pakai path lengkap (folder + "/" + nama).
-function isVarianOf(name, stem) {
+function isVarianOf(name: string, stem: string) {
   const n = String(name || '');
   if (!n || !stem) return false;
   // KTP.ext / KTP.png — varian tanpa timestamp.
@@ -111,7 +110,7 @@ function isVarianOf(name, stem) {
   return n.startsWith(stem + '_');
 }
 
-async function hapusJenisVarian(folder, stem) {
+async function hapusJenisVarian(folder: string, stem: string) {
   const f = String(folder).replace(/^\/+|\/+$/g, '');
   const stems = [String(stem || '')].concat(stemAliases(stem)).filter(Boolean);
   try {
@@ -135,7 +134,7 @@ async function hapusJenisVarian(folder, stem) {
 }
 
 // Upload file base64 ke Storage, kembalikan public URL.
-async function uploadBase64(data, folder, fileName) {
+async function uploadBase64(data: unknown, folder: string, fileName: string) {
   if (!data) return null;
   const buf = b64ToBuffer(data);
   const cleanName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -145,7 +144,6 @@ async function uploadBase64(data, folder, fileName) {
   const path = String(folder).replace(/^\/+|\/+$/g, '') + '/' + cleanName;
   await storageRequest('POST', 'object/' + bucket() + '/' + path, {
     headers: {
-      // @ts-expect-error JS→TS migration
       'Content-Type': mimeFromName(cleanName),
       'x-upsert': 'true',
     },
@@ -176,7 +174,7 @@ function isAllowedUrl(url: string): boolean {
 // Jalur Cloudinary (2026-08-17): nilai sudah URL string (hasil upload langsung
 // dari browser) → dipakai apa adanya. Base64 (jalur lama Frontend → Netlify →
 // Storage) tetap didukung sebagai fallback untuk klien yang belum dimigrasi.
-async function resolveFileUrl(value, folder, fileName) {
+async function resolveFileUrl(value: unknown, folder: string, fileName: string) {
   if (typeof value === 'string' && /^https?:\/\//i.test(value.trim())) {
     // S5 fix: Validate URL is from allowed host
     if (!isAllowedUrl(value.trim())) {

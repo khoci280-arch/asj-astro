@@ -106,7 +106,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
     const body: Record<string, unknown> = { status };
     if (reason !== null && reason !== undefined) body.keterangan = reason;
-    await patchForm(f.id, body, sessionToken);
+    await patchForm(f.id as number, body, sessionToken);
     try { await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
 
     // Emit domain event for cross-context communication
@@ -134,7 +134,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             query: { select: 'token', wa: 'eq.' + waNotify, limit: 10 },
           });
           if (Array.isArray(tokens) && tokens.length > 0) {
-            const tokenList = tokens.map((t: Record<string, unknown>) => t.token).filter(Boolean);
+            const tokenList = tokens.map((t: Record<string, unknown>) => t.token as string).filter(Boolean);
             if (tokenList.length > 0) await fcm.sendMulticast(tokenList, title, pushBody, '/');
           }
         }
@@ -164,20 +164,20 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
 export async function handleReviewForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0], 'REVIEW ADMIN', undefined, sessionToken);
+  return handleFormStatus((payload || [])[0] as number, 'REVIEW ADMIN', undefined, sessionToken);
 }
 
 export async function handleApproveForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0], 'LULUS', undefined, sessionToken);
+  return handleFormStatus((payload || [])[0] as number, 'LULUS', undefined, sessionToken);
 }
 
 export async function handleRejectForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   const [, , reason] = payload || [];
-  return handleFormStatus((payload || [])[0], 'GAGAL', reason || 'Lamaran ditolak', sessionToken);
+  return handleFormStatus((payload || [])[0] as number, 'GAGAL', (reason || 'Lamaran ditolak') as string, sessionToken);
 }
 
 export async function handleDeleteForm(payload: unknown[], sessionToken?: string) {
@@ -191,7 +191,7 @@ export async function handleDeleteForm(payload: unknown[], sessionToken?: string
   try {
     const f = await getFormByIndex(idx);
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
-    await deleteForm(f.id, sessionToken);
+    await deleteForm(f.id as number, sessionToken);
     return { success: true, rowIndex: idx };
   } catch (e: unknown) {
     return { success: false, error: 'Gagal menghapus form. Silakan coba lagi.' };
@@ -212,7 +212,7 @@ export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: 
     const m = fb.match(/\[\[PREV:([^\]]+)\]\]/);
     const prevStatus = m ? m[1].trim() : 'MENUNGGU';
     const newFb = fb.replace(/\[\[PREV:[^\]]+\]\]\s*/, '').trim();
-    await patchForm(f.id, { status: prevStatus, feedback_berkas: newFb, updated_at: new Date().toISOString() }, sessionToken);
+    await patchForm(f.id as number, { status: prevStatus, feedback_berkas: newFb, updated_at: new Date().toISOString() }, sessionToken);
     f.status = prevStatus;
     f.feedback_berkas = newFb;
     return { success: true, form: mapForm(f, idx) };
@@ -221,21 +221,21 @@ export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: 
   }
 }
 
-export async function syncBiodataKeMail(wa: string, nama: string, labels: string[]) {
+export async function syncBiodataKeMail(wa: string, nama: string, labels: string[], sessionToken?: string) {
   const want = normWa(wa);
   let rows = await getFormsByWa(wa);
   const mine = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   if (!mine.length) return;
   for (const r of mine) {
     if (r.id === undefined || r.id === null) continue;
-    const isUpdate = mailStatusUntukUpdate(r.status) === 'UPDATE';
+    const isUpdate = mailStatusUntukUpdate(r.status as string) === 'UPDATE';
     const entry =
       (isUpdate ? '[[PREV:' + String(r.status || '').toUpperCase() + ']] ' : '') +
       '[BIODATA] ' + (labels.length ? labels.join(', ') : 'data diperbarui');
     const body: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      feedback_berkas: appendFeedback(r.feedback_berkas, entry),
+      feedback_berkas: appendFeedback(r.feedback_berkas as string, entry),
     };
     if (isUpdate) body.status = 'UPDATE';
     await patchForm(r.id, body, sessionToken);
@@ -248,7 +248,7 @@ export async function syncBiodataKeMail(wa: string, nama: string, labels: string
   }
 }
 
-export async function syncFormMailDariUpload(wa: string, nama: string, docLabel: string, url: string, jobCode: string) {
+export async function syncFormMailDariUpload(wa: string, nama: string, docLabel: string, url: string, jobCode: string, sessionToken?: string) {
   const want = normWa(wa);
   const rows = await getFormsByWa(wa);
   const label = String(docLabel || 'DOKUMEN').trim().toUpperCase();
@@ -261,7 +261,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
   } else {
     targets = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   }
-  if (!targets.length) targets = [null];
+  if (!targets.length) targets = [{}];
 
   for (const existing of targets) {
     const docs: Record<string, string> = {};
@@ -271,7 +271,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
       if (i > 0) docs[chunk.slice(0, i).trim().toUpperCase()] = chunk.slice(i + 1).trim();
     });
     docs[label] = String(url || '');
-    const nextStatus = mailStatusUntukUpdate(existing && existing.status);
+    const nextStatus = mailStatusUntukUpdate((existing && existing.status) as string);
     const entry =
       (nextStatus === 'UPDATE' && existing && existing.status
         ? '[[PREV:' + String(existing.status).toUpperCase() + ']] ' : '') +
@@ -284,7 +284,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
       no_wa: want,
       keterangan,
       status: nextStatus,
-      feedback_berkas: appendFeedback(existing && existing.feedback_berkas, entry),
+      feedback_berkas: appendFeedback((existing && existing.feedback_berkas) as string, entry),
       updated_at: new Date().toISOString(),
     };
     if (label === 'PAS_PHOTO' || label === 'PHOTO') body.pas_photo = String(url || '');
@@ -293,7 +293,7 @@ export async function syncFormMailDariUpload(wa: string, nama: string, docLabel:
     if (label === 'SSW') body.ssw = String(url || '');
 
     if (existing && existing.id !== undefined) {
-      await patchForm(existing.id, body, sessionToken);
+      await patchForm(existing.id as number, body, sessionToken);
     } else {
       await upsertForm(body);
     }

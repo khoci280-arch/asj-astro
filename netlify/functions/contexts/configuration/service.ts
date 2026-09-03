@@ -35,7 +35,7 @@ export async function handleUpdateSysConfig(payload: any[], sessionToken?: strin
 export async function handleGetRincianPresets() {
   try {
     const rows = await getRincianPresetsRepo();
-    const presets: Record<string, { id: string; item: string }[]> = {
+    const presets: Record<string, { id: string | number | undefined; item: string }[]> = {
       include: [],
       exclude: [],
       benefit: [],

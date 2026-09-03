@@ -8,7 +8,7 @@ import { MASTER_LIGHT_COLS } from './schema.generated';
 
 // Tarik master_database_candidate hanya untuk WA di daftar.
 // Only no_wa column exists in this table — wa/whatsapp don't exist.
-async function fetchMasterByWa(waList) {
+async function fetchMasterByWa(waList: string[]) {
   const inList = waList.join(',');
   try {
     const rows = await supabaseJson('GET', 'master_database_candidate', {
@@ -22,7 +22,7 @@ async function fetchMasterByWa(waList) {
 }
 
 // Master RINGAN (proyeksi MASTER_LIGHT_COLS) untuk attachBerkasBio
-async function fetchMasterLightByWa(waList) {
+async function fetchMasterLightByWa(waList: string[]) {
   const inList = waList.join(',');
   try {
     const light = await supabaseJson('GET', 'master_database_candidate', {

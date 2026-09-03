@@ -3,7 +3,7 @@ import { supabaseJson, supabasePaged, pick, toText, findTable } from './client';
 
 // Query paginated dengan Range header + total dari Content-Range. Pakai
 // helper terpusat supabasePaged (client.js).
-async function queryPaged(table, { page = 1, pageSize = 50, q = '' } = {}) {
+async function queryPaged(table: string, { page = 1, pageSize = 50, q = '' } = {}) {
   const start = (page - 1) * pageSize;
   const end = start + pageSize - 1;
   const params = { select: '*' };
@@ -54,7 +54,7 @@ async function findAssets() {
       pick(row, ['logo', 'LOGO', 'logo_url', 'logoUrl', 'assets_logo']) ||
       (row.assets && typeof row.assets === 'object' && row.assets.LOGO);
     if (logo) {
-      const nested = (k) => (row.assets && typeof row.assets === 'object' && row.assets[k]) || null;
+      const nested = (k: string) => (row.assets && typeof row.assets === 'object' && row.assets[k]) || null;
       return {
         LOGO: logo,
         BANNER: {

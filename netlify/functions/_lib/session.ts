@@ -6,13 +6,13 @@ import { env } from './env';
 // ditandatangani dengan secret dari env; semua aksi admin/kandidat
 // memvalidasinya kembali. Tidak ada penyimpanan status server-side.
 
-/** @typedef {{ role: string, wa?: string, name?: string, kind?: string, exp?: number }} SessionPayload */
+export interface SessionPayload { role?: string; wa?: string; name?: string; kind?: string; exp?: number }
 
 /** Memoized secret — computed once per process lifetime. */
 let _secret: string | null = null;
 
 /** @returns {string} */
-function secret() {
+function secret(): string {
   if (_secret) return _secret;
 
   // S3 fix: Only use SESSION_SECRET — never fall back to admin passwords.
@@ -21,7 +21,7 @@ function secret() {
 
   if (s) {
     _secret = s;
-    return _secret;
+    return s;
   }
 
   // Production: throw — no forged tokens allowed.
@@ -49,7 +49,7 @@ function secret() {
 }
 
 /** @param {SessionPayload} payload @returns {string} */
-function signToken(payload) {
+function signToken(payload: SessionPayload): string {
   // S2 fix: Add expiry if not already set (24 hours for session tokens)
   const tokenPayload = { ...payload };
   if (!tokenPayload.exp && tokenPayload.kind !== 'refresh') {
@@ -65,7 +65,7 @@ function signToken(payload) {
 }
 
 /** @param {string} token @returns {SessionPayload | null} */
-function verifyToken(token) {
+function verifyToken(token: unknown): SessionPayload | null {
   if (!token || typeof token !== 'string') return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;

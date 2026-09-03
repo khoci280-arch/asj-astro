@@ -17,6 +17,27 @@ import { randomUUID } from 'node:crypto';
 import { log, runWithContext } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helpers';
+import { codeToStatus } from './kernel/errors';
+
+// ── Outcome → HTTP status ─────────────────────────────────────────────────────────────────────────
+/**
+ * Map a dispatcher outcome to its HTTP status. Outcomes are plain objects:
+ * success responses carry no status; AppError rejections serialize (via
+ * toErrorResponse) as { success:false, code }; legacy failures carry only a
+ * message; rate-limit responses carry rateLimited:true. Precedence:
+ * rateLimited (429) > code (codeToStatus in kernel/errors) > message-only (400)
+ * > 200. Exported for direct unit coverage of the precedence policy.
+ */
+export function outcomeStatusCode(out: unknown): number {
+  if (!out || typeof out !== 'object') return 200;
+  const rec = out as Record<string, unknown>;
+  if (rec.rateLimited) return 429;
+  if (rec.success === false) {
+    if (typeof rec.code === 'string') return codeToStatus(rec.code);
+    if (rec.message) return 400;
+  }
+  return 200;
+}
 
 // ── Surface handler factory ─────────────────────────────────────────────────
 
@@ -111,12 +132,9 @@ export function makeSurfaceHandler(allowedActions: string[]) {
       return { statusCode: rec.statusCode as number, headers: baseHeaders, body: String(rec.body) };
     }
     // P18 fix: Return proper HTTP status for error responses instead of 200.
-    // This lets the client's 404-based fallback and monitoring work correctly.
-    let statusCode = 200;
-    if (out && typeof out === 'object') {
-      if (rec.rateLimited) statusCode = 429;
-      else if (rec.success === false && rec.message) statusCode = 400;
-    }
+    // AppError-serialized rejections map through codeToStatus (kernel/errors);
+    // message-only failures keep the legacy 400; rate-limited stays 429.
+    const statusCode = outcomeStatusCode(out);
     return { statusCode, headers: baseHeaders, body: JSON.stringify(out) };
   };
 }

@@ -1,5 +1,5 @@
 import { supabaseJson, supabasePaged, pick, toText, normalizeWa } from './client';
-import { TABLE_CANDIDATE, CANDIDATE_WA_COL, CAND_LIGHT_COLS, CAND_MAP_COLS } from './schema.generated';
+import { TABLE_CANDIDATE, CANDIDATE_WA_COL, CAND_LIGHT_COLS } from './schema.generated';
 // db/candidates.js — repo kandidat (database_candidate): mapCandidate, query WA/ID,
 
 // Kolom asli tabel database_candidate:
@@ -9,7 +9,7 @@ import { TABLE_CANDIDATE, CANDIDATE_WA_COL, CAND_LIGHT_COLS, CAND_MAP_COLS } fro
 //   no_pasport, email, tempat_lahir, tgl_lahir, alamat_lengkap,
 //   catatan_internal, catatan_external, nilai_jft_text, bidang_ssw_text,
 //   created_at, updated_at, password_diubah
-function mapCandidate(row) {
+function mapCandidate(row: Record<string, unknown>) {
   const nama = toText(pick(row, ['nama_lengkap', 'nama', 'name', 'full_name']));
   const wa = toText(
     pick(row, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']),
@@ -72,14 +72,14 @@ function mapCandidate(row) {
 
 // Nama tabel kandidat yang umum (urutan prioritas) — dipakai findCandidates &
 // findAllCandidatesLight supaya jalur cepat & fallback mencari tabel yang sama.
-async function findCandidates() {
+async function findCandidates(): Promise<{ table: string; rows: any[] }> {
   return { table: TABLE_CANDIDATE, rows: [] };
 }
 
 // Fetch SEMUA baris satu tabel via header Range (loop 1000/halaman) — tanpa
 // batas `limit` query (PostgREST default maks 1000). Pakai helper terpusat
 // supabasePaged (client.js).
-async function fetchPagedAll(table, select) {
+async function fetchPagedAll(table: string, select: string) {
   const qs = new URLSearchParams({ select }).toString();
   const all = [];
   const pageSize = 1000;
@@ -127,7 +127,7 @@ async function findAllCandidatesLight() {
 // baris `select *`: hanya id di halaman yang ditarik. undefined → gagal.
 // OPTIMIZED: pakai CAND_MAP_COLS (proyeksi kolom yang dibaca mapCandidate)
 // alih-alih SELECT * — kolom yang tidak pernah dibaca tidak ikut.
-async function findCandidatesByIds(ids) {
+async function findCandidatesByIds(ids: (string | number)[]) {
   const list = [
     ...new Set((Array.isArray(ids) ? ids : []).map((x) => String(x).trim()).filter(Boolean)),
   ];
@@ -159,7 +159,7 @@ async function findCandidatesByIds(ids) {
 // undefined (kolom tidak cocok — caller pakai fallback scan).
 // OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT * — kolom berat yang tidak
 // dibaca mapCandidate tidak ikut. Fallback SELECT * bila proyeksi gagal.
-async function findCandidateByWaFiltered(wa) {
+async function findCandidateByWaFiltered(wa: string) {
   const want = normalizeWa(wa);
   // Fase 3.18: probe 3 kolom WA (no_wa / wa / whatsapp) dijalankan PARALEL —
   // dulu berurutan (sampai 3 roundtrip serial bila kolom pertama tidak cocok
@@ -232,7 +232,7 @@ async function maxCandidateIdNumber() {
 
 // Cari baris kandidat per id_kandidat / id — dipakai lookup by ID (admin).
 // OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT *; fallback SELECT *.
-async function findCandidateByIdFiltered(id) {
+async function findCandidateByIdFiltered(id: string) {
   const want = String(id || '').trim();
   if (!want) return undefined;
   let anyOk = false;
@@ -263,7 +263,7 @@ async function findCandidateByIdFiltered(id) {
 // kode dipisah koma) — filter server-side; caller TETAP memverifikasi token
 // eksak di JS supaya ilike tidak salah tangkap (mis. TG9ASJ vs TG90ASJ).
 // OPTIMIZED: pakai CAND_MAP_COLS alih-alih SELECT *; fallback SELECT *.
-async function findCandidatesByJobFiltered(code) {
+async function findCandidatesByJobFiltered(code: string) {
   const want = String(code || '').trim();
   if (!want) return undefined;
   try {
@@ -287,7 +287,7 @@ async function findCandidatesByJobFiltered(code) {
 // Lampirkan daftar lamaran (database_asj_form) ke tiap kandidat — dipakai
 // dashboard kandidat & modal CV admin untuk menampilkan SEMUA job yang
 // dilamar (satu kandidat boleh punya banyak lamaran di mail inbox).
-function attachApplications(candidates, forms) {
+function attachApplications(candidates: Record<string, any>[], forms: Record<string, any>[]) {
   if (!Array.isArray(candidates) || !Array.isArray(forms)) return candidates;
   const byWa = new Map();
   for (const f of forms) {
@@ -310,8 +310,8 @@ function attachApplications(candidates, forms) {
     // Attach tahapan dari database_candidate supaya frontend progress bar
     // pakai tahapan aktual (bukan status mail yang bisa误导).
     const tahapan = toText(c.tahapan || '');
-    apps.forEach(a => { a.tahapan = tahapan; });
-    apps.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    apps.forEach((a: any) => { a.tahapan = tahapan; });
+    apps.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
     c.applications = apps;
   }
   return candidates;

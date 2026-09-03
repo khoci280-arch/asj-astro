@@ -28,12 +28,20 @@ function hasBackend() {
 }
 
 /** @param {string} method @param {string} pathname @param {JsonOpts} [opts] @returns {Promise<unknown>} */
-async function supabaseJson(method, pathname, opts = {}) {
+async function supabaseJson(
+  method: string,
+  pathname: string,
+  opts: {
+    query?: Record<string, string | number>;
+    headers?: Record<string, string>;
+    body?: unknown;
+    overrideKey?: string;
+    overrideAuthKey?: string;
+  } = {},
+) {
   const url = supabaseUrl();
-  // @ts-expect-error JS→TS migration
-  const overrideKey = opts && opts.overrideKey;
-  // @ts-expect-error JS→TS migration
-  const overrideAuthKey = opts && opts.overrideAuthKey;
+  const overrideKey = opts.overrideKey;
+  const overrideAuthKey = opts.overrideAuthKey;
   const key = overrideKey || supabaseKey();
   if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
 
@@ -41,22 +49,18 @@ async function supabaseJson(method, pathname, opts = {}) {
   // applies them for all PostgREST calls (reads AND writes). Acquiring
   // them here AND in request() double-counted against the limits.
 
-  // @ts-expect-error JS→TS migration
   const qs = opts.query
     ? '?' +
-      // @ts-expect-error JS→TS migration
       new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
     : '';
-  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + pathname + qs, {
+  const res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
     method,
     headers: {
       apikey: key,
       Authorization: 'Bearer ' + (overrideAuthKey || key),
       'Content-Type': 'application/json',
-      // @ts-expect-error JS→TS migration
       ...(opts.headers || {}),
     },
-    // @ts-expect-error JS→TS migration
     body: opts.body ? JSON.stringify(opts.body) : undefined,
     budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
   });
@@ -67,7 +71,6 @@ async function supabaseJson(method, pathname, opts = {}) {
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
-
 // UPSERT via PostgREST: INSERT dengan resolution=merge-duplicates + on_conflict.
 // Kalau baris dengan kolom konflik sudah ada (unique index), UPDATE baris lama
 // alih-alih error 409 duplicate key — duplikasi tidak mungkin & user tidak
@@ -103,7 +106,7 @@ async function supabaseUpsert(
     // (migrations/20260825_index_antiduplikat.sql SECTION 4 belum dijalankan).
     // P25 fix: Check for SQLSTATE code in multiple formats — PostgREST may
     // embed it in the message, the hint, or as a separate field.
-    const errStr = String((e && e.message) || '') + ' ' + String((e && (e as any).hint) || '');
+    const errStr = String((e as { message?: unknown } | null)?.message ?? '') + ' ' + String((e && (e as any).hint) || '');
     if (!errStr.includes('42P10') && !errStr.includes('does not exist')) throw e;
     return supabaseJson('POST', table, {
       ...opts,
@@ -145,7 +148,7 @@ async function supabasePaged(table, qs, { start, end } = {}) {
 
 // Coba daftar nama tabel sampai satu yang benar-benar ada & mengembalikan baris.
 /** @param {string[]} candidates @param {number} [limit] @returns {Promise<FindTableResult>} */
-async function findTable(candidates, limit = 1) {
+async function findTable(candidates: string[], limit = 1) {
   // P3 fix: Use limit=1 (was 300) — callers only need to know which table exists.
   // Stop on first hit instead of trying all candidates.
   for (const t of candidates) {
@@ -162,15 +165,16 @@ async function findTable(candidates, limit = 1) {
 }
 
 /** @param {Record<string, unknown>} row @param {string[]} keys @returns {unknown} */
-function pick(row, keys) {
+function pick<T extends object>(row: T, keys: string[]): unknown {
+  const rowAny = row as Record<string, unknown>;
   for (const k of keys) {
-    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+    if (rowAny[k] !== undefined && rowAny[k] !== null && rowAny[k] !== '') return rowAny[k];
   }
   return null;
 }
 
 /** @param {unknown} v @returns {string} */
-function toText(v) {
+function toText(v: unknown) {
   if (v == null) return '';
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
@@ -181,7 +185,7 @@ function toText(v) {
 // "PENCARIAN KANDIDAT", "PEMBERKASAN", "APPROVED", "" — yang berarti masih
 // rekrutmen hanya yang eksplisit tertutup; sisanya dianggap OPEN.
 /** @param {unknown} v @returns {'OPEN'|'CLOSE'|'URGENT'} */
-function normalizeStatus(v) {
+function normalizeStatus(v: unknown) {
   const s = toText(v).toUpperCase();
   if (s.includes('URGENT')) return 'URGENT';
   if (s === '') return 'CLOSE';
@@ -196,7 +200,7 @@ function normalizeStatus(v) {
 // CV AI dan render L/P mengecek format ini (includes('PEREMPUAN') dsb), jadi
 // jangan tambah varian normalisasi lain di jalur mana pun.
 /** @param {unknown} v @returns {'LAKI-LAKI'|'PEREMPUAN'|''} */
-function normalizeGender(v) {
+function normalizeGender(v: unknown) {
   const s = toText(v).trim().toUpperCase();
   if (!s || s === '-') return '';
   if (s === 'L' || s === 'LK' || s === 'M' || s === 'PRIA' || s === 'MALE' || s.includes('LAKI'))
@@ -229,7 +233,7 @@ async function getSchema() {
 }
 
 /** @param {OpenApiSpec} spec @returns {string[]} */
-function tablesFromSchema(spec) {
+function tablesFromSchema(spec: { paths?: Record<string, unknown> }) {
   if (!spec || !spec.paths) return [];
   return Object.keys(spec.paths)
     .map((p) => p.replace(/^\//, ''))
@@ -237,7 +241,11 @@ function tablesFromSchema(spec) {
 }
 
 /** @param {OpenApiSpec} spec @param {string} table @returns {string[]} */
-function columnsFromSchema(spec, table) {
+// Kolom WA pada row apply/candidate: no_wa | wa | whatsapp — selalu dibaca lewat
+// pick(r, APPLY_WA_COLS) lalu dinormalisasi. Satu sumber: dipakai cv.js & service master-data.
+const APPLY_WA_COLS = ['no_wa', 'wa', 'whatsapp'];
+
+function columnsFromSchema(spec: { components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> } }, table: string) {
   if (!spec || !spec.components || !spec.components.schemas) return [];
   const s = spec.components.schemas[table];
   return s && s.properties ? Object.keys(s.properties) : [];
@@ -252,6 +260,7 @@ export {
   supabasePaged,
   findTable,
   pick,
+  APPLY_WA_COLS,
   toText,
   normalizeWa,
   normalizeStatus,

@@ -106,7 +106,7 @@ async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> 
       if (jp) setNested(data, pairs[i].jpPath, jp);
     }
   } catch (e) {
-    console.error('[autoTranslateMissingJp] error:', e && e.message ? e.message : e);
+    console.error('[autoTranslateMissingJp] error:', (e as { message?: string })?.message || e);
   }
 }
 
@@ -121,7 +121,7 @@ import {
 
 // Single source of truth for ASJ student status — same regex as
 // isSiswaASJ in db/candidates.ts mapCandidate().
-function isVipCatatan(catatan) {
+function isVipCatatan(catatan: unknown) {
   return /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(String(catatan || ''));
 }
 
@@ -152,19 +152,19 @@ const AI_FORM_DATA_INSTRUCTION =
   'Contoh: kelebihan_id = \"Disiplin\" → kelebihan_jp = \"建局がある\". ' +
   'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n';
 
-async function handleProcessAIChat(payload, sessionToken) {
+async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   // H4 FIX: require valid session for ALL flows — prevents free Gemini quota burn.
   const t = session.verifyToken(sessionToken);
   if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
     return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
   }
-  const p = payload || {};
+  const p = (payload || {}) as Record<string, any>;
   const flow = String(p.flow || 'master');
   // LOCK VIP (AGENTS.md §6): AI CV Master (flow=master) hanya untuk admin ATAU
   // kandidat ber-tag VIP/KELAS. Keputusan FINAL di server — jangan mengandalkan
   // guard frontend saja (bisa di-bypass dengan memanggil action langsung).
   if (flow === 'master') {
-    const guard = requireRole(sessionToken, 'admin');
+    const guard = requireRole(sessionToken as string, 'admin');
     const isAdmin = !guard.error;
     if (!isAdmin) {
       const currentData = p.currentData && typeof p.currentData === 'object' ? p.currentData : {};
@@ -257,15 +257,15 @@ async function handleProcessAIChat(payload, sessionToken) {
     return r;
   } catch (e) {
     // Jangan bocorkan detail error mentah ke user — log detailnya di server saja.
-    console.error('[AI] processAIChat error:', e && e.message ? e.message : e);
+    console.error('[AI] processAIChat error:', (e as { message?: string })?.message || e);
     return { reply: 'Maaf, asisten AI sedang sibuk. Coba lagi beberapa saat ya!' };
   }
 }
 
-async function handleProcessAdminAIChat(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'admin');
+async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   const history = (d.history || []).concat([{ role: 'user', content: d.message || '' }]);
   const system =
     'Kamu adalah Jeklin, asisten HRD admin ASJ (PT Amanah Sakura Japan). Admin: ' +
@@ -280,13 +280,13 @@ async function handleProcessAdminAIChat(payload, sessionToken) {
     return { success: true, reply: r.reply, suggestedActions: [], analysis: null };
   } catch (e) {
     // Jangan bocorkan detail error mentah ke admin — log detailnya di server saja.
-    console.error('[AI] processAdminAIChat error:', e && e.message ? e.message : e);
+    console.error('[AI] processAdminAIChat error:', (e as { message?: string })?.message || e);
     return { success: false, error: 'Asisten AI sedang sibuk. Coba lagi beberapa saat ya!' };
   }
 }
 
-async function handleProcessSiswaAIChat(payload) {
-  const p = payload || {};
+async function handleProcessSiswaAIChat(payload: unknown) {
+  const p = (payload || {}) as Record<string, any>;
   const system =
     'Kamu adalah Dede Jeklin, asisten pendaftaran siswa baru LPK ASJ. Bantu siswa/orang tua melengkapi form ' +
     '(nama, TTL, gender, agama, alamat, email, pendidikan, WA siswa, WA ortu). Balas ramah dan singkat dalam Bahasa Indonesia.\n' +
@@ -396,7 +396,7 @@ const BIDANG_DEFAULT = {
   ],
 };
 
-function normalizeBidang(raw) {
+function normalizeBidang(raw: unknown) {
   const s = String(raw || '').toLowerCase();
   if (!s) return null;
   if (/kaigo|kaig|caregiver|perawat.?lansia|care.?giving/.test(s)) return BIDANG_INTERVIEW.kaigo;
@@ -410,7 +410,7 @@ function normalizeBidang(raw) {
 }
 
 // Resolve bidang + nama kandidat dari WA (master dulu, fallback kandidat).
-async function resolveProfilKandidat(wa) {
+async function resolveProfilKandidat(wa: string) {
   const want = normalizeWa(String(wa || ''));
   if (!want) return null;
   let nama = '';
@@ -445,7 +445,7 @@ async function resolveProfilKandidat(wa) {
   return { wa: want, nama, bidang: normalizeBidang(bidangRaw) || BIDANG_DEFAULT, bidangRaw };
 }
 
-function buildInterviewSystem(profil, kota) {
+function buildInterviewSystem(profil: { nama?: string; bidang?: { label: string; extra: string[] } }, kota: string) {
   const b = profil.bidang || BIDANG_DEFAULT;
   const lines = [
     'Kamu adalah Jeklin Sensei, pewawancara kerja (mensetsu) Jepang untuk LPK ASJ (PT Amanah Sakura Japan).',
@@ -481,10 +481,10 @@ function buildInterviewSystem(profil, kota) {
   return lines.join('\n');
 }
 
-async function handleProcessAiInterview(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
+async function handleProcessAiInterview(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
-  const p = payload || {};
+  const p = (payload || {}) as Record<string, any>;
   const profil = await resolveProfilKandidat(p.wa || p.waTarget || '');
   const system = buildInterviewSystem(
     profil || { nama: p.candidateName, bidang: normalizeBidang(p.bidang) || BIDANG_DEFAULT },
@@ -502,10 +502,10 @@ async function handleProcessAiInterview(payload, sessionToken) {
 // (14 pertanyaan: ID + romaji + panduan jawaban ID/romaji/kanji) per kandidat
 // sesuai bidang SSW-nya — bisa langsung disalin ke Google Sheet kandidat.
 // ---------------------------------------------------------------------------
-async function handleGenerateWawancaraModel(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'admin');
+async function handleGenerateWawancaraModel(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   // Resolve WA dari candidateId (sama seperti parseDokumenBiodata) atau wa eksplisit.
   let wa = normalizeWa(String(d.wa || ''));
   if (!wa && d.candidateId) {
@@ -558,7 +558,7 @@ async function handleGenerateWawancaraModel(payload, sessionToken) {
       wa,
     };
   } catch (e) {
-    console.error('[AI] generateWawancaraModel error:', e && e.message ? e.message : e);
+    console.error('[AI] generateWawancaraModel error:', (e as { message?: string })?.message || e);
     return {
       success: false,
       error: 'Gagal membuat model wawancara. Coba lagi beberapa saat ya!',
@@ -572,10 +572,10 @@ async function handleGenerateWawancaraModel(payload, sessionToken) {
 // Dipanggil saat kandidat klik "Selesai & Kirim Hasil" (deterministik, tidak
 // bergantung AI menulis marker di tengah chat).
 // ---------------------------------------------------------------------------
-async function handleSelesaikanWawancara(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
+async function handleSelesaikanWawancara(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   const profil = await resolveProfilKandidat(d.wa || '');
   const b = (profil && profil.bidang) || BIDANG_DEFAULT;
   const history = Array.isArray(d.history) ? d.history : [];
@@ -602,7 +602,7 @@ async function handleSelesaikanWawancara(payload, sessionToken) {
     }
     return { success: true, hasil };
   } catch (e) {
-    console.error('[AI] selesaikanWawancara error:', e && e.message ? e.message : e);
+    console.error('[AI] selesaikanWawancara error:', (e as { message?: string })?.message || e);
     return {
       success: false,
       error: 'Gagal merangkum hasil wawancara. Coba lagi beberapa saat ya!',
@@ -616,10 +616,10 @@ async function handleSelesaikanWawancara(payload, sessionToken) {
 // ke ai_form_submissions (submitted_via='interview') supaya admin bisa lihat
 // & update biodata dari hasil wawancara.
 // ---------------------------------------------------------------------------
-async function handleSimpanHasilWawancara(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
+async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   const wa = normalizeWa(String(d.wa || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   const hasil = d.hasil || {};
@@ -670,10 +670,10 @@ async function handleSimpanHasilWawancara(payload, sessionToken) {
 // getHasilWawancara — admin: ambil hasil wawancara terakhir kandidat
 // (mode='wawancara' di ai_form_submissions) untuk dilihat / update biodata.
 // ---------------------------------------------------------------------------
-async function handleGetHasilWawancara(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'admin');
+async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
-  const d = (payload && payload[0]) || {};
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
   let wa = normalizeWa(String(d.wa || ''));
   if (!wa && d.candidateId) {
     let cand = await findCandidateByIdFiltered(String(d.candidateId));

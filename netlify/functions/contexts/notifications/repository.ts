@@ -4,7 +4,7 @@
  * Owns: wa_templates
  * All DB access goes through kernel/http → supabaseJson
  */
-import { supabaseJson } from '../../_lib/db/client';
+import { normalizeWa, supabaseJson } from '../../_lib/db/client';
 
 /** Upsert a WA template */
 export async function upsertWaTemplate(row: Record<string, any>, id?: string): Promise<void> {
@@ -37,3 +37,5 @@ export async function getWaTemplates(): Promise<any[]> {
   });
   return Array.isArray(rows) ? rows : [];
 }
+
+export { normalizeWa };

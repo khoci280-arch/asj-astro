@@ -206,7 +206,7 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
           const existingAi = existing.ai_data_json ? parseJsonLoose(String(existing.ai_data_json)) : {};
           patchBody.ai_data_json = JSON.stringify({ ...(existingAi || {}), skills: aiData.skills, source: 'smart_ingestion' });
         }
-        await patchMaster(existing.id, patchBody);
+        await patchMaster(String(existing.id), patchBody);
         upsertedRow = { id: existing.id, ...patchBody };
         action = 'updated';
       } else {

@@ -3,8 +3,6 @@
  *
  * Other contexts and surfaces import ONLY from index.ts.
  */
-import { APPLY_WA_COLS } from '../../_lib/ai/cv';
-import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from '../../_lib/db/client';
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
 import * as session from '../../_lib/session';
@@ -15,6 +13,7 @@ import { cacheClear } from '../../_lib/cache';
 import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, normalizeWa as nw,
+  normalizeWa, pick, supabaseJson, supabaseUpsert, toText, APPLY_WA_COLS,
 } from './repository';
 
 // --- Constants (moved from actions-master.ts) ---
@@ -117,7 +116,7 @@ function entryHasAny(entry: any, keys: string[]): boolean {
 
 function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any) => string): any[] {
   const seen = new Set(); const out: any[] = [];
-  const lists = [].concat(Array.isArray(columns) ? columns : [], Array.isArray(aiArr) ? aiArr : []);
+  const lists: any[] = ([] as any[]).concat(Array.isArray(columns) ? columns : [], Array.isArray(aiArr) ? aiArr : []);
   for (const e of lists) { if (!e || typeof e !== 'object') continue; const k = keyFn(e); if (!k || seen.has(k)) continue; seen.add(k); out.push(e); }
   return out;
 }

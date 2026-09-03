@@ -26,6 +26,7 @@
 
 import { supabaseJson } from '../db/client';
 import { log } from './log';
+import { Errors } from './errors';
 
 const TABLE = 'job_queue';
 
@@ -203,4 +204,47 @@ export async function sweepQueue(processFn: (job: Job) => Promise<void>): Promis
     }
   }
   return processed;
+}
+
+/** getJobStatus action — poll a background job (client-facing shape).
+ * Moved from the retired _lib/actions-job-status dispatcher module
+ * (2026-09-04): the read belongs with the queue it polls. The 202-returning
+ * surfaces (ai / ingest / notify) tell clients to poll via getJobStatus;
+ * note the action is not yet routed in any surface registry.
+ *   const result = await handleGetJobStatus([jobId], sessionToken);
+ *   // { success: true, status, jobId, type, attempts, ... , result? } */
+export async function handleGetJobStatus(
+  payload: unknown[],
+  sessionToken?: string,
+): Promise<unknown> {
+  const [jobId] = payload as [string];
+
+  if (!jobId || typeof jobId !== 'string') {
+    throw Errors.validation('jobId harus diisi');
+  }
+
+  log.info('job-status.start', { jobId });
+
+  const job = await getJob(jobId);
+
+  if (!job) {
+    return {
+      success: true,
+      status: 'not_found',
+      message: 'Job tidak ditemukan',
+    };
+  }
+
+  return {
+    success: true,
+    status: job.status,
+    jobId: job.id,
+    type: job.type,
+    attempts: job.attempts,
+    maxAttempts: job.max_attempts,
+    lastError: job.last_error,
+    createdAt: job.created_at,
+    // Result is in the payload if status is 'done'
+    result: job.status === 'done' ? job.payload : undefined,
+  };
 }

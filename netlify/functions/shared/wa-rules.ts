@@ -21,7 +21,7 @@ export const JP_MAX_DIGITS = 12;
  * Indonesia -> 628xxxxxxxxxxxx (12-15 digit)
  * Jepang    -> 81xxxxxxxxxxxx (10-15 digit)
  */
-export function normalizeWa(raw: string): string {
+export function normalizeWa(raw: unknown): string {
   let s = String(raw || '').replace(/[^0-9]/g, '');
   if (!s) return '';
 

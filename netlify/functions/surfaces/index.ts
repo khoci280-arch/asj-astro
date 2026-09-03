@@ -87,6 +87,9 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   processSiswaAIChat:         () => import('./ai').then(m => m.AI_ACTIONS),
   processAdminAIChat:         () => import('./ai').then(m => m.AI_ACTIONS),
   processAiInterview:         () => import('./ai').then(m => m.AI_ACTIONS),
+  // Job-status polling: ai-chat.js and notify.js both allow it; dispatch runs
+  // the same kernel read (handleGetJobStatus) whichever entry was polled.
+  getJobStatus:               () => import('./ai').then(m => m.AI_ACTIONS),
   processAiFormSubmit:        () => import('./ai').then(m => m.AI_ACTIONS),
   processUploadDoc:           () => import('./ai').then(m => m.AI_ACTIONS),
   generateWawancaraModel:     () => import('./ai').then(m => m.AI_ACTIONS),

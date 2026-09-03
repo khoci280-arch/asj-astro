@@ -9,7 +9,7 @@ import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helper
 // dan seluruh logika dipusatkan di _lib/handlers.js (dispatch per action).
 
 function makeHandler() {
-  return async (event) => {
+  return async (event: any) => {
     let body: Record<string, any> = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -39,11 +39,11 @@ function makeHandler() {
     let out;
     try {
       out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent }, () =>
-        handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body), {
-          ip: clientIp(event),
+        handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body) as string, {
+          ip: clientIp(event) ?? undefined,
         }),
       );
-    } catch (e) {
+    } catch (e: any) {
       out = { success: false, message: 'Error internal: ' + e.message };
     }
     const requestOrigin = (event && event.headers)

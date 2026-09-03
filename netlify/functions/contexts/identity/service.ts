@@ -12,6 +12,7 @@
  *   refreshKandidatSession(refreshToken) → { success, sessionToken?, wa? }
  *   registerKandidat(nama, wa, password?, usia?) → { success }
  *   changePassword(wa, lama, baru) → { success }
+ *   registerFcmToken(payload, sessionToken) → { success }
  *   verifyToken(token) → TokenPayload | null
  *   requireRole(token, role) → { token } | { error }
  *   requireAdmin(token) → { token } | { error }
@@ -109,7 +110,7 @@ export async function registerKandidat(nama: string, wa: string, password?: stri
   const pass = password;
   const hash = await bcrypt.hash(pass, 10);
   // Insert via Supabase
-  const { supabaseJson } = await import('../../_lib/db/client');
+  const { supabaseJson } = await import('./repository');
   try {
     await supabaseJson('POST', 'database_candidate', {
       body: {
@@ -135,7 +136,7 @@ export async function changePassword(wa: string, lama: string, baru: string) {
   const ok = await bcrypt.compare(lama, storedPass);
   if (!ok) return { success: false, message: 'Password lama salah.' };
   const hash = await bcrypt.hash(baru, 10);
-  const { supabaseJson } = await import('../../_lib/db/client');
+  const { supabaseJson } = await import('./repository');
   try {
     await supabaseJson('PATCH', 'database_candidate', {
       query: { no_wa: 'eq.' + wa },
@@ -154,7 +155,7 @@ export function verifyToken(token: string) {
   return session.verifyToken(token);
 }
 
-export function requireRole(sessionToken: string, role: string) {
+export function requireRole(sessionToken: string | undefined, role: string) {
   const t = session.verifyToken(sessionToken);
   if (!t || t.role !== role || t.kind === 'refresh') {
     return { error: { success: false, sessionInvalid: true, message: 'Sesi ' + role + ' tidak valid' } };
@@ -166,10 +167,55 @@ export function requireAdmin(sessionToken: string) {
   return requireRole(sessionToken, 'admin');
 }
 
-export function isOwnerOrAdmin(sessionToken: string, wa: string) {
+export function isOwnerOrAdmin(sessionToken: string | undefined, wa: string) {
   const t = session.verifyToken(sessionToken);
   if (!t || t.kind === 'refresh') return false;
   if (t.role === 'admin') return true;
   if (t.role === 'kandidat' && normalizeWa(t.wa || '') === normalizeWa(wa)) return true;
   return false;
+}
+
+/** Register an FCM device token for a WA number (upsert on token).
+ * Admins register under their raw handle ('ADMIN'); a kandidat token may only
+ * be bound to its own WA. Moved from the legacy _lib/actions-auth dispatcher.
+ * Same logic and deps (normalizeWa, session, supabaseJson via repository). */
+export async function registerFcmToken(payload: any[], sessionToken?: string): Promise<{ success: boolean; message?: string }> {
+  const [waStr, token, deviceInfo] = payload;
+  const waRaw = String(waStr || '').trim();
+  let wa = normalizeWa(waRaw);
+
+  let ident: any = null;
+  if (sessionToken) {
+    ident = session.verifyToken(sessionToken);
+  }
+
+  // Bypass normalisasi untuk admin (agar nama admin spt 'khoci' tidak terhapus jd string kosong)
+  if (ident && ident.role === 'admin') {
+    wa = waRaw || 'ADMIN';
+  } else if (waRaw === 'ADMIN') {
+    wa = 'ADMIN';
+  }
+
+  if (!wa || !token) return { success: false, message: 'Invalid data' };
+
+  if (ident && ident.role === 'kandidat' && ident.wa !== wa) {
+    return { success: false, message: 'Unauthorized FCM registration' };
+  }
+
+  try {
+    // Insert/upsert ke tabel fcm_tokens (jika token sama, update last_used_at)
+    const { supabaseJson } = await import('./repository');
+    await supabaseJson('POST', 'fcm_tokens', {
+      query: { on_conflict: 'token' },
+      body: {
+        wa: wa,
+        token: token,
+        device_info: String(deviceInfo || '').substring(0, 200),
+        last_used_at: new Date().toISOString(),
+      },
+    });
+    return { success: true };
+  } catch (e: unknown) {
+    return { success: false, message: (e as Error).message };
+  }
 }

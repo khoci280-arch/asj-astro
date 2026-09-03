@@ -50,7 +50,7 @@ const SCOPE_ROWS = new Set([
 
 // Normalisasi nama key dari tabel yang ditempel:
 // "SUPABASE URL" -> "SUPABASE_URL", "Service Role Key" -> "SERVICE_ROLE_KEY", dst.
-function normalizeKey(raw) {
+function normalizeKey(raw: string): string {
   return raw
     .trim()
     .toUpperCase()
@@ -59,7 +59,7 @@ function normalizeKey(raw) {
 }
 
 // Alias umum bila nama asli di dashboard Netlify beda dari nama baku.
-const ALIASES = {
+const ALIASES: Record<string, string> = {
   SERVICE_ROLE_KEY: 'SUPABASE_SERVICE_ROLE_KEY',
   SERVICE_KEY: 'SUPABASE_SERVICE_ROLE_KEY',
   SUPABASE_KEY: 'SUPABASE_SERVICE_ROLE_KEY',
@@ -80,7 +80,7 @@ const ALIASES = {
 
 // Parse satu baris env: dukung format "KEY=value" DAN format tabel
 // "| label | nilai |" (hasil salin tabel Environment Variables Netlify).
-function parseLine(line) {
+function parseLine(line: string): { key: string; value: string } | null {
   const kv = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
   if (kv) return { key: kv[1], value: kv[2].trim() };
   const pipeFull = line.match(/^\s*\|\s*(.+?)\s*\|\s*([^|]*?)\s*\|\s*$/);
@@ -96,8 +96,8 @@ function parseLine(line) {
   return null;
 }
 
-let fileEnv = null;
-function loadFileEnv() {
+let fileEnv: Record<string, string> | null = null;
+function loadFileEnv(): Record<string, string> {
   if (fileEnv) return fileEnv;
   fileEnv = {};
   try {
@@ -140,7 +140,7 @@ function loadFileEnv() {
   return fileEnv;
 }
 
-function env(key) {
+function env(key: string): string {
   const v =
     process.env[key] !== undefined && process.env[key] !== ''
       ? process.env[key]
@@ -171,14 +171,14 @@ function debugFileStructure() {
     exists: false,
     size: 0,
     lines: 0,
-    keys: [],
+    keys: [] as string[],
     // Klasifikasi bentuk baris (nilai tidak pernah ditampilkan):
     keyValue: 0, // KEY=value
     jsonKey: 0, // "KEY": value (format JSON)
     comment: 0, // # ... / ; ...
     blank: 0,
     other: 0,
-    otherShapes: [], // klasifikasi bentuk baris lain (tanpa isi)
+    otherShapes: [] as string[], // klasifikasi bentuk baris lain (tanpa isi)
   };
   try {
     const p = path.join(process.cwd(), '.env.local');
@@ -190,9 +190,10 @@ function debugFileStructure() {
     info.lines = rawLines.length;
     for (const line of rawLines) {
       const trimmed = line.trim();
-      if (parseLine(line)) {
+      const parsedRow = parseLine(line);
+      if (parsedRow) {
         info.keyValue++;
-        info.keys.push(parseLine(line).key);
+        info.keys.push(parsedRow.key);
       } else if (trimmed.startsWith('#') || trimmed.startsWith(';')) {
         info.comment++;
       } else if (trimmed === '') {
@@ -248,7 +249,7 @@ function debugFileStructure() {
     info.otherPrefix = prefixCount;
     // Bentuk baris "other": klasifikasi tiap field pipa (TANPA nilai).
     // Dipakai untuk mengenali layout tabel yang ditempel (mis. value-first).
-    function fieldShape(f) {
+    function fieldShape(f: string): string {
       const t = f.trim();
       if (/^https?:\/\//.test(t)) return 'url';
       if (/^ey[A-Za-z0-9_-]+$/.test(t) && t.length > 20) return 'jwt';
@@ -275,7 +276,7 @@ function debugFileStructure() {
     // Nama field pertama (key) dari baris "other" yang TIDAK ter-parse,
     // ditampilkan ter-mask (nama variabel bukan rahasia):
     // "SUP…_KEY (26)". Nilai tidak pernah ditampilkan.
-    const masked = [];
+    const masked: string[] = [];
     for (const line of rawLines) {
       const trimmed = line.trim();
       if (trimmed === '' || trimmed.startsWith('#') || trimmed.startsWith(';')) continue;
@@ -294,7 +295,7 @@ function debugFileStructure() {
     info.otherMaskedKeys = masked.slice(0, 12);
     // Dump 30 baris pertama: NAMA KEY (atau bentuk baris) + nilai ter-mask
     // (3 karakter awal + 3 akhir + panjang). Nilai penuh TIDAK pernah tampil.
-    function maskVal(v) {
+    function maskVal(v: string): string {
       if (v === '') return '(kosong)';
       const s =
         v.length <= 12
