@@ -46,6 +46,17 @@ export default defineConfig({
           exclude: ['node_modules/**', 'dist/**', 'netlify/functions/.netlify-built/**'],
         },
       },
+      {
+        test: {
+          // Code index (docs/CODE_INDEX_DESIGN.md). pool: 'threads' is required
+          // on Windows — same hang lesson as the backend project above.
+          name: 'indexer',
+          environment: 'node',
+          pool: 'threads',
+          include: ['indexer/**/*.test.ts'],
+          exclude: ['node_modules/**', 'dist/**', 'indexer/dist/**'],
+        },
+      },
     ],
   },
 });

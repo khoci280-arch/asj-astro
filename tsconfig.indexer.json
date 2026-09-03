@@ -1,0 +1,25 @@
+{
+  // Code index subproject (docs/CODE_INDEX_DESIGN.md Phases 0-2).
+  // Deliberately does NOT extend the app tsconfig: indexer code must never leak
+  // into `npm run typecheck` (app include is src/** + netlify/functions/**).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "declaration": false,
+    "sourceMap": false,
+    "outDir": "indexer/dist",
+    // Emits indexer/dist/indexer/src/*.js and indexer/dist/docs/*.js
+    // (docs/code-index-schema.ts is the canonical contract, imported at runtime).
+    "rootDir": "."
+  },
+  "include": ["indexer/src/**/*.ts", "docs/code-index-schema.ts"],
+  "exclude": ["indexer/dist"]
+}

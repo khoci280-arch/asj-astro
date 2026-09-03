@@ -1,0 +1,269 @@
+/**
+ * parse.test.ts — Phase 1 exit criteria: outlines correct for hand-checked
+ * files; declarations/scopes/occurrences/imports/exports as the design specifies.
+ */
+
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { ImportKind, OccurrenceRole, ScopeKind, SymbolKind } from '../../docs/code-index-schema.js';
+import { parseFile, scanAstroTemplateTags } from './parse.js';
+import { fileIdx, type Lang } from './util.js';
+
+const ROOT = process.cwd().replace(/\\/g, '/');
+
+function parseReal(rel: string, lang: Lang) {
+  const content = readFileSync(`${ROOT}/${rel}`, 'utf8');
+  return parseFile({ fileIdx: fileIdx(0), path: rel, lang, content });
+}
+
+function parseInline(content: string, path = 'test/sample.ts', lang: Lang = 'ts') {
+  return parseFile({ fileIdx: fileIdx(0), path, lang, content });
+}
+
+describe('real-file outlines', () => {
+  it('master-data/index.ts — pure re-export barrel with an alias', () => {
+    const p = parseReal('netlify/functions/contexts/master-data/index.ts', 'ts');
+    expect(p.symbols).toHaveLength(0); // barrel: no declarations
+    expect(p.imports).toHaveLength(0);
+    expect(p.exports).toHaveLength(11);
+    const alias = p.exports.find((e) => e.exportName === 'handleSimpanUpdateMaster');
+    expect(alias).toMatchObject({ localName: 'handleSubmitMasterForm', from: './service', kind: 'named' });
+    const plain = p.exports.find((e) => e.exportName === 'findMasterByWa');
+    expect(plain).toMatchObject({ localName: 'findMasterByWa', from: './repository' });
+    // occurrence on the local name of the aliased specifier
+    expect(p.occurrences.some((o) => o.name === 'handleSubmitMasterForm' && o.role === OccurrenceRole.ExportSpecifier)).toBe(true);
+  });
+
+  it('catalog/repository.ts — aliased re-export `_mapForm as mapForm`', () => {
+    const p = parseReal('netlify/functions/contexts/catalog/repository.ts', 'ts');
+    const alias = p.exports.find((e) => e.exportName === 'mapForm');
+    expect(alias).toMatchObject({ localName: '_mapForm', kind: 'named' });
+    const aliasSym = p.symbols.find((s) => s.name === '_mapForm');
+    expect(aliasSym?.kind).toBe(SymbolKind.ImportBinding);
+    expect(aliasSym?.exportNames).toContain('mapForm');
+    expect(aliasSym?.exported).toBe(true);
+    const local = p.symbols.find((s) => s.name === 'mapForm');
+    expect(local?.kind).toBe(SymbolKind.Constant); // `const mapForm = _mapForm`
+  });
+
+  it('Icon.tsx — component + props interface + import type', () => {
+    const p = parseReal('src/components/ui/Icon.tsx', 'tsx');
+    const icon = p.symbols.find((s) => s.name === 'Icon');
+    expect(icon?.kind).toBe(SymbolKind.Component);
+    expect(icon?.exportNames).toContain('default');
+    expect(p.symbols.find((s) => s.name === 'IconProps')?.kind).toBe(SymbolKind.Interface);
+    const preactImport = p.imports.find((i) => i.specifier === 'preact');
+    expect(preactImport?.kind).toBe(ImportKind.Type); // `import type { JSX } from 'preact'`
+  });
+
+  it('index.astro — frontmatter imports only', () => {
+    const p = parseReal('src/pages/index.astro', 'astro');
+    expect(p.imports).toHaveLength(6);
+    expect(p.symbols).toHaveLength(6); // one ImportBinding per import
+    expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
+    expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
+  });
+
+  it('BaseLayout.astro — Props interface + ?raw asset import', () => {
+    const p = parseReal('src/layouts/BaseLayout.astro', 'astro');
+    expect(p.symbols.find((s) => s.name === 'Props' && s.kind === SymbolKind.Interface)).toBeDefined();
+    const raw = p.imports.find((i) => i.specifier === '../icons/sprite.svg?raw');
+    expect(raw).toBeDefined();
+    expect(raw?.kind).toBe(ImportKind.Static); // default import; the resolver turns it into an Asset edge
+    // template component tags (row 8 astro-markup): every capitalized tag the
+    // layout renders, deduped — graph.ts resolves each through these imports.
+    expect(p.templateTags).toEqual(expect.arrayContaining(['BottomNav', 'Footer', 'Toast']));
+    expect(p.templateTags).not.toContain('slot'); // builtin tags are excluded
+  });
+
+  it('fcm.ts — remote and relative dynamic imports', () => {
+    const p = parseReal('src/lib/fcm.ts', 'ts');
+    const dyn = p.imports.filter((i) => i.kind === ImportKind.Dynamic);
+    expect(dyn).toHaveLength(3);
+    expect(dyn.filter((i) => i.specifier.startsWith('https://'))).toHaveLength(2);
+    expect(dyn.some((i) => i.specifier === './apiClient')).toBe(true);
+    expect(p.symbols.find((s) => s.name === 'initFCM' && s.kind === SymbolKind.Function)).toBeDefined();
+    expect(p.symbols.find((s) => s.name === 'FirebaseCompat' && s.kind === SymbolKind.Interface)).toBeDefined();
+  });
+
+  it('i18n.ts — type export + dynamic i18n-jp', () => {
+    const p = parseReal('src/store/i18n.ts', 'ts');
+    expect(p.imports.some((i) => i.specifier === '@nanostores/persistent' && i.kind === ImportKind.Static)).toBe(true);
+    expect(p.imports.some((i) => i.specifier === './i18n-jp' && i.kind === ImportKind.Dynamic)).toBe(true);
+    expect(p.exports.some((e) => e.exportName === 'Lang' && e.kind === 'type')).toBe(true);
+    expect(p.symbols.find((s) => s.name === 'Lang')?.kind).toBe(SymbolKind.TypeAlias);
+  });
+
+  it('auth.js — CommonJS require + exports.handler', () => {
+    const p = parseReal('netlify/functions/auth.js', 'js');
+    expect(p.imports.some((i) => i.specifier === './_lib/netlify-wrapper-surface')).toBe(true);
+    expect(p.exports.some((e) => e.exportName === 'handler' && e.kind === 'cjs')).toBe(true);
+    expect(p.symbols.find((s) => s.name === 'makeSurfaceHandler' && s.kind === SymbolKind.Constant)).toBeDefined();
+  });
+});
+
+describe('inline binder behavior', () => {
+  it('declares, scopes, and roles correctly', () => {
+    const p = parseInline(`
+import { mapForm } from './forms';
+function outer(a: number) {
+  const x = 1;
+  function inner() { return x; }
+  return inner() + a;
+}
+interface I extends Object { p: string; }
+const obj = { key: 1 };
+const y = obj.key;
+mapForm('x');
+`);
+    const names = p.symbols.map((s) => s.name);
+    expect(names).toContain('mapForm');
+    expect(names).toContain('outer');
+    expect(names).toContain('a');
+    expect(names).toContain('x');
+    expect(names).toContain('inner');
+    expect(names).toContain('I');
+    expect(names).toContain('p');
+    expect(names).toContain('obj');
+    expect(names).toContain('y');
+
+    // qualified names: interface member carries its container
+    expect(p.symbols.find((s) => s.name === 'p')?.qualified).toBe('I.p');
+    // roles
+    expect(p.occurrences.some((o) => o.name === 'inner' && o.role === OccurrenceRole.Callee)).toBe(true);
+    expect(p.occurrences.some((o) => o.name === 'mapForm' && o.role === OccurrenceRole.Callee)).toBe(true);
+    expect(p.occurrences.some((o) => o.name === 'x' && o.role === OccurrenceRole.Read)).toBe(true); // read inside inner()
+    expect(p.occurrences.some((o) => o.name === 'obj' && o.role === OccurrenceRole.Read)).toBe(true);
+    expect(p.occurrences.filter((o) => o.name === 'key').some((o) => o.role === OccurrenceRole.Property)).toBe(true);
+    expect(p.occurrences.filter((o) => o.name === 'key').some((o) => o.role === OccurrenceRole.ObjectKey)).toBe(true);
+    expect(p.occurrences.some((o) => o.name === 'Object' && o.role === OccurrenceRole.TypeRef)).toBe(true);
+
+    // scope tree: module → function outer → block; the hoisted inner function
+    // lands on the function scope's single declaration list (one push each)
+    const moduleScope = p.scopes.find((s) => s.kind === ScopeKind.Module);
+    const outerScope = p.scopes.find((s) => s.name === 'outer' && s.kind === ScopeKind.Function);
+    expect(outerScope?.parentKey).toBe(moduleScope?.key);
+    const innerKey = p.symbols.find((s) => s.name === 'inner')?.key;
+    expect(outerScope?.symbolKeys).toContain(innerKey);
+  });
+
+  it('merges interface declarations into one symbol with two decls', () => {
+    const p = parseInline('interface Job { a: string }\ninterface Job { b: number }');
+    const jobs = p.symbols.filter((s) => s.name === 'Job');
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].decls).toHaveLength(2);
+  });
+
+  it('disambiguates same-named locals with ~n symIds', () => {
+    const p = parseInline('const x = 1;\nconst x = 2;');
+    const xs = p.symbols.filter((s) => s.name === 'x');
+    expect(xs).toHaveLength(2);
+    expect(xs[0].id).toContain('#x');
+    expect(xs[1].id).toContain('#x~2');
+  });
+
+  it('declHash excludes bodies; exportHash excludes bodies but tracks exports', () => {
+    const a = parseInline('function f(x: string) { return x + "a"; }\nexport const K = 1;');
+    const b = parseInline('function f(x: string) { return x + "b"; }\nexport const K = 1;');
+    expect(a.declHash).toBe(b.declHash);
+    expect(a.exportHash).toBe(b.exportHash);
+
+    const c = parseInline('function f(x: number) { return x + "a"; }\nexport const K = 1;');
+    expect(a.declHash).not.toBe(c.declHash);
+    expect(a.exportHash).toBe(c.exportHash); // signature change, same export surface
+
+    const d = parseInline('function f(x: string) { return x + "a"; }\nexport const K2 = 1;');
+    expect(a.exportHash).not.toBe(d.exportHash);
+  });
+
+  it('gives destructured bindings per-element decl ranges (wrong-hop fix, §13)', () => {
+    // Before the fix every element of `const { a, b } = x` shared the whole
+    // statement's start offset; the compiler records each BindingElement.
+    const p = parseInline('const { a, b } = src;\nconst [c, d] = f();');
+    const sym = (n: string) => p.symbols.find((s) => s.name === n)!;
+    expect(sym('a').decls[0].start).toBe(8);
+    expect(sym('b').decls[0].start).toBe(11);
+    expect(sym('c').decls[0].start).toBe(29); // after the `[`
+    expect(sym('d').decls[0].start).toBe(32);
+    // And a destructured parameter's element likewise points at the element.
+    const q = parseInline('function F({ onClose }: P) {}');
+    expect(q.symbols.find((s) => s.name === 'onClose')!.decls[0].start).toBe(13);
+  });
+
+  it('pushes each declaration to exactly one owning scope (hoisted ones to the function/module)', () => {
+    const keyOf = (p: ReturnType<typeof parseInline>, n: string) => p.symbols.find((s) => s.name === n)!.key;
+    const owners = (p: ReturnType<typeof parseInline>, key: ReturnType<typeof keyOf>) => p.scopes.filter((s) => s.symbolKeys.includes(key));
+
+    // Module-level declarations — var, function, const alike — are owned once,
+    // by the module scope (they hoist to / are introduced at the top level).
+    const p = parseInline('function top() {}\nvar v = 1;\nconst k = 0;');
+    const moduleScope = p.scopes.find((s) => s.kind === ScopeKind.Module)!;
+    for (const n of ['top', 'v', 'k']) expect(owners(p, keyOf(p, n))).toHaveLength(1);
+    expect(moduleScope.symbolKeys).toContain(keyOf(p, 'v'));
+
+    // A var inside a block is owned once, by the enclosing function — not by
+    // the block it is written in and not by the module.
+    const q = parseInline('function f(c: boolean) { if (c) { var w = 1; } }');
+    const fnScope = q.scopes.find((s) => s.name === 'f' && s.kind === ScopeKind.Function)!;
+    const wOwners = owners(q, keyOf(q, 'w'));
+    expect(wOwners).toHaveLength(1);
+    expect(wOwners[0].key).toBe(fnScope.key);
+
+    // A block-scoped let stays owned by its block alone.
+    const r = parseInline('function g() { const l = 1; }');
+    const bodyBlock = r.scopes.find((s) => s.kind === ScopeKind.Block && s.parentKey === r.scopes.find((x) => x.name === 'g')?.key)!;
+    const lOwners = owners(r, keyOf(r, 'l'));
+    expect(lOwners).toHaveLength(1);
+    expect(lOwners[0].key).toBe(bodyBlock.key);
+  });
+
+  it('disambiguates sibling scope ids with ~n so every scope id is unique', () => {
+    // Sibling anonymous scopes (two if-blocks, arrows at one level) and merged
+    // declarations (each `interface I {}` body) share a scopePath — each
+    // physical scope must still get a unique id, like symIds' ~n suffix.
+    const p = parseInline('const f = () => { if (a) {} if (b) {} }\ninterface I { m(): void }\ninterface I { n(): void }');
+    const ids = p.scopes.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.filter((i) => i.endsWith('#module.arrow.block.block'))).toHaveLength(1); // first if-block keeps its plain id
+    expect(ids.some((i) => i.endsWith('#module.arrow.block.block~2'))).toBe(true); // sibling if-block
+    expect(ids.some((i) => i.endsWith('#module.I~2'))).toBe(true); // merged interface body
+  });
+
+  it('does not hoist classes out of their block (TDZ block-scoped only)', () => {
+    // A class inside a block is owned by that block alone — never by the
+    // enclosing function — so a scope-chain lookup outside the block cannot
+    // find it (classes are block-scoped; only var + function hoist).
+    const p = parseInline('function f(c: boolean) { if (c) { class K {} } }');
+    const kKey = p.symbols.find((s) => s.name === 'K')!.key;
+    const owners = p.scopes.filter((s) => s.symbolKeys.includes(kKey));
+    expect(owners).toHaveLength(1);
+    expect(owners[0].kind).toBe(ScopeKind.Block); // the if-block, not `function f`
+    const fnScope = p.scopes.find((s) => s.name === 'f' && s.kind === ScopeKind.Function)!;
+    expect(fnScope.symbolKeys).not.toContain(kKey);
+  });
+
+  it('parses an empty astro template without frontmatter', () => {
+    const p = parseFile({ fileIdx: fileIdx(0), path: 'test/empty.astro', lang: 'astro', content: '<div>hello</div>' });
+    expect(p.symbols).toHaveLength(0);
+    expect(p.poisoned).toBeUndefined();
+    expect(p.templateTags).toEqual([]); // no capitalized tags
+  });
+});
+
+describe('scanAstroTemplateTags', () => {
+  it('collects capitalized tags from the template portion, deduped, builtins excluded', () => {
+    const content = '---\nimport { A } from \'./a\';\n---\n<div><A /><A/><slot /><Fragment><B.C /></Fragment><A /></div>';
+    const tags = scanAstroTemplateTags(content, content.indexOf('\n---\n') + 5);
+    expect(tags).toEqual(['A', 'B']);
+  });
+  it('ignores lowercase html tags; attribute values ARE scanned (lightweight-scan limitation)', () => {
+    const content = '---\n---\n<div class=\'<NotATag>\'><span>hi</span><MyCard /></div>';
+    const tags = scanAstroTemplateTags(content, 7);
+    expect(tags).toEqual(['NotATag', 'MyCard']); // source order; the simple scan does not skip quoted regions
+  });
+  it('handles an astro file with no template markup at all', () => {
+    const content = '---\nconst x = 1;\n---\n';
+    const tags = scanAstroTemplateTags(content, content.indexOf('\n---') + 4);
+    expect(tags).toEqual([]);
+  });
+});

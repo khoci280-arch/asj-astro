@@ -1,0 +1,9 @@
+{
+  "policy": "Per-symbol rename drift gate (idx:gate, design §8.5). Each entry: name (exact/qualified; must resolve to exactly ONE definition — ambiguous names fail the gate on purpose, never guessed) and gate (max allowed affected-file count: the definition file + every reference/import site, deduped — the same files-set impactReport computes for `idx impact`). Threshold policy: gate = current measured impact + margin — narrow symbols (<5 files) get +1..2 files, wider ones ~+25% rounded up. CI (ci:quality) fails when a protected symbol's impact exceeds its gate: either the growth is drift (investigate the new sites with `npm run idx:impact -- <name>`) or it is intentional (raise the gate IN this file WITH a note recording why). Re-measure any symbol with `npm run idx:impact -- <name>` before editing this file.",
+  "entries": [
+    { "name": "handleSubmitMasterForm", "gate": 4, "note": "master save surface; measured 3 files 2026-09-04" },
+    { "name": "signToken", "gate": 7, "note": "session signing; measured 5 files 2026-09-04" },
+    { "name": "cacheClear", "gate": 12, "note": "cache invalidation; measured 10 files 2026-09-04" },
+    { "name": "requireRole", "gate": 16, "note": "auth guard; measured 13 files 2026-09-04" }
+  ]
+}
