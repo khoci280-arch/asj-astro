@@ -692,3 +692,29 @@ bandingkan fitur/modal/pipeline data sbg referensi menuju **100% produksi**.
 
 ---
 
+# 🔄 HANDOVER Sesi 2026-09-04 (7) — Crosscheck 1:1 dimulai (modal #1 CekSiswa)
+
+**Branch:** `dev` · Arahan user: baca `F:\Asjpow4v7-main\khoci921\docs`, bandingkan fitur/
+modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
+
+## Setup
+- `docs/PARITY_CHECKLIST.md` = checklist pelacak (modal A01–A19, B01–B07, form C01–C06,
+  progres) — update per unit selesai lintas sesi.
+- Metode crosscheck per unit: trigger → fields → action/endpoint/payload/session → response
+  → tabel → i18n → improve.
+
+## Modal #1 SELESAI: CekSiswaModal (A01/B07) ✅
+- Legacy: `bukaModalCekDataSiswa` → `getDaftarSiswaBaru` (admin) → tabel No/Nama/JK(L/P)/Alamat.
+- Temuan rebuild lama: fetch `getAppData args=['siswa']` (mode tak didukung backend → selalu
+  kosong) + render field wa/status/kelas (salah kontrak).
+- Fix: `CekSiswaModal.tsx` → fetch `getDaftarSiswaBaru` via register + Bearer; state
+  loading/session(admin-only, tanpa bocor)/error/ready; tabel 1:1 legacy + badge L/P.
+- Verifikasi: typecheck exit 0; CRLF konsisten.
+
+## Status kerja lain (belum di-commit, menumpuk)
+- Sesi 6 QA: docs surface wired + register normalisasi + ApplyFullForm submit fix.
+- Checklist A01 di-done; form deltas C01–C06 tercatat.
+
+## Next
+- C04 siswa-baru (S1+S3) → C02 master → C03 ai-cv → A02+ modal 1:1 → C06 share token.
+
