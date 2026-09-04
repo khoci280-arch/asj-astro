@@ -761,3 +761,25 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
 ## Next
 - A04 ListKandidatModal → lanjut A05... urut checklist `docs/PARITY_CHECKLIST.md`.
 
+## 🔄 Sesi 2026-09-04 — Parity A04: ListKandidatModal root-fixed
+- Crosscheck vs legacy js/render/admin.ts (count cell → bukaModalListKandidat) +
+  js/admin_ops/candidates.ts (keluarkanKandidatDariJob, mulaiKirimUndanganGrup).
+- Temuan akar: (1) modal & count cell TabDbJob menyaring store yg hanya berisi
+  HALAMAN PERTAMA (≤20 baris, P10 paginasi) → jumlah & daftar kandidat salah di
+  luar halaman 1; (2) tombol dossier legacy 👁 (bukaDigitalCV) hilang; (3) Undang
+  Grup kirim payload [waList, pesan, interval] (bukan kontrak) dan di-queue ke
+  worker 'wa.broadcast' yg NOT_IMPL → undangan TIDAK PERNAH terkirim; (4) refresh
+  setelah remove menimpa allKandidatList dgn halaman saat ini.
+- Fix: adminStore + `kandidatTotal` + `fetchAllKandidat()` (loop getCandidatesPage
+  200/halaman, dedupe WA) utk konsumen penuh (TabDbJob count, List, Matchmaking);
+  TabPelamar teks total pakai kandidatTotal & tidak lagi menimpa allKandidatList;
+  ListKandidatModal refresh tiap buka; tombol 👁 → event showCandidateHistory;
+  sendUndangan payload object legacy {candidates:[{wa,nama}], jobCode, linkGrup,
+  interval} (kontrak handleKirimTawaranMassal); worker sweep-queue 'wa.broadcast'
+  DIIMPLEMENTASIKAN (delegasi ke handleKirimTawaranMassal) — sebelumnya NOT_IMPL.
+- Verifikasi: typecheck exit 0; frontend 7 file / 54 test (+1 file, +5), backend
+  24 file / 225 test; CRLF konsisten. Belum di-commit (menumpuk Sesi 6/7 + A02/A03).
+
+## Next
+- A05 PemberkasanModal → lanjut A06... urut checklist `docs/PARITY_CHECKLIST.md`.
+

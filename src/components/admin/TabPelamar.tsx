@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {
-  kandidatList, allKandidatList, kandidatLoading,
+  kandidatList, kandidatTotal, kandidatLoading,
   adminSearch, adminFilterGender, adminFilterAge, adminFilterJft,
   adminPage, adminSimpleView, PAGE_SIZE,
   setAdminSearch, setAdminFilterGender, setAdminFilterAge, setAdminFilterJft,
@@ -179,7 +179,7 @@ te-800">
         </div>
       )}
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
-        <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {allKandidat.length} kandidat</span>
+        <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {totalAll} kandidat</span>
         {shown.length < filtered.length && (
           <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><Icon name="chevron-down" class="mr-1" /> Muat Lebih Banyak</button>
         )}

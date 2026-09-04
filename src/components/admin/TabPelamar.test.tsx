@@ -16,6 +16,7 @@ vi.mock('../../store/adminStore', () => {
   return {
     kandidatList: mockStore([{ id: 'KD001', nama: 'Budi', wa: '628123', idLoker: 'TG658', tahapan: 'LIST', status: 'OPEN', catatan: '', gender: 'L', usia: '25', jft: 'A2' }]),
     allKandidatList: mockStore([]),
+    kandidatTotal: mockStore(1),
     kandidatLoading: mockStore(false),
     adminSearch: mockStore(''),
     adminFilterGender: mockStore('all'),

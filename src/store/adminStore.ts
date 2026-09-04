@@ -36,6 +36,8 @@ export const reportModalOpen = atom<boolean>(false);
 export const kandidatList = atom<Kandidat[]>([]);
 export const allKandidatList = atom<Kandidat[]>([]);
 export const kandidatLoading = atom<boolean>(true);
+// Total kandidat di server (getCandidatesPage.total) — dipakai teks "x dari y".
+export const kandidatTotal = atom<number>(0);
 
 // ── Filter State ─────────────────────────────────────────
 export const adminSearch = atom<string>('');
@@ -121,6 +123,9 @@ export function toggleSimpleView() {
 // P10 fix: Paginated fetch — request only the current page + filters
 // instead of loading all candidates client-side. The server handles
 // filtering and pagination, reducing payload size and client memory.
+// NOTE: only kandidatList (halaman aktif TabPelamar) yang diisi di sini;
+// allKandidatList milik konsumen penuh (TabDbJob count, ListKandidatModal,
+// MatchmakingModal) — isi lewat fetchAllKandidat().
 export async function fetchKandidatFromAPI() {
   setKandidatLoading(true);
   try {
@@ -140,15 +145,58 @@ export async function fetchKandidatFromAPI() {
     if (data.success) {
       const k = data.candidates || [];
       setKandidatList(page === 0 ? k : [...kandidatList.get(), ...k]);
-      setAllKandidatList(k);
+      kandidatTotal.set(Number(data.total) || kandidatTotal.get() + k.length);
     } else if (data.sessionInvalid) {
       setKandidatList([]);
+      setAllKandidatList([]);
+      kandidatTotal.set(0);
     }
   } catch (err) {
     console.error('[adminStore] fetchKandidat failed:', err);
   } finally {
     setKandidatLoading(false);
   }
+}
+
+// Tarik SEMUA kandidat (loop halaman getCandidatesPage, pageSize 200) ke
+// allKandidatList — padanan legacy ALL_CANDIDATES memory (ensureAllCandidates)
+// untuk TabDbJob count + ListKandidatModal + MatchmakingModal. Baris sudah
+// ter-dekorasi (berkas/bio/applications) oleh backend.
+export async function fetchAllKandidat(): Promise<Kandidat[]> {
+  const token = authStore.get().sessionToken || '';
+  const pageSize = 200;
+  const out: any[] = [];
+  try {
+    for (let page = 1; page <= 60; page++) {
+      const res = await fetch('/.netlify/functions/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'getCandidatesPage',
+          payload: [{ page, pageSize, q: '' }],
+          sessionToken: token,
+        }),
+      });
+      const data = await res.json();
+      if (!data || !data.success) break;
+      const rows = data.candidates || [];
+      out.push(...rows);
+      const total = Number(data.total) || 0;
+      if (rows.length < pageSize || out.length >= total || rows.length === 0) break;
+    }
+  } catch (err) {
+    console.error('[adminStore] fetchAllKandidat failed:', err);
+  }
+  // Dedupe by WA (baris terakhir menang) supaya count akurat.
+  const byWa = new Map<string, any>();
+  for (const r of out) {
+    const w = String(r && (r.wa || '')).trim();
+    byWa.set(w || String(out.indexOf(r)), r);
+  }
+  const rows = [...byWa.values()];
+  setAllKandidatList(rows);
+  kandidatTotal.set(rows.length);
+  return rows;
 }
 
 // ── Mail State ──────────────────────────────────────────

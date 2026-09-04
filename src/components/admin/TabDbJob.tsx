@@ -11,7 +11,7 @@ import AdminShareModal from './AdminShareModal';
 import MatchmakingModal from './MatchmakingModal';
 import ListKandidatModal from './ListKandidatModal';
 import { useStore } from '@nanostores/preact';
-import { allKandidatList, fetchKandidatFromAPI } from '../../store/adminStore';
+import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
 
@@ -41,7 +41,9 @@ export default function TabDbJob() {
   const allCandidates = useStore(allKandidatList);
 
   useEffect(() => { fetchLoker(); }, []);
-  useEffect(() => { fetchKandidatFromAPI(); }, []);
+  // Muat SEMUA kandidat (loop halaman) — count cell + ListKandidatModal +
+  // MatchmakingModal butuh set penuh, bukan hanya halaman pertama (P10).
+  useEffect(() => { fetchAllKandidat(); }, []);
 
   async function fetchLoker() {
     try {

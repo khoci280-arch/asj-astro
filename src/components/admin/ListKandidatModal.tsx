@@ -1,12 +1,28 @@
 /**
  * ListKandidatModal.tsx — Shows candidates assigned to a specific job
  * Source: legacy/partials/modals-shared.html → modal-list-kandidat
- * Features: Copy WA, Undang Grup (Fonnte bulk invite), Remove from job
+ * Root parity (A04, 2026-09-04) vs legacy js/render/admin.ts (count cell →
+ * bukaModalListKandidat) + js/admin_ops/candidates.ts:
+ *   - Data: legacy draws from the FULL server-side candidate memory
+ *     (ALL_CANDIDATES via ensureAllCandidates). The rebuild previously
+ *     filtered the store's CURRENT PAGE only (≤20 rows) → count + list
+ *     silently wrong beyond page 1. Now the store exposes
+ *     fetchAllKandidat() (loops getCandidatesPage) and the modal refreshes
+ *     it on every open; the TabDbJob count cell stays correct reactively.
+ *   - Per-row buttons mirror legacy: 👁 bukaDigitalCV (opens the admin
+ *     dossier = CandidateProfileModal via showCandidateHistory), WA chat,
+ *     and keluarkanKandidatDariJob (tandaiGagalJob).
+ *   - "Undang Grup" sends the legacy object payload
+ *     { candidates:[{wa,nama}], jobCode, linkGrup, interval } to
+ *     kirimTawaranMassal — surface enqueues it as a wa.broadcast job and
+ *     the sweep-queue worker now actually sends it (was NOT_IMPL → silent
+ *     dead flow).
+ * Features: Copy WA, Undang Grup (bulk WA), Remove from job, dossier peek.
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../../store/authReactive';
-import { allKandidatList, fetchKandidatFromAPI } from '../../store/adminStore';
+import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
@@ -25,7 +41,6 @@ interface Kandidat {
   idLoker?: string;
   tahapan?: string;
   status?: string;
-  catatan?: string;
 }
 
 export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
@@ -34,34 +49,38 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
   const [linkGrup, setLinkGrup] = useState('');
   const [interval, setInterval_] = useState(5);
   const [sending, setSending] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
 
+  // Legacy behaviour: pastikan memori kandidat penuh + segar setiap buka.
   useEffect(() => {
-    if (isOpen && allCandidates.length === 0) {
-      fetchKandidatFromAPI();
+    if (isOpen) {
+      fetchAllKandidat();
     }
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, jobCode]);
 
   if (!isOpen) return null;
 
-  const cands = allCandidates.filter(
-    (c: Kandidat) => c.idLoker && c.idLoker.includes(jobCode)
+  const cands = (allCandidates as any[]).filter(
+    (c: any) => c && c.idLoker && String(c.idLoker).includes(jobCode),
   );
 
-  // Copy all WA numbers to clipboard
+  // Copy all WA numbers to clipboard (format sama dengan legacy)
   function copyAllWa() {
-    let txt = `*LIST KANDIDAT JOB ${jobCode}* Total: ${cands.length} Pelamar\n\n`;
-    cands.forEach((c: Kandidat, i: number) => {
-      txt += `${i + 1}. ${c.nama} - WA: ${c.wa}\n`;
-    });
+    const txt = `*LIST KANDIDAT JOB ${jobCode}* Total: ${cands.length} Pelamar\n\n` +
+      cands
+        .map((c: Kandidat, i: number) => `${i + 1}. ${c.nama} - WA: ${c.wa}`)
+        .join('\n');
     navigator.clipboard.writeText(txt).then(
       () => showToast('Berhasil disalin!', 'success'),
       () => showToast('Gagal menyalin', 'error')
     );
   }
 
-  // Remove candidate from job via backend
+  // Padanan legacy keluarkanKandidatDariJob(wa, jobCode) → tandaiGagalJob
   async function removeFromJob(wa: string) {
     if (!confirm(`Hapus kandidat dari job ${jobCode}?`)) return;
+    setRemoving(wa);
     try {
       const res = await fetch(getEndpoint('tandaiGagalJob'), {
         method: 'POST',
@@ -73,18 +92,24 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        showToast('Kandidat dihapus dari job', 'success');
-        fetchKandidatFromAPI();
+      if (data && data.success) {
+        showToast('Kandidat ditandai GAGAL & dilepas dari job', 'success');
+        fetchAllKandidat();
       } else {
-        showToast(data.error || 'Gagal', 'error');
+        showToast((data && data.error) || 'Gagal menghapus kandidat.', 'error');
       }
     } catch {
       showToast('Network error', 'error');
+    } finally {
+      setRemoving(null);
     }
   }
 
-  // Send group invitations via Fonnte
+  // Undang Grup: payload OBJECT legacy { candidates, jobCode, linkGrup,
+  // interval } — handleKirimTawaranMassal backend membaca bentuk ini
+  // (bukan array [waList, pesan, interval] seperti rebuild lama). Surface
+  // men-queue sbg wa.broadcast; worker sweep-queue yg mengirim (sudah
+  // diimplementasikan — sebelumnya NOT_IMPL jadi tidak pernah terkirim).
   async function sendUndangan() {
     if (!linkGrup) {
       showToast('Link grup WA wajib diisi', 'error');
@@ -96,23 +121,29 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
     }
     setSending(true);
     try {
-      const waList = cands.map((c: Kandidat) => c.wa).filter(Boolean);
       const res = await fetch(getEndpoint('kirimTawaranMassal'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'kirimTawaranMassal',
-          args: [waList, `Halo! Silakan bergabung ke Grup WA: ${linkGrup}`, interval],
+          args: [
+            {
+              candidates: cands.map((c: Kandidat) => ({ wa: c.wa, nama: c.nama })),
+              jobCode,
+              linkGrup,
+              interval,
+            },
+          ],
           sessionToken: authStore.get().sessionToken || '',
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        showToast(`Undangan terkirim ke ${waList.length} kandidat!`, 'success');
+      if (data && data.success) {
+        showToast(`Undangan ${cands.length} kandidat masuk antrian pengiriman.`, 'success');
         setShowUndangPanel(false);
         setLinkGrup('');
       } else {
-        showToast(data.error || 'Gagal mengirim', 'error');
+        showToast((data && data.error) || 'Gagal mengirim', 'error');
       }
     } catch {
       showToast('Network error', 'error');
@@ -170,21 +201,32 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
             cands.map((c: Kandidat, i: number) => (
               <div key={c.wa || c.id}
                 class="p-3 bg-black/40 border border-slate-700 rounded-lg flex justify-between items-center">
-                <div>
+                <div class="min-w-0">
                   <span class="text-slate-500 text-[10px] mr-1">{i + 1}.</span>
                   <span class="font-bold text-white text-xs">{c.nama || '-'}</span>
                   <span class="text-slate-500 text-[10px] ml-2">{c.wa}</span>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 shrink-0">
+                  {/* Padanan legacy 👁 bukaDigitalCV — buka dossier kandidat */}
+                  <button
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent('showCandidateHistory', { detail: { wa: c.wa, nama: c.nama } })
+                      )
+                    }
+                    class="w-7 h-7 flex items-center justify-center bg-sky-900/50 hover:bg-sky-600 text-sky-400 hover:text-white rounded-full transition shadow"
+                    title="Lihat profil/CV kandidat">
+                    <Icon name="eye" class="text-xs" />
+                  </button>
                   <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener"
                     class="w-7 h-7 flex items-center justify-center bg-emerald-900/50 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-full transition"
                     title="Chat WA">
                     <Icon name="whatsapp" class="text-xs" />
                   </a>
-                  <button onClick={() => removeFromJob(c.wa || '')}
-                    class="px-2 py-1 bg-red-900/40 hover:bg-red-600 text-red-400 hover:text-white rounded text-[10px] font-bold transition"
-                    title="Hapus dari job">
-                    <Icon name="times" /> Hapus
+                  <button onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
+                    class="px-2 py-1 bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[10px] font-bold transition"
+                    title="Tandai gagal & lepas dari job">
+                    {removing === c.wa ? <Icon spin name="spinner" class="text-xs" /> : <Icon name="times" class="text-xs" />} Hapus
                   </button>
                 </div>
               </div>

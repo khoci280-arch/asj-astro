@@ -42,9 +42,17 @@ const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unk
     return handleProcessAiInterview(p, s);
   },
 
-  // Stub-only handlers — inlined to remove dead actions-ingest/actions-wa modules.
   'ingest.parse': async () => NOT_IMPL,
-  'wa.broadcast': async () => NOT_IMPL,
+
+  // WA broadcast (kirimTawaranMassal) — surface notify men-queue payload
+  // { payload, sessionToken }; worker ini yang benar-benar mengirim lewat
+  // handleKirimTawaranMassal (parity legacy bulk invite dengan jeda interval
+  // antar pesan). Sebelumnya NOT_IMPL → undangan grup tidak pernah terkirim.
+  'wa.broadcast': async (payload) => {
+    const { handleKirimTawaranMassal } = await import('./contexts/notifications');
+    const inner = payload as { payload?: unknown[]; sessionToken?: string };
+    return handleKirimTawaranMassal(inner.payload || [], inner.sessionToken);
+  },
 };
 
 // ── Sweep logic ───────────────────────────────────────────────────────────────
