@@ -7,6 +7,7 @@ import {
   normalizeWa, normalizeGender, cacheClear,
   findMasterByWa, patchMaster, upsertMaster, nextCandidateId,
 } from './repository';
+import { isAllowedDocumentUrl } from '../../_lib/storage';
 
 interface IngestPayload {
   fileUrl: string;
@@ -161,8 +162,10 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
     return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   }
   if (!fileUrl) return { success: false, error: 'fileUrl wajib diisi.' };
-  if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
-    return { success: false, error: 'fileUrl harus URL valid (http/https).' };
+  // C6 fix (2026-09-04): download only https URLs from allow-listed storage
+  // hosts — blocks SSRF to arbitrary hosts (incl. internal networks).
+  if (!isAllowedDocumentUrl(fileUrl)) {
+    return { success: false, error: 'fileUrl harus https dari host penyimpanan resmi.' };
   }
   if (!fileType) return { success: false, error: 'fileType wajib diisi (pdf/docx/xlsx/csv/txt).' };
 

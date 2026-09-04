@@ -5,7 +5,7 @@
 // baru, supaya tombol KK/KTP/CV di share view tidak pernah dobel.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { isVarianOf, stemAliases } from './storage';
+import { isVarianOf, stemAliases, isAllowedDocumentUrl } from './storage';
 import { buildRingkasData } from './ai/cv';
 
 describe('isVarianOf', () => {
@@ -75,5 +75,39 @@ describe('buildRingkasData (konteks AI chat)', () => {
   it('menangani input kosong/tanpa data', () => {
     expect(buildRingkasData(undefined)).toBe('');
     expect(buildRingkasData({})).toBe('');
+  });
+});
+
+describe('isAllowedDocumentUrl (C6 — https-only + storage-host allow-list)', () => {
+  it('menerima https dari host penyimpanan resmi (supabase/cloudinary/GCS, subdomain boleh)', () => {
+    expect(isAllowedDocumentUrl('https://abcdefgh.supabase.co/storage/v1/object/public/asj-files/master/AB/CV.pdf')).toBe(true);
+    expect(isAllowedDocumentUrl('https://supabase.co/x.pdf')).toBe(true);
+    expect(isAllowedDocumentUrl('https://res.cloudinary.com/asj/image/upload/v1/cv.pdf')).toBe(true);
+    expect(isAllowedDocumentUrl('https://storage.googleapis.com/asj-docs/cv.pdf')).toBe(true);
+  });
+
+  it('host mirip tapi di luar allow-list tetap ditolak (firebasestorage bukan storage.googleapis.com)', () => {
+    expect(isAllowedDocumentUrl('https://firebasestorage.googleapis.com/v0/b/asj/o/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('https://notstorage.googleapis.com.evil.com/cv.pdf')).toBe(false);
+  });
+
+  it('menolak skema non-https walau host di allow-list', () => {
+    expect(isAllowedDocumentUrl('http://res.cloudinary.com/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('ftp://supabase.co/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('javascript:alert(1)')).toBe(false);
+  });
+
+  it('menolak host di luar allow-list (termasuk lookalike subdomain)', () => {
+    expect(isAllowedDocumentUrl('https://evil.example.com/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('https://supabase.co.evil.com/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('https://evil.supabase.co.evil.com/cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl('https://supabase.co.evil.com')).toBe(false);
+  });
+
+  it('menolak input non-URL / kosong', () => {
+    expect(isAllowedDocumentUrl('')).toBe(false);
+    expect(isAllowedDocumentUrl('not a url')).toBe(false);
+    expect(isAllowedDocumentUrl('cv.pdf')).toBe(false);
+    expect(isAllowedDocumentUrl(undefined as unknown as string)).toBe(false);
   });
 });

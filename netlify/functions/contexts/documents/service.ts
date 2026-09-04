@@ -17,6 +17,7 @@ import { syncFormMailDariUpload } from '../applications';
 import { cacheClear } from '../../_lib/cache';
 import { findJobByCodeFiltered, findJobs } from '../../_lib/db/jobs';
 import * as session from '../../_lib/session';
+import { isAllowedDocumentUrl } from '../../_lib/storage';
 
 const APPLY_WA_COLS = ['no_wa', 'wa', 'whatsapp'];
 const PUBLIC_PREFILL_FIELDS = new Set([
@@ -64,6 +65,22 @@ const FILE_LABEL_COLUMNS: Record<string, { cand: string | null; master: string |
 function fileLabelKey(label: string): string | null {
   const l = String(label || '').trim().toUpperCase();
   return FILE_LABEL_COLUMNS[l] ? l : null;
+}
+
+const DOC_URL_SENTINELS = new Set(['-', 'null', 'undefined']);
+
+// C6 fix (2026-09-04): every document URL persisted from a request must be
+// https and from an allow-listed storage host (see _lib/storage
+// isAllowedDocumentUrl). Placeholder values ('-') are skipped. Returns the
+// offending entries so callers reject before any DB write / download.
+function badDocumentUrls(entries: Array<{ key: string; url: unknown }>): string[] {
+  const bad: string[] = [];
+  for (const e of entries) {
+    const u = String(e.url ?? '').trim();
+    if (!u || DOC_URL_SENTINELS.has(u.toLowerCase())) continue;
+    if (!isAllowedDocumentUrl(u)) bad.push(e.key + ' (' + u.slice(0, 90) + ')');
+  }
+  return bad;
 }
 
 function fireIngest(payload: unknown[], sessionToken?: string): void {
@@ -186,6 +203,17 @@ export async function handleSubmitApply(payload: any[]) {
   const wa = normalizeWa(String(d.wa || ''));
   const code = String(d.job || '').trim();
   if (!wa || !code || !d.nama) return { success: false, message: 'Data lamaran tidak lengkap.' };
+  const applyDocCheck: Array<{ key: string; url: unknown }> = [
+    { key: 'PAS_PHOTO', url: d.photoFile || d.oldPhoto },
+    { key: 'CV', url: d.cvFile || d.oldCv },
+    { key: 'JFT', url: d.jftFile || d.oldJft },
+    { key: 'SSW', url: d.sswFile || d.oldSsw },
+  ];
+  (d.extraFiles || []).forEach((x: any, i: number) => applyDocCheck.push({ key: 'extra#' + i + ':' + String((x && x.name) || 'FILE'), url: x && x.url }));
+  const badApplyDocs = badDocumentUrls(applyDocCheck);
+  if (badApplyDocs.length) {
+    return { success: false, message: 'URL dokumen tidak valid (https + host penyimpanan resmi saja): ' + badApplyDocs.join(', ') };
+  }
   try {
     let job = await findJobByCodeFiltered(code);
     if (job === undefined) { const found = await findJobs(); job = found.rows.find((r: any) => String(pick(r, ['code_job', 'code']) || '') === code) || null; }
@@ -292,6 +320,10 @@ export async function handleSimpanKandidatDanUpload(payload: any[], sessionToken
       const label = String(f.label || '').toUpperCase();
       let url = String(f.url || '').trim();
       if (!url && f.data) { const ext = String(f.name || 'file').split('.').pop() || 'jpg'; url = (await uploadBase64(f.data, folder, (label || 'FILE') + '.' + ext)) ?? ''; }
+      // C6 fix: a client-supplied URL string must be https from an allow-listed
+      // storage host (base64 uploads already produced our own public URL).
+      const badAdminDocs = badDocumentUrls([{ key: label || 'FILE', url }]);
+      if (badAdminDocs.length) return { success: false, error: 'URL file tidak valid (https + host penyimpanan resmi saja): ' + badAdminDocs.join(', ') };
       if (url) { fileUrls[label] = url; uploaded.push(label); }
     }
     const now = new Date().toISOString();
@@ -363,6 +395,11 @@ export async function handleSimpanBerkasTahapan(payload: any[], sessionToken?: s
   const f = d.file || {};
   const directUrl = String(d.fileUrl || (f && f.url) || '').trim();
   if (!wa || (!directUrl && !f.data)) return { success: false, error: 'Data tidak lengkap.' };
+  // C6 fix: a direct (client-supplied) URL must be https from an allow-listed host.
+  const badBerkasDocs = badDocumentUrls([{ key: jenis || 'DOKUMEN', url: directUrl }]);
+  if (badBerkasDocs.length) {
+    return { success: false, error: 'URL dokumen tidak valid (https + host penyimpanan resmi saja): ' + badBerkasDocs.join(', ') };
+  }
   try {
     const nama = String(d.nama || 'KANDIDAT').trim().toUpperCase();
     const folder = 'master/' + nama.replace(/[^A-Z0-9_-]/g, '_');
@@ -423,6 +460,17 @@ export async function handleSimpanRevisiKandidat(payload: any[], sessionToken?: 
   const f = (payload && payload[1]) || {};
   const directUrl = String(f.url || f.fileUrl || '').trim();
   if (!wa || (!directUrl && !f.data)) return { success: false, error: 'Data tidak lengkap.' };
+  // IDOR guard (2026-09-04): a kandidat may only attach a revisi to their OWN
+  // WA — payload[0] names the target row, so scope it to the session.
+  const revSession = session.verifyToken(sessionToken);
+  if (revSession && revSession.role === 'kandidat' && normalizeWa(String(revSession.wa || '')) !== normalizeWa(wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
+  // C6 fix: a direct (client-supplied) URL must be https from an allow-listed host.
+  const badRevisiDocs = badDocumentUrls([{ key: 'CV_REVISI', url: directUrl }]);
+  if (badRevisiDocs.length) {
+    return { success: false, error: 'URL dokumen tidak valid (https + host penyimpanan resmi saja): ' + badRevisiDocs.join(', ') };
+  }
   try {
     const row = await findMasterByWa(wa);
     const nama = row && row.nama_lengkap ? String(row.nama_lengkap).toUpperCase() : 'KANDIDAT';

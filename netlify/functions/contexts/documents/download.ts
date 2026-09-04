@@ -4,6 +4,7 @@
 import { normalizeWa, pick, toText } from './repository';
 import { findCandidatesByJob, fetchAllMasters } from './repository';
 import { requireRole } from '../identity';
+import { isAllowedDocumentUrl } from '../../_lib/storage';
 
 const DOC_COLUMNS: [string, string[]][] = [
   ['CV', ['file_cv']], ['JFT', ['jft_url', 'jft']], ['SSW', ['ssw_url', 'ssw']],
@@ -40,8 +41,10 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       const master = wa ? masterByWa.get(wa) : null;
       for (const [label, cols] of DOC_COLUMNS) {
         let url = '';
-        if (master) { for (const col of cols) { const v = toText((master as any)[col] || ''); if (v && v !== '-' && v.startsWith('http')) { url = v; break; } } }
-        if (!url) { for (const col of cols) { const v = toText((cand as any)[col] || ''); if (v && v !== '-' && v.startsWith('http')) { url = v; break; } } }
+        // C6 fix: only allow-listed https hosts are fetched server-side (legacy
+        // rows outside the allow-list are skipped, like fetch failures).
+        if (master) { for (const col of cols) { const v = toText((master as any)[col] || ''); if (v && v !== '-' && isAllowedDocumentUrl(v)) { url = v; break; } } }
+        if (!url) { for (const col of cols) { const v = toText((cand as any)[col] || ''); if (v && v !== '-' && isAllowedDocumentUrl(v)) { url = v; break; } } }
         if (url) downloads.push({ url, folder: nama, label });
       }
     }

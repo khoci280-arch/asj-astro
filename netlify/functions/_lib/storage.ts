@@ -152,20 +152,43 @@ async function uploadBase64(data: unknown, folder: string, fileName: string) {
   return publicUrl(path);
 }
 
-// S5 fix: Only allow URLs from trusted hosts to prevent tracking/injection.
-const ALLOWED_URL_HOSTS = [
+// S5/C6 hardening (2026-09-04): ONE validator for every accepted document URL.
+// https-only + host allow-list. Base allow-list covers Supabase storage (any
+// project subdomain), Cloudinary and Google Cloud Storage; the Supabase host
+// from env SUPABASE_URL (custom domains) and env ALLOWED_DOCUMENT_HOSTS
+// (comma-separated host list) extend it for ops. Every path that stores or
+// ingests a client-supplied document URL must go through this function —
+// storage (resolveFileUrl), documents (apply/berkas/revisi/kandidat+upload)
+// and ingestion (processUploadDoc) all do.
+const DEFAULT_ALLOWED_DOCUMENT_HOSTS = [
   'supabase.co',
   'cloudinary.com',
   'res.cloudinary.com',
   'storage.googleapis.com',
 ];
 
-function isAllowedUrl(url: string): boolean {
+function allowedDocumentHosts(): string[] {
+  const extras = String(env('ALLOWED_DOCUMENT_HOSTS') || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  let supabaseHost = '';
   try {
-    const parsed = new URL(url);
+    supabaseHost = new URL(supabaseUrl()).hostname.toLowerCase();
+  } catch {
+    // SUPABASE_URL unset — defaults still apply.
+  }
+  return [...new Set([...DEFAULT_ALLOWED_DOCUMENT_HOSTS, ...(supabaseHost ? [supabaseHost] : []), ...extras])];
+}
+
+/** https-only + host allow-list for stored/ingested document URLs. */
+export function isAllowedDocumentUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    const parsed = new URL(raw);
     if (parsed.protocol !== 'https:') return false;
     const host = parsed.hostname.toLowerCase();
-    return ALLOWED_URL_HOSTS.some(h => host === h || host.endsWith('.' + h));
+    return allowedDocumentHosts().some((h) => host === h || host.endsWith('.' + h));
   } catch {
     return false;
   }
@@ -176,8 +199,8 @@ function isAllowedUrl(url: string): boolean {
 // Storage) tetap didukung sebagai fallback untuk klien yang belum dimigrasi.
 async function resolveFileUrl(value: unknown, folder: string, fileName: string) {
   if (typeof value === 'string' && /^https?:\/\//i.test(value.trim())) {
-    // S5 fix: Validate URL is from allowed host
-    if (!isAllowedUrl(value.trim())) {
+    // S5/C6 fix: https-only + host allow-list before accepting the URL.
+    if (!isAllowedDocumentUrl(value.trim())) {
       throw new Error('URL not from allowed host: ' + new URL(value.trim()).hostname);
     }
     return value.trim();
