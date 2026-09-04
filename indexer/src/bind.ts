@@ -57,6 +57,14 @@ export interface BoundRef {
   usedBeforeDecl?: boolean;
   /** Checker-backed (deep tier) — resolved via ts.createProgram, §13. */
   deep?: boolean;
+  /** Merged-declaration join (deep tier): the compiler binds one symbol
+   * whose declarations span several indexed symbols at this site
+   * (interface+interface / namespace+namespace merging across files,
+   * intersection/union-typed member access). The target is the site's
+   * deterministic primary; `merged` carries the sibling symbol keys whose
+   * declarations merge with the target here — def/hover shows every
+   * declaration site. Absent on non-merged refs. */
+  merged?: SymKey[];
 }
 
 export interface SymbolEdge {

@@ -61,6 +61,10 @@ export interface DumpRef {
   usedBeforeDecl?: boolean;
   /** Checker-backed member bind (deep tier). */
   deep?: boolean;
+  /** Merged-declaration join (deep tier): sibling indexed symbol keys whose
+   * declarations merge with the target at this site (one compiler symbol,
+   * several indexed declarations) — def/hover shows every declaration site. */
+  merged?: number[];
 }
 
 export interface DumpUnresolved {
@@ -199,6 +203,7 @@ export function dumpDoc(r: BuildResult): DumpDoc {
       range: z.range,
       ...(z.usedBeforeDecl ? { usedBeforeDecl: true } : {}),
       ...(z.deep ? { deep: true } : {}),
+      ...(z.merged !== undefined ? { merged: z.merged } : {}),
     })),
     libs: libIds.map((id, i) => ({ idx: i, id })),
     libRefs: r.libRefs.map((z) => ({

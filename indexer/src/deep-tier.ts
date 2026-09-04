@@ -97,12 +97,14 @@ export interface DeepBindOutput {
   /** Occurrence keys (`fileIdx:start`) the lib pass graduated — the caller
    * drops those rows from the unresolved bucket. */
   graduated: Set<string>;
-  /** Light-bound refs at GENUINELY merged sites the caller rewrites onto the
-   * site's deterministic primary: occurrence key (`fileIdx:start`) → primary
-   * key. Only sites whose compiler target maps to ≥2 indexed declarations are
+  /** Ref rows at GENUINELY merged sites for the caller to rewrite/enrich:
+   * occurrence key (`fileIdx:start`) → the site's deterministic primary plus
+   * the sibling declaration keys (other indexed symbols whose declarations
+   * merge with the target — def/hover shows every merged declaration site).
+   * Only sites whose compiler target maps to ≥2 indexed declarations are
    * included — a same-name single-declaration bind is never reassigned, so
    * the rewrite can never fabricate a cross-file claim. */
-  rewrite: Map<string, SymKey>;
+  merged: Map<string, { symKey: SymKey; merged: SymKey[] }>;
 }
 
 /** Deterministic lib file id: path relative to node_modules, else basename. */
@@ -184,7 +186,7 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
     checker = p.checker;
     astroOffset = p.astroOffset;
   } catch {
-    return { refs: out, libRefs, graduated: new Set(), rewrite: new Map() }; // no readable tsconfig / program failure → tier degrades
+    return { refs: out, libRefs, graduated: new Set(), merged: new Map() }; // no readable tsconfig / program failure → tier degrades
   }
 
   /** Name-node start of a lib declaration in the lib file's own coordinates
@@ -420,21 +422,33 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
       const qb = sb !== undefined && sb.qualified !== sb.name ? 0 : 1;
       return qa - qb || a - b;
     })[0];
-  const rewrite = new Map<string, SymKey>(); // occurrence key → primary
+  const siblingsOf = (keys: SymKey[], primary: SymKey): SymKey[] => keys.filter((k) => k !== primary).sort((a, b) => a - b);
+  const mergedSites = new Map<string, { symKey: SymKey; merged: SymKey[] }>(); // occurrence key → target + siblings
   for (const [at, c] of joinCands) {
+    const target = primaryOf(c.hits);
     if (c.bound) {
       // Light-bound at a genuinely merged site (compiler target maps to ≥2
-      // indexed declarations): the ref joins the site's deterministic primary.
-      if (c.hits.length >= 2) rewrite.set(at, primaryOf(c.hits));
+      // indexed declarations): the caller points the ref at the site's
+      // deterministic primary and records the sibling declaration keys.
+      if (c.hits.length >= 2) mergedSites.set(at, { symKey: target, merged: siblingsOf(c.hits, target) });
       continue;
     }
     // Deferred join emission: the target is the primary of the site's own
     // declaration set (a single-declaration site targets the declaration
-    // itself). Never a guess: the target must carry the member name.
-    const target = primaryOf(c.hits);
+    // itself). Never a guess: the target must carry the member name. A
+    // multi-declaration join carries the sibling keys so def/hover shows
+    // every merged declaration site.
     const t = keyToSym.get(target);
     if (!t || t.name !== c.name) continue;
-    out.push({ fileIdx: c.fileIdx, range: c.range, symKey: target, role: OccurrenceRole.Property, resolvedVia: 'type', deep: true });
+    out.push({
+      fileIdx: c.fileIdx,
+      range: c.range,
+      symKey: target,
+      role: OccurrenceRole.Property,
+      resolvedVia: 'type',
+      deep: true,
+      ...(c.hits.length >= 2 ? { merged: siblingsOf(c.hits, target) } : {}),
+    });
   }
 
   // Lib tier, value half: the `lib-not-loaded` bucket (String, JSON, console,
@@ -565,7 +579,7 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
 
   out.sort((a, b) => a.fileIdx - b.fileIdx || a.range.start - b.range.start || a.symKey - b.symKey);
   libRefs.sort((a, b) => a.fileIdx - b.fileIdx || a.range.start - b.range.start || a.libName.localeCompare(b.libName) || a.libId.localeCompare(b.libId));
-  return { refs: out, libRefs, graduated, rewrite };
+  return { refs: out, libRefs, graduated, merged: mergedSites };
 }
 
 /**

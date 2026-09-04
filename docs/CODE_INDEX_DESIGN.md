@@ -783,7 +783,7 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
-| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
+| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; every such ref records its sibling declaration keys and def/hover shows ALL declaration sites across the files; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
@@ -1005,13 +1005,15 @@ symbol with the same name at the offset, which is blind to same-name shadowing
 (binder picking a different declaration of the same name). Declaration-identity
 comparison (decl file + offset) is the natural hardening next step.
 `validate.test.ts` (2 tests) locks the sample-mode harness at zero
-disagreements — 162 indexer tests total (13 files, incl. the 8-test
+disagreements — 163 indexer tests total (13 files, incl. the 9-test
 deep-tier suite that pins the lib tier: real-tree lib refs, determinism,
 dump round-trip, a tsconfig'd fixture binding `String`/`JSON`/`console`/
 `document.createElement`, the def/hover answer resolving to the lib
 declaration file + line, a cross-file declaration-merging fixture
 (interface+interface overload members across two files join ONE
-deterministic symbol), lib-name refs/impact over the libRefs table, and
+deterministic symbol whose ref carries the sibling key and whose def/hover
+lists both declaration files), merged-site def showing every declaration
+site on the real tree, lib-name refs/impact over the libRefs table, and
 `detail` on lib refs + symbols).
 
 ### Phase 5 shipped — read side: `idx dump` + `idx serve` + query layer (2026-09-03)
@@ -1737,11 +1739,20 @@ anonymous intersection member `exp` — ties to the earliest file). The
 primary is always a declaration the compiler actually binds at the site, so
 validation stays exact (identity: match 20,827, merged-declaration 43,
 shadowing-disagreement 2 — unchanged); a same-name single-declaration bind
-is never folded through another site's merge. On this tree the union
-sites already bound their first constituent, so the delta is determinism
-+ unification-by-construction; a fixture (two global-script `interface
+is never folded through another site's merge. Every ref at a genuinely
+merged site carries its **sibling declaration keys** (additive `merged` on
+the ref/dump row, resolved against the site's own declaration set), and
+def/hover on such a site shows EVERY declaration site across the files —
+43 refs on this tree, e.g. a `evt.type` union-discriminant read in
+`kernel/events.ts` answers with all 8 event interfaces' `type` members at
+once, `result.exp` (SessionPayload & `{ exp: number }`) with the interface
+member AND the anonymous intersection member in the two files. On this
+tree the union sites already bound their first constituent, so the delta
+is determinism + unification-by-construction + the merged-site decl view; a
+fixture (two global-script `interface
 MergeMe` declarations with a cross-file overloaded member `m`) pins the
-mechanism: one deep ref, one deterministic symbol, name matches. The tier's
+mechanism: one deep ref, one deterministic symbol carrying the sibling
+key, name matches, and def/hover lists both declaration files. The tier's
 `detail` pass also ships here: every symbol and every lib ref carries a
 short signature (the declaration's first source line — def/hover renders
 `kind: Variable (12)`, never a bare number), and `idx refs <name>` /

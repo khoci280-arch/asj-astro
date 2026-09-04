@@ -198,6 +198,28 @@ function declView(index: QueryIndex, sym: DumpSymbol): Array<{ uri: string; l: n
   return sym.decls.map((d) => ({ uri, l: d.startLine, c: d.startChar }));
 }
 
+/** Def/hover decl list for a resolved symbol: the symbol's own declarations
+ * plus, when the answer came through a merged-declaration ref site, the
+ * sibling declarations from the other files (each with its own uri) — ONE
+ * compiler symbol shown with every declaration site. Deduped by uri:l:c.
+ * Returns the input unchanged when the ref is not a merged join. */
+function mergedDeclSites(index: QueryIndex, own: Array<{ uri: string; l: number; c: number }>, siblingKeys?: number[]): Array<{ uri: string; l: number; c: number }> {
+  if (siblingKeys === undefined || siblingKeys.length === 0) return own;
+  const seen = new Set(own.map((d) => `${d.uri}:${d.l}:${d.c}`));
+  const out = [...own];
+  for (const k of siblingKeys) {
+    const s = index.symbolByKey.get(k);
+    if (!s) continue;
+    for (const d of declView(index, s)) {
+      const at = `${d.uri}:${d.l}:${d.c}`;
+      if (seen.has(at)) continue;
+      seen.add(at);
+      out.push(d);
+    }
+  }
+  return out;
+}
+
 /** Containment in the shared coordinate space (1-based lines, 0-based chars); end offsets are exclusive. */
 function posInRange(line: number, char: number, r: Range): boolean {
   if (line < r.startLine || line > r.endLine) return false;
@@ -287,7 +309,9 @@ export function resolveAt(index: QueryIndex, file: string, line: number, char: n
   if (best.cand === null) return { query, fileFound: true, resolved: null, alternatives: [], ambiguous: false, gen: index.doc.epoch };
   if (best.cand.kind === 'lib') return libResolvedView(index, query, best.cand.lib);
   const picked = followImportBinding(index, { sym: best.cand.sym, via: best.via });
-  return resolvedView(index, query, picked.sym, picked.via);
+  // A merged-declaration ref site (one compiler symbol, several indexed
+  // declarations) answers with every declaration site across the files.
+  return resolvedView(index, query, picked.sym, picked.via, best.cand.ref?.merged);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -498,8 +522,9 @@ function anchorOnLine(line: number, r: Range): number | null {
 /** One tightest-range result: the winning candidate (declared symbol for a
  * declaration hit, referenced target for a reference hit, lib row for a
  * lib-tier hit), the via that won, and the probe column that matched (echoed
- * in the answer query.character). */
-type RangeCandidate = { kind: 'symbol'; sym: DumpSymbol } | { kind: 'lib'; lib: LibRefView };
+ * in the answer query.character). A symbol candidate picked through a ref
+ * row keeps that row — its merged-declaration siblings feed def/hover. */
+type RangeCandidate = { kind: 'symbol'; sym: DumpSymbol; ref?: DumpRef } | { kind: 'lib'; lib: LibRefView };
 
 interface RangePick {
   cand: RangeCandidate | null;
@@ -537,7 +562,7 @@ function pickTightest(index: QueryIndex, fileIdx: number, probe: (r: Range) => n
   }
   for (const r of index.refsByFile.get(fileIdx) ?? []) {
     const target = index.symbolByKey.get(r.symKey);
-    if (target) consider({ kind: 'symbol', sym: target }, r.resolvedVia, r.range);
+    if (target) consider({ kind: 'symbol', sym: target, ref: r }, r.resolvedVia, r.range);
   }
   for (const lib of index.libRefsByFile.get(fileIdx) ?? []) {
     consider({ kind: 'lib', lib }, 'lib', lib.range);
@@ -548,7 +573,7 @@ function pickTightest(index: QueryIndex, fileIdx: number, probe: (r: Range) => n
 /** Assemble the ResolveView for a picked symbol: the resolved row plus the
  * same-named alternatives ranked by rankCandidates (presented, never
  * guessed). The one place the /resolve answer body is built. */
-function resolvedView(index: QueryIndex, query: { file: string; line: number; character: number }, sym: DumpSymbol, via: string): ResolveView {
+function resolvedView(index: QueryIndex, query: { file: string; line: number; character: number }, sym: DumpSymbol, via: string, mergedKeys?: number[]): ResolveView {
   const dot = sym.qualified.lastIndexOf('.');
   const resolved: ResolvedSymbol = {
     symId: sym.id,
@@ -558,7 +583,7 @@ function resolvedView(index: QueryIndex, query: { file: string; line: number; ch
     file: pathOf(index, sym.fileIdx),
     fileIdx: sym.fileIdx,
     ...(dot > 0 ? { container: sym.qualified.slice(0, dot) } : {}),
-    decls: declView(index, sym),
+    decls: mergedDeclSites(index, declView(index, sym), mergedKeys),
     ...(sym.detail !== undefined ? { detail: sym.detail } : {}),
     ...(sym.typeRef !== undefined ? { typeRef: sym.typeRef } : {}),
     resolvedVia: via,

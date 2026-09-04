@@ -177,6 +177,19 @@ describe('deep tier (checker-backed member bind)', () => {
     const mSym = a.symbols.find((s) => s.key === mRefs[0].symKey)!;
     expect(mSym.name).toBe('m'); // never a guess: the joined symbol carries the member name
     expect(mSym.qualified).toBe('MergeMe.m');
+    // The merged join records its sibling declaration key (the overload in
+    // the other file), and def/hover at the site shows BOTH declaration
+    // sites — one per file.
+    expect(mRefs[0].merged).toHaveLength(1);
+    const sibling = a.symbols.find((s) => s.key === mRefs[0].merged![0])!;
+    expect(sibling.qualified).toBe('MergeMe.m');
+    expect(sibling.fileIdx).not.toBe(mSym.fileIdx);
+    const qa = indexFromDoc(dumpDoc(a));
+    const va = resolveAt(qa, 'src/f3.ts', mRefs[0].range.startLine, mRefs[0].range.startChar);
+    expect(va.resolved!.decls).toHaveLength(2);
+    const uris = va.resolved!.decls.map((d) => d.uri).sort();
+    expect(uris[0]).toBe('src/f1.ts');
+    expect(uris[1]).toBe('src/f2.ts');
     // Deterministic across builds: same site, same target key.
     const mAt = `${mRefs[0].fileIdx}:${mRefs[0].range.start}`;
     const bAt = `${bRefs[0].fileIdx}:${bRefs[0].range.start}`;
@@ -188,6 +201,41 @@ describe('deep tier (checker-backed member bind)', () => {
     expect(f1.detail).toContain('interface MergeMe');
     const doc = dumpDoc(a);
     expect(doc.symbols.find((s) => s.id === f1.id)!.detail).toBe(f1.detail);
+  }, 120000);
+
+  it('real tree: def/hover at a merged site shows every declaration site across files', () => {
+    const r = buildIndex(ROOT);
+    const q = indexFromDoc(dumpDoc(r));
+    const mergedRefs = r.refs.filter((z) => z.merged !== undefined && z.merged.length > 0);
+    expect(mergedRefs.length).toBeGreaterThan(20); // union/intersection member sites on this tree
+    // Every sibling key is a real indexed symbol of the same name (never a guess).
+    const symOf = (k: number) => r.symbols.find((s) => s.key === k);
+    for (const z of mergedRefs.slice(0, 40)) {
+      const t = symOf(z.symKey)!;
+      expect(t.name.length).toBeGreaterThan(0);
+      for (const k of z.merged!) {
+        const s = symOf(k);
+        expect(s).toBeDefined();
+        expect(s!.name).toBe(t.name);
+      }
+    }
+    // Def on a merged site whose declarations span FILES (the
+    // SessionPayload & { exp: number } intersection): the answer lists the
+    // interface member (session.ts) AND the anonymous intersection member
+    // (session.test.ts) — both declaration sites, two files.
+    const cross = mergedRefs.find((z) => {
+      const tFile = r.files[symOf(z.symKey)!.fileIdx]?.path;
+      return z.merged!.some((k) => r.files[symOf(k)!.fileIdx]?.path !== tFile);
+    });
+    expect(cross).toBeDefined();
+    const f = r.files[cross!.fileIdx];
+    const v = resolveAt(q, f.path, cross!.range.startLine, cross!.range.startChar);
+    expect(v.resolved).not.toBeNull();
+    expect(v.resolved!.decls.length).toBeGreaterThanOrEqual(2);
+    const declFiles = new Set(v.resolved!.decls.map((d) => d.uri));
+    expect(declFiles.size).toBeGreaterThanOrEqual(2);
+    expect([...declFiles].some((u) => u.endsWith('session.ts'))).toBe(true);
+    expect([...declFiles].some((u) => u.endsWith('session.test.ts'))).toBe(true);
   }, 120000);
 
   it('lib name refs/impact: every usage site of console/String from the libRefs table, with detail on def/hover', () => {

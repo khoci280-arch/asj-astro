@@ -150,14 +150,18 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     if (deep.graduated.size > 0) bound.unresolved = bound.unresolved.filter((u) => !deep.graduated.has(`${u.fileIdx}:${u.range.start}`));
     // Merged-declaration joins (§13): light-bound refs at genuinely merged
     // sites (the compiler maps the occurrence to ≥2 indexed declarations —
-    // interface/namespace merging or intersection-typed member access) are
-    // rewritten onto the site's deterministic primary, so every site with the
-    // same declaration set binds ONE symbol. Same-name single-declaration
-    // binds are never reassigned (the pass only reports verified sites).
-    if (deep.rewrite.size > 0) {
+    // interface/namespace merging or intersection-typed member access) point
+    // at the site's deterministic primary and carry the sibling declaration
+    // keys, so every site with the same declaration set binds ONE symbol and
+    // def/hover can show every merged declaration site. Same-name single-
+    // declaration binds are never reassigned (the pass only reports verified
+    // sites).
+    if (deep.merged.size > 0) {
       for (const ref of bound.refs) {
-        const p = deep.rewrite.get(`${ref.fileIdx}:${ref.range.start}`);
-        if (p !== undefined) ref.symKey = p;
+        const m = deep.merged.get(`${ref.fileIdx}:${ref.range.start}`);
+        if (m === undefined) continue;
+        ref.symKey = m.symKey;
+        ref.merged = m.merged;
       }
     }
   }
