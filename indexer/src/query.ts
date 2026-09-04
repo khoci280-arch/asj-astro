@@ -32,12 +32,58 @@ export interface QueryIndex {
   dependentsByFile: Map<number, DumpImportEdge[]>;
   /** per-file export surface (named entries + star re-export sources). */
   surfaceByFile: Map<number, DumpSurface>;
+  /** Lib tier rows per file (joined with the lib declaration file path),
+   * sorted by byte start — resolveAt's third candidate class (resolvedVia
+   * 'lib'), so def/hover on String / console / document.createElement answer
+   * with the lib declaration instead of 'no symbol'. Absent for legacy
+   * snapshots without libs/libRefs. */
+  libRefsByFile: Map<number, LibRefView[]>;
+  /** Lib tier rows keyed by lowercased site name AND lowercased qualified lib
+   * name (`console`, `log`, `console.log` …) — the idx refs/impact by-name
+   * answer for lib globals/members (no repo symbol defines them). */
+  libRefsByName: Map<string, LibRefView[]>;
   symbolsByFile: Map<number, DumpSymbol[]>;
   /** Memo of importTargetsOf results keyed "fileIdx:name" - the doc is
    * immutable and the chase is pure, so results never go stale. */
   chaseMemo?: Map<string, DumpSymbol[]>;
   /** Lazy SCC/circularity answers over doc.importEdges (doc is immutable). */
   cycles?: ReturnType<typeof computeCycles>;
+}
+
+/** One lib tier row joined with its declaration file, as the tightest-range
+ * scan sees it: the site range plus the def/hover target (lib file path +
+ * declaration position inside it). */
+export interface LibRefView {
+  range: Range;
+  name: string;
+  /** Site file (for by-name site listings — the file-level index is keyed by
+   * fileIdx, so the row itself carries it). */
+  fileIdx: number;
+  libIdx: number;
+  libName: string;
+  /** Declaration position inside the lib file (absent for canonical entries
+   * with no physical declaration, e.g. the intrinsic undefined/globalThis). */
+  decl?: { line: number; char: number };
+  /** SymbolKind of the lib declaration. */
+  kind?: number;
+  /** Short signature/kind text of the lib declaration (first source line). */
+  detail?: string;
+  /** OccurrenceRole of the site (Property for member rows, Read/Callee/… for
+   * value rows) — the impact role breakdown. */
+  role?: number;
+  /** Path of the declaration file (rootDir/node_modules/<libId>, or absolute
+   * when the id is machine-absolute). */
+  libPath: string;
+  /** The libs[] id (node_modules-relative). */
+  libId: string;
+}
+
+/** Absolute path of a lib declaration file from its doc id. */
+function libPathOf(doc: DumpDoc, id: string): string {
+  if (/^([a-zA-Z]:[\\/]|\/)/.test(id)) return id; // already machine-absolute
+  const root = doc.rootDir ?? '';
+  if (id.startsWith('node_modules/')) return root ? `${root}/${id}` : id;
+  return root ? `${root}/node_modules/${id}` : id;
 }
 
 export function indexFromDoc(doc: DumpDoc): QueryIndex {
@@ -73,6 +119,40 @@ export function indexFromDoc(doc: DumpDoc): QueryIndex {
     fl.push(ref);
   }
   for (const fl of refsByFile.values()) fl.sort((a, b) => a.range.start - b.range.start);
+  const libRefsByFile = new Map<number, LibRefView[]>();
+  const libRefsByName = new Map<string, LibRefView[]>();
+  if (Array.isArray(doc.libRefs) && Array.isArray(doc.libs)) {
+    const libByIdx = new Map(doc.libs.map((l) => [l.idx, l]));
+    for (const z of doc.libRefs) {
+      const lib = libByIdx.get(z.libIdx);
+      if (!lib) continue;
+      const view: LibRefView = {
+        range: z.range,
+        name: z.name,
+        fileIdx: z.fileIdx,
+        libIdx: z.libIdx,
+        libName: z.libName,
+        ...(z.decl !== undefined ? { decl: z.decl } : {}),
+        ...(z.kind !== undefined ? { kind: z.kind } : {}),
+        ...(z.detail !== undefined ? { detail: z.detail } : {}),
+        ...(z.role !== undefined ? { role: z.role } : {}),
+        libPath: libPathOf(doc, lib.id),
+        libId: lib.id,
+      };
+      let list = libRefsByFile.get(z.fileIdx);
+      if (!list) libRefsByFile.set(z.fileIdx, (list = []));
+      list.push(view);
+      const byName = (k: string): void => {
+        let nl = libRefsByName.get(k);
+        if (!nl) libRefsByName.set(k, (nl = []));
+        // A site matching both keys (name === libName) must appear once.
+        if (nl.length === 0 || nl[nl.length - 1].range.start !== z.range.start) nl.push(view);
+      };
+      byName(z.name.toLowerCase());
+      byName(z.libName.toLowerCase());
+    }
+    for (const list of libRefsByFile.values()) list.sort((a, b) => a.range.start - b.range.start);
+  }
   const importsByFile = new Map<number, DumpImportEdge[]>();
   const dependentsByFile = new Map<number, DumpImportEdge[]>();
   for (const e of doc.importEdges ?? []) {
@@ -87,7 +167,7 @@ export function indexFromDoc(doc: DumpDoc): QueryIndex {
   }
   const surfaceByFile = new Map<number, DumpSurface>();
   for (const surface of doc.exportSurfaces) surfaceByFile.set(surface.fileIdx, surface);
-  return { doc, fileByIdx, fileIdxByLower, symbolById, symbolByKey, nameIndex, refsBySymKey, refsByFile, symbolsByFile, importsByFile, dependentsByFile, surfaceByFile };
+  return { doc, fileByIdx, fileIdxByLower, symbolById, symbolByKey, nameIndex, refsBySymKey, refsByFile, symbolsByFile, importsByFile, dependentsByFile, surfaceByFile, libRefsByFile, libRefsByName };
 }
 
 /** Repo-relative path for a fileIdx, or `#<idx>` when absent (never throws). */
@@ -191,8 +271,11 @@ export interface ResolveView {
  * What symbol is at (file, 1-based line, 0-based char)? The tightest
  * containing range wins — a declaration site answers with the declared
  * symbol; anywhere inside a bound reference answers with the referenced
- * symbol. Same-named symbols elsewhere are returned ranked by reference
- * count (alternatives are presented, never guessed).
+ * symbol; anywhere inside a lib-tier row (String, console,
+ * document.createElement …) answers with the lib declaration (resolvedVia
+ * 'lib', file = the lib .d.ts, decls = the declaration position inside it).
+ * Same-named symbols elsewhere are returned ranked by reference count
+ * (alternatives are presented, never guessed).
  * A position on an import specifier (an ImportBinding declaration) chases the
  * binding to its definition when the chase is unambiguous - see followImportBinding.
  */
@@ -201,8 +284,9 @@ export function resolveAt(index: QueryIndex, file: string, line: number, char: n
   const fileIdx = resolveFileNeedle(index, file);
   if (fileIdx === undefined) return { query, fileFound: false, resolved: null, alternatives: [], ambiguous: false, gen: index.doc.epoch };
   const best = pickTightest(index, fileIdx, (r) => (posInRange(line, char, r) ? char : null));
-  if (best.sym === null) return { query, fileFound: true, resolved: null, alternatives: [], ambiguous: false, gen: index.doc.epoch };
-  const picked = followImportBinding(index, { sym: best.sym, via: best.via });
+  if (best.cand === null) return { query, fileFound: true, resolved: null, alternatives: [], ambiguous: false, gen: index.doc.epoch };
+  if (best.cand.kind === 'lib') return libResolvedView(index, query, best.cand.lib);
+  const picked = followImportBinding(index, { sym: best.cand.sym, via: best.via });
   return resolvedView(index, query, picked.sym, picked.via);
 }
 
@@ -257,6 +341,75 @@ export function refsOf(index: QueryIndex, symId: string): RefView {
     decls: declView(index, sym),
     references,
     imports: importSitesOf(index, sym),
+  };
+}
+
+/** One lib-tier target of a by-name query: a declaration file + qualified
+ * name inside it, with every usage site (the `idx refs`/`idx impact` answer
+ * for names no repo symbol defines — console, String, console.log). */
+export interface LibTarget {
+  libIdx: number;
+  libName: string;
+  libId: string;
+  libPath: string;
+  decl?: { line: number; char: number };
+  kind?: number;
+  detail?: string;
+  sites: LibRefView[];
+}
+
+/** Lib-tier targets whose site name OR qualified lib name equals the needle
+ * (case-insensitive): `console` and `String` match the globals, `console.log`
+ * matches the Console.log member rows. Grouped per (lib file, qualified
+ * name), deterministic order; duplicate sites (a row matching both keys) are
+ * deduped. Empty when the name is a repo symbol (repo wins — callers check
+ * symbolsDefining first). */
+export function libTargetsOf(index: QueryIndex, name: string): LibTarget[] {
+  const needle = name.trim().toLowerCase();
+  if (needle === '') return [];
+  const groups = new Map<string, LibTarget>();
+  for (const z of index.libRefsByName.get(needle) ?? []) {
+    const k = `${z.libIdx}:${z.libName}`;
+    let g = groups.get(k);
+    if (!g) {
+      g = {
+        libIdx: z.libIdx,
+        libName: z.libName,
+        libId: z.libId,
+        libPath: z.libPath,
+        sites: [],
+        ...(z.decl !== undefined ? { decl: z.decl } : {}),
+        ...(z.kind !== undefined ? { kind: z.kind } : {}),
+        ...(z.detail !== undefined ? { detail: z.detail } : {}),
+      };
+      groups.set(k, g);
+    }
+    if (g.sites.length === 0 || g.sites[g.sites.length - 1].range.start !== z.range.start) g.sites.push(z);
+  }
+  return [...groups.values()].sort((a, b) => a.libIdx - b.libIdx || a.libName.localeCompare(b.libName));
+}
+
+/** The RefView-shaped answer for a lib target (`idx refs console` / `idx
+ * impact String`): the lib declaration as the definition, every usage site
+ * as a reference (resolvedVia 'lib', role from the site row). No import
+ * sites — lib globals are never imported in-repo. */
+export function refsOfLib(index: QueryIndex, target: LibTarget): RefView {
+  return {
+    found: true,
+    symId: `lib:${target.libIdx}:${target.libName}`,
+    name: target.libName.split('.').pop() ?? target.libName,
+    file: target.libPath,
+    decls: target.decl !== undefined ? [{ uri: target.libPath, l: target.decl.line, c: target.decl.char }] : [],
+    references: target.sites.map((z) => ({
+      file: pathOf(index, z.fileIdx),
+      line: z.range.startLine,
+      char: z.range.startChar,
+      role: z.role ?? 0,
+      resolvedVia: 'lib',
+      usedBeforeDecl: false,
+      range: z.range,
+    })),
+    imports: [],
   };
 }
 
@@ -342,47 +495,54 @@ function anchorOnLine(line: number, r: Range): number | null {
   return posInRange(line, c, r) ? c : null;
 }
 
-/** The one tightest-range result: the winning symbol (declared symbol for a
- * declaration hit, referenced target for a reference hit), the via that won,
- * and the probe column that matched (echoed in the answer query.character). */
+/** One tightest-range result: the winning candidate (declared symbol for a
+ * declaration hit, referenced target for a reference hit, lib row for a
+ * lib-tier hit), the via that won, and the probe column that matched (echoed
+ * in the answer query.character). */
+type RangeCandidate = { kind: 'symbol'; sym: DumpSymbol } | { kind: 'lib'; lib: LibRefView };
+
 interface RangePick {
-  sym: DumpSymbol | null;
+  cand: RangeCandidate | null;
   via: string;
   char: number;
 }
 
 /** The ONE range-selection scan resolveAt and resolveLine both run over a
- * file declaration and reference ranges: the tightest accepted range wins,
- * and at an equal span a declaration beats a reference (a position on a name
- * that is both declared and referenced answers with the declaration). probe
- * yields the column to test for a given range - resolveAt fixes it to the
- * query char, resolveLine anchors it on the line - and null when the range is
- * not a candidate. Nothing is guessed here: same-named symbols elsewhere are
- * alternatives, assembled by resolvedView. */
+ * file declaration, reference, and lib-tier ranges: the tightest accepted
+ * range wins, and at an equal span a declaration beats a reference (a
+ * position on a name that is both declared and referenced answers with the
+ * declaration). probe yields the column to test for a given range -
+ * resolveAt fixes it to the query char, resolveLine anchors it on the line -
+ * and null when the range is not a candidate. Nothing is guessed here:
+ * same-named symbols elsewhere are alternatives, assembled by resolvedView /
+ * libResolvedView. */
 function pickTightest(index: QueryIndex, fileIdx: number, probe: (r: Range) => number | null): RangePick {
-  let sym: DumpSymbol | null = null;
+  let pick: RangeCandidate | null = null;
   let via = '';
   let span = Number.POSITIVE_INFINITY;
   let char = 0;
-  const consider = (cand: DumpSymbol | null, candVia: string, r: Range): void => {
-    const c = probe(r);
-    if (c === null) return;
+  const consider = (c: RangeCandidate | null, candVia: string, r: Range): void => {
+    const hit = probe(r);
+    if (hit === null) return;
     const sp = r.end - r.start;
     if (sp < span || (sp === span && via !== 'declaration')) {
-      sym = cand;
+      pick = c;
       via = candVia;
       span = sp;
-      char = c;
+      char = hit;
     }
   };
   for (const s of index.symbolsByFile.get(fileIdx) ?? []) {
-    for (const d of s.decls) consider(s, 'declaration', d);
+    for (const d of s.decls) consider({ kind: 'symbol', sym: s }, 'declaration', d);
   }
   for (const r of index.refsByFile.get(fileIdx) ?? []) {
     const target = index.symbolByKey.get(r.symKey);
-    if (target) consider(target, r.resolvedVia, r.range);
+    if (target) consider({ kind: 'symbol', sym: target }, r.resolvedVia, r.range);
   }
-  return { sym, via, char };
+  for (const lib of index.libRefsByFile.get(fileIdx) ?? []) {
+    consider({ kind: 'lib', lib }, 'lib', lib.range);
+  }
+  return { cand: pick, via, char };
 }
 
 /** Assemble the ResolveView for a picked symbol: the resolved row plus the
@@ -418,6 +578,38 @@ function resolvedView(index: QueryIndex, query: { file: string; line: number; ch
   return { query, fileFound: true, resolved, alternatives, ambiguous: false, gen: index.doc.epoch };
 }
 
+/** The lib-tier ResolveView: resolvedVia 'lib' — the answer's decls point at
+ * the declaration inside the lib file (uri = the .d.ts path, l/c = the
+ * scanned declaration position), so def/hover on a standard-library global or
+ * member lands on the real lib declaration instead of 'no symbol'. symId is
+ * a synthetic target id (lib files are not repo symbols); fileIdx is -1 for
+ * the same reason. Same-named repo symbols surface as alternatives. */
+function libResolvedView(index: QueryIndex, query: { file: string; line: number; character: number }, ref: LibRefView): ResolveView {
+  const dot = ref.libName.lastIndexOf('.');
+  const resolved: ResolvedSymbol = {
+    symId: `lib:${ref.libIdx}:${ref.libName}`,
+    name: ref.name,
+    qualified: ref.libName,
+    kind: ref.kind ?? 0,
+    file: ref.libPath,
+    fileIdx: -1,
+    ...(dot > 0 ? { container: ref.libName.slice(0, dot) } : {}),
+    decls: ref.decl !== undefined ? [{ uri: ref.libPath, l: ref.decl.line, c: ref.decl.char }] : [],
+    ...(ref.detail !== undefined ? { detail: ref.detail } : {}),
+    resolvedVia: 'lib',
+  };
+  const alternatives = rankCandidates(index, index.nameIndex.get(ref.name.toLowerCase()) ?? [])
+    .map((s) => ({
+      symId: s.id,
+      name: s.name,
+      file: pathOf(index, s.fileIdx),
+      reason: 'same-name-other-file',
+      refCount: index.refsBySymKey.get(s.key)?.length ?? 0,
+    }))
+    .slice(0, 8);
+  return { query, fileFound: true, resolved, alternatives, ambiguous: false, gen: index.doc.epoch };
+}
+
 /** What symbol is on this line? - the file:line form of def. Runs the SAME
  * tightest-range scan as resolveAt over ranges intersecting `line`, then
  * answers with resolveAt at the winning range anchor, so line queries and
@@ -430,7 +622,7 @@ export function resolveLine(index: QueryIndex, file: string, line: number): Reso
   const fileIdx = resolveFileNeedle(index, file);
   if (fileIdx === undefined) return { ...none, fileFound: false };
   const best = pickTightest(index, fileIdx, (r) => anchorOnLine(line, r));
-  if (best.sym === null) return none;
+  if (best.cand === null) return none;
   return resolveAt(index, file, line, best.char);
 }
 

@@ -87,7 +87,7 @@ Five stages. Stages 1–2 are per-file and embarrassingly parallel; 3–5 are gl
 This is what runs on every keystroke-scale change. Cost is linear in file size and roughly
 1/10th of a checker-backed pass.
 
-**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05) + lib tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, plus **8,092 checker-confirmed lib refs** (the `lib-not-loaded` bucket graduates to lib.dom/lib.es/package targets; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; what remains is `detail`/hover strings and cross-file declaration merging (§9.1, §13).
+**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05) + lib tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, plus **8,123 lib refs** (the `lib-not-loaded` bucket graduates to lib.dom/lib.es/package targets — lib globals through the compiler, CJS module-wrapper vars + the Astro global through canonical framework entries into the installed types; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; def/hover on a lib ref answers with the lib declaration file + line (`resolvedVia: 'lib'`); what remains is `detail` strings and cross-file declaration merging (§9.1, §13).
 (`src` universe and `netlify` universe share `shared/`), reused incrementally via
 `ts.createIncrementalProgram` / `oldProgram`. Used for:
 - resolving `export { _mapForm as mapForm }` and multi-hop barrel chains
@@ -661,7 +661,7 @@ idx refs <name> [--json] [--snapshot <file>]
                               shadows never count. exit 1 when no symbol
                               matches, several definitions do (ranked), or
                               the name is only imported (import sites are
-                              grouped by file; external symbols have no refs
+                              grouped                              by file; external symbols have no refs
                               to list). A defined name also lists its import
                               sites (importing files + specifier decl
                               positions: each binding-bearing import edge
@@ -670,7 +670,14 @@ idx refs <name> [--json] [--snapshot <file>]
                               (import { mapForm as _mapForm }) list their
                               specifier exactly like same-name ones; default /
                               namespace imports are never sites. Alongside usage
-                              refs - the rename/impact answer
+                              refs - the rename/impact answer. A name no repo
+                              symbol defines but the libRefs table carries
+                              (`console`, `String`, `console.log`) answers
+                              with the LIB target(s): the declaration file +
+                              position and every usage site across the repo
+                              (exit 0; `idx impact` on a single lib target
+                              reports the full impact answer with a per-role
+                              breakdown)
 idx impact <name> [--gate N] [--json] [--snapshot <file>]
                               the rename/impact answer over the same name
                               resolution as refs: the definition site, every
@@ -776,7 +783,7 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
-| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,092 lib refs** (lib tables for the `lib-not-loaded` bucket, checker-confirmed) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; open remainder: `detail`/hover strings and cross-file declaration merging — §13 |
+| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
@@ -891,8 +898,9 @@ it. Value/type positions split on role; the symbol graph (`calls`/`renders`/
 **Unresolved bucket with reasons:** `global-unknown` (genuine dangling
 reference), `type-only-import-in-value-position`, `export-star-ambiguous`, and
 `lib-not-loaded` (Tier 1 has no lib tables — a recognized standard-library
-global; the lib tier graduates the bucket to lib refs and only CJS module
-vars (`exports`/`module`) and framework globals (`Astro`) stay; §9.1).
+global; the lib tier graduates the whole bucket to lib refs: lib globals
+through the checker, CJS module-wrapper vars (`exports`/`module`) and the
+Astro framework global through canonical framework entries (§9.1, §13)).
 
 **Parse upgrades** (schema + `parse.ts`): `tdz`/`isTypeOnly` modifiers,
 per-binding import shapes (`default`/`named`/`namespace`), `var`/`let` split,
@@ -958,7 +966,7 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
 - the full run builds a per-file identifier position index (one walk per file)
   — a per-occurrence walk would be quadratic at ~24k occurrences.
 
-**Full-inventory results (247 files, 22,526 bindable occurrences incl. deep refs — the 2,815 value lib refs are verified before the bindable check and leave the universe, §13):**
+**Full-inventory results (247 files, universe 22,495 — every lib ref is verified before the bindable check and leaves the universe, §13):**
 
 - agreement **22,495/22,495 (100%)** (Tier 2 landed 2026-09-04: the universe
   now includes every bound Property ref — type-guided member binds and
@@ -967,13 +975,23 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
   false-positive, no offset mismatch. **No genuine binder bugs were exposed**
   by the full run; the Phase-4 curation paid off, so no fix-tests were needed;
 - deliberate deviations, classified not forced to zero:
-  - lib refs 8,092 — every row checker-confirmed at its offset (agree
-    8,092 / disagree 0): 5,277 unbound-Property member binds (`console.log` →
-    `Console.log`, `document.createElement` → `Document.createElement`) + 2,815
-    value-bucket graduates (`String`, `JSON`, `process`, `undefined`…; the
-    residual `lib-not-loaded` 31 = `exports` ×29 + `module` + `Astro`, with 30
-    compiler-binds of the CJS module object and 1 framework global the
-    compiler binds nothing to);
+  - lib refs 8,123 — every compiler-confirm row verified at its offset
+    (confirm 8,092 / disagree 0): 5,277 unbound-Property member binds
+    (`console.log` → `Console.log`, `document.createElement` →
+    `Document.createElement`) + 2,815 value-bucket graduates (`String`,
+    `JSON`, `process`, `undefined`…) + **31 canonical framework rows**
+    closing the residual bucket (`exports` ×29 + `module` + `Astro`) — CJS
+    module-wrapper vars point at @types/node's `var exports`/`var module`
+    declarations, `Astro` at astro's `AstroGlobal` interface; the compiler
+    binds no same-name declaration for these by construction, so the
+    validator classifies them separately (framework rows) while still
+    checking the identifier exists at the offset. Every row carries the
+    scanned declaration position inside the lib file (def/hover target)
+    plus `detail` (the declaration's first source line — `console: Console`,
+    `log(...data: any[]): void;`, `var exports: …`) and the site `role`;
+    the only rows without a decl position are the intrinsic
+    `undefined`/`globalThis` (TS synthesizes their declarations — their
+    detail is the checker's type string);
   - non-bindable roles (Property / ImportSpecifier / ObjectKey) 9,741 —
     recorded, never scope-bound by design (§4.3, member access is Tier 2);
     bound Property refs (light-tier + the deep tier's 1,049 checker joins) and
@@ -987,10 +1005,14 @@ symbol with the same name at the offset, which is blind to same-name shadowing
 (binder picking a different declaration of the same name). Declaration-identity
 comparison (decl file + offset) is the natural hardening next step.
 `validate.test.ts` (2 tests) locks the sample-mode harness at zero
-disagreements — 159 indexer tests total (13 files, incl. the 5-test
+disagreements — 162 indexer tests total (13 files, incl. the 8-test
 deep-tier suite that pins the lib tier: real-tree lib refs, determinism,
-dump round-trip, and a tsconfig'd fixture binding `String`/`JSON`/`console`/
-`document.createElement`).
+dump round-trip, a tsconfig'd fixture binding `String`/`JSON`/`console`/
+`document.createElement`, the def/hover answer resolving to the lib
+declaration file + line, a cross-file declaration-merging fixture
+(interface+interface overload members across two files join ONE
+deterministic symbol), lib-name refs/impact over the libRefs table, and
+`detail` on lib refs + symbols).
 
 ### Phase 5 shipped — read side: `idx dump` + `idx serve` + query layer (2026-09-03)
 
@@ -1061,14 +1083,17 @@ match the pipeline's one coordinate space (§8 note): line 1-based, char a
 
 - snapshot cold start — node boot + dump parse + QueryIndex build + listening:
   **~425 ms** (unchanged — `serve --snapshot` never runs the pipeline);
-  live-build `serve` to listening: **~4.5 s** with the default deep tier
-  (light ~0.6 s + deep ~3.5 s; `idx watch` generations stay light-only);
+  live-build `serve` to listening: **~7 s** with the default deep tier
+  (light ~0.6 s + deep ~5.9 s — the pass now scans bound Property rows too
+  for merged-declaration discovery; `idx watch` generations stay light-only);
 - 247 files · 9,263 symbols · 22,495 bound refs (21,446 light + 1,049 deep) ·
   10,919 symbol edges · 1,005 import edges (incl. 49 astro Renders);
-  33 unresolved total (31 ref-level — CJS module vars + the Astro framework
-global — + 2 imports); dump ~10.0 MB compact (8,092 lib refs across 54 lib
-files), byte-identical across runs, zero dangling joins (lib refs carry a
-libIdx into libs[]);
+  2 unresolved total (both import-level — the `https://` dynamic imports in
+  `fcm.ts`; the ref-level bucket is exactly zero); dump ~10.6 MB compact
+  (8,123 lib refs across 54 lib files, each row carrying the scanned decl
+  position inside the lib file + `detail` + `role`; all 9,263 symbols carry
+  `detail`), byte-identical across runs, zero dangling joins (lib refs carry
+  a libIdx into libs[]);
 - `idx dump` joins: ref `symKey` / edge `target` → `symbols[].key`; `fileIdx` →
   `files[].idx`; export entries carry `symKey` (or `localName`/`targetName` per
   the schema union).
@@ -1085,10 +1110,12 @@ the version `package.json` declares — removed. **Superseded:** row 8 swapped
 drift-fix pass cleared its error class — the boundary gate is now green; only
 the app typecheck ratchet drift kept the overall gate red. **Superseded 2026-09-04:** the ratchet drift is resolved (§13 entry "app typecheck ratchet closed") — `ci:quality` exits 0 end to end.
 
-Next: **cross-file declaration merging** and `detail`/hover strings — the
+Next: **cross-file declaration merging** and `detail` strings — the
 `lib.dom`/`lib.es` tables are shipped (lib tier, §13): the `lib-not-loaded`
-bucket graduates to checker-confirmed lib refs and only CJS module vars +
-framework globals stay unresolved.
+bucket graduates to lib refs — checker-confirmed for lib globals, canonical
+framework entries (@types/node CJS wrapper vars, astro's `AstroGlobal`) for
+the wrapper-vars + framework-global rows — and `idx def`/hover on those refs
+answers with the lib declaration file + line (`resolvedVia: 'lib'`).
 
 ### Phase 6 shipped (MVP, 2026-09-03) — generation lifecycle
 
@@ -1673,8 +1700,9 @@ Tier-1 reads).
 program answers dissolve the `lib-not-loaded` bucket into **lib refs** —
 dump rows without a symKey (lib declarations are not repo symbols) carrying
 the lib file (`libs[]`: `typescript/lib/lib.es5.d.ts` ×4,020,
-`lib.dom.d.ts` ×2,084, `@vitest/expect` ×480, `@types/node` ×188, … 54
-files total) and the qualified name (`Console.log`, `JSON`, `process.env`;
+`lib.dom.d.ts` ×2,084, `@vitest/expect` ×480, `@types/node` ×446 incl.
+the 30 CJS wrapper rows, astro ×8, … 54 files total) and the qualified
+name (`Console.log`, `JSON`, `process.env`;
 module paths are root-stripped so libNames are portable). Two classes
 graduate: (a) light-unbound Property occurrences the compiler binds outside
 the repo (`console.log` → `Console.log`, `document.createElement` →
@@ -1683,12 +1711,47 @@ compiler binds to a lib/package declaration of the same name — `String`,
 `JSON`, `console`, `process`, `undefined`… (undefined/globalThis are
 intrinsic globals with no accessible declaration, so they use the tier's
 small canonical-lib table). Never a guess: every emitted row is
-compiler-verified by validate (lib refs 8,092, agree 8,092 / disagree 0) and
-the residual bucket is exactly the CJS module vars + framework globals the
-compiler does not bind to a lib declaration (31 rows). The dump contract is
-additive (legacy snapshots without libs/libRefs load unchanged).
+compiler-verified by validate (lib refs 8,123 — confirm 8,092 / disagree 0 /
+framework 31), and the residual bucket is now **exactly zero**: the CJS
+module-wrapper vars (`exports` ×29, `module`) graduate through canonical
+entries pointing at @types/node's `var exports` / `var module` declarations
+and the Astro frontmatter global points at astro's `AstroGlobal` interface
+(the compiler binds no same-name declaration for these by construction —
+shape-checked: the wrapper write `exports.handler = …` / `module.exports = …`,
+and the global only inside .astro frontmatter). Every row records the
+declaration position inside the lib file (scanned at build time, never
+hardcoded — the def/hover target); the query layer answers positions on lib
+refs with `resolvedVia: 'lib'` and decls pointing into the lib .d.ts. The
+dump contract is additive (legacy snapshots without libs/libRefs load
+unchanged).
 
-Cost & gating: program creation + pass ≈ **3.5 s** (stageMs.deep) vs ≈ 0.6 s
+**Cross-file declaration merging (same shipping):** when the compiler's
+symbol for a light-unbound Property occurrence maps to ≥2 indexed
+declarations — true interface+interface / namespace+namespace merging
+across files, or intersection/union-typed member access (`SessionPayload &
+{ exp: number }`, a row-type union) — the checker join recognizes the
+merged declaration as ONE symbol per declaration set: every site whose
+compiler target maps to the same key set joins the same deterministic
+primary (the container-qualified member — `SessionPayload.exp` over an
+anonymous intersection member `exp` — ties to the earliest file). The
+primary is always a declaration the compiler actually binds at the site, so
+validation stays exact (identity: match 20,827, merged-declaration 43,
+shadowing-disagreement 2 — unchanged); a same-name single-declaration bind
+is never folded through another site's merge. On this tree the union
+sites already bound their first constituent, so the delta is determinism
++ unification-by-construction; a fixture (two global-script `interface
+MergeMe` declarations with a cross-file overloaded member `m`) pins the
+mechanism: one deep ref, one deterministic symbol, name matches. The tier's
+`detail` pass also ships here: every symbol and every lib ref carries a
+short signature (the declaration's first source line — def/hover renders
+`kind: Variable (12)`, never a bare number), and `idx refs <name>` /
+`idx impact <name>` answer lib names (`console` — 334 sites, `String` —
+572 sites in 67 files with a call/read role breakdown, `console.log` — the
+`Console.log` rows) straight from the libRefs table when no repo symbol
+defines the name.
+
+Cost & gating: program creation + pass ≈ **5.9 s** (stageMs.deep — the
+merged-declaration discovery scans bound Property rows too) vs ≈ 0.6 s
 for the whole light build, so one-shot build/serve run it by default while
 `idx watch` opts out (`{ deep: false }`) to keep generation latency; the
 tier degrades to zero refs (never throws) when no program can be built — a
@@ -1856,4 +1919,4 @@ Ownership rules that hold today:
 - ResolvedSymbol describes the resolved symbol: `file`/`decls[].uri` are the
   symbol's home file, never the file the query pointed at.
 
-Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,092 lib refs; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail`/hover strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
+Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail` strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).

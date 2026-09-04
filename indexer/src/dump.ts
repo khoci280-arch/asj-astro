@@ -201,7 +201,17 @@ export function dumpDoc(r: BuildResult): DumpDoc {
       ...(z.deep ? { deep: true } : {}),
     })),
     libs: libIds.map((id, i) => ({ idx: i, id })),
-    libRefs: r.libRefs.map((z) => ({ fileIdx: z.fileIdx, range: z.range, name: z.name, libIdx: libIdxById.get(z.libId)!, libName: z.libName })),
+    libRefs: r.libRefs.map((z) => ({
+      fileIdx: z.fileIdx,
+      range: z.range,
+      name: z.name,
+      libIdx: libIdxById.get(z.libId)!,
+      libName: z.libName,
+      ...(z.decl !== undefined ? { decl: z.decl } : {}),
+      ...(z.kind !== undefined ? { kind: z.kind } : {}),
+      ...(z.detail !== undefined ? { detail: z.detail } : {}),
+      ...(z.role !== undefined ? { role: z.role } : {}),
+    })),
     unresolved: r.unresolvedRefs.map((u) => ({ fileIdx: u.fileIdx, name: u.name, reason: u.reason, range: u.range })),
     unresolvedImports: r.graph.unresolved.map((u) => ({ fileIdx: u.from, specifier: u.specifier, reason: u.reason })),
     symbolEdges: r.symbolEdges.map((e) => ({

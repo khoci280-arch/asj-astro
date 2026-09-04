@@ -293,6 +293,21 @@ export interface LibRef {
   libIdx: number;
   /** Qualified name inside the lib (e.g. `Console.log`, `JSON`, `process.env`). */
   libName: string;
+  /** Declaration the ref binds to inside the lib file (1-based line,
+   * 0-based char) — the query layer's def/hover target. Absent only when the
+   * target is a canonical entry with no physical declaration (e.g. the
+   * intrinsic `undefined`/`globalThis` globals, whose decl is synthesized). */
+  decl?: { line: number; char: number };
+  /** SymbolKind of the lib declaration, for def/hover rendering. */
+  kind?: number;
+  /** Short signature/kind text of the lib declaration for def/hover rendering
+   * (e.g. `declare var console: Console;`, `log(...data: any[]): void;`) —
+   * the declaration's first source line, scanned at build time. Absent only
+   * when the declaration node has no usable text. */
+  detail?: string;
+  /** OccurrenceRole of the site (Property for member rows, Read/Callee/… for
+   * value rows) — the impact answer's per-role breakdown. */
+  role?: number;
 }
 
 export interface Edge {

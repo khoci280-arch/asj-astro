@@ -60,13 +60,16 @@
  *                             matches; import-binding shadows never count as
  *                             candidates. exit 1 when no symbol matches, when
  *                             several definitions do (ranked candidates are
- *                             listed), or when the name is only imported
- *                             (never declared: the import sites are grouped
- *                             by file)
- *                             A defined name also lists its import sites
- *                             (importing files + specifier positions)
- *                             alongside usage references - the complete
- *                             rename/impact answer.
+ *                             listed), or when the name is only imported   *                             (never declared: the import sites are grouped
+   *                             by file)
+   *                             A defined name also lists its import sites
+   *                             (importing files + specifier positions)
+   *                             alongside usage references - the complete
+   *                             rename/impact answer. A name no repo symbol
+   *                             defines but the libRefs table carries
+   *                             (console, String, console.log) answers with
+   *                             the LIB target(s) - declaration file + every
+   *                             usage site (state "lib", exit 0).
  *   idx impact <name> [--gate N] [--json] [--snapshot <file>]
  *                             the rename/impact answer over the same name
  *                             resolution as refs: the definition site,
@@ -96,13 +99,13 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FileNode, IndexStats, SymbolNode } from '../../docs/code-index-schema.js';
+import { SymbolKind, type FileNode, type IndexStats, type SymbolNode } from '../../docs/code-index-schema.js';
 import { buildIndex } from './build.js';
 import type { BuildResult } from './build.js';
 import { loadForbidRules, type LoadedRules } from './boundary.js';
 import { dumpDoc, loadSnapshot } from './dump.js';
 import { exportSymKey } from './exportTables.js';
-import { impactReport, indexFromDoc, isImportBindingSymbol, refsOf, resolveAt, resolveLine, symbolsByExactName, symbolsDefining, violationsOf, type ImpactReport, type QueryIndex, type RefView, type ResolveView, type ViolationsView } from './query.js';
+import { impactReport, indexFromDoc, isImportBindingSymbol, libTargetsOf, refsOf, refsOfLib, resolveAt, resolveLine, symbolsByExactName, symbolsDefining, violationsOf, type ImpactReport, type LibTarget, type QueryIndex, type RefView, type ResolveView, type ViolationsView } from './query.js';
 import { probeFilePaths } from './resolve.js';
 import { serveIndex, type IndexHolder } from './serve.js';
 import { commitGenerationLine, defaultStateDir, diffDocs, generationLine, isNoopDiff, loadStateDoc, pushHistory, startWatch } from './watch.js';
@@ -165,9 +168,10 @@ function printUnresolved(r: BuildResult): void {
   if (refs.length > 0) {
     // Aggregate occurrence-level unresolved by name for a readable summary.
     // Known standard-library globals are tagged `lib-not-loaded` (Tier 1 has
-    // no lib tables; the lib tier graduates them — the residual bucket is CJS
-    // module vars + framework globals) and collapse to one line so genuine
-    // unknowns stay visible.
+    // no lib tables; the lib tier graduates the whole bucket — lib globals
+    // via the compiler, CJS module vars + framework globals via canonical
+    // entries — so the bucket is empty in deep builds; the collapse keeps
+    // genuine unknowns visible if any remain).
     const byName = new Map<string, { reason: string; count: number; sample: string }>();
     for (const u of refs) {
       const hit = byName.get(u.name);
@@ -185,7 +189,7 @@ function printUnresolved(r: BuildResult): void {
       .map(([n, v]) => `${n} ×${v.count}`)
       .slice(0, 12)
       .join(', ');
-    console.log(`unresolved references (${refs.length}; ${genuine.length} genuine, ${libCount} known lib globals awaiting Tier 2):`);
+    console.log(`unresolved references (${refs.length}; ${genuine.length} genuine, ${libCount} lib-not-loaded):`);
     if (genuine.length > 0) {
       const sorted = [...byName.entries()]
         .filter(([, v]) => v.reason !== 'lib-not-loaded')
@@ -359,7 +363,7 @@ function printDefText(v: ResolveView): void {
   }
   const r = v.resolved;
   console.log(pos + ' -> ' + r.name + ' (' + r.qualified + ') -- ' + r.symId);
-  console.log('  resolvedVia: ' + r.resolvedVia + ' | kind: ' + r.kind + ' | in ' + r.file);
+  console.log('  resolvedVia: ' + r.resolvedVia + ' | kind: ' + (KIND_LABEL[r.kind] ?? r.kind) + ' (' + r.kind + ') | in ' + r.file);
   for (const d of r.decls) console.log('  declared at ' + d.uri + ':' + d.l + ':' + d.c);
   if (r.detail !== undefined) console.log('  detail: ' + r.detail);
   if (v.alternatives.length > 0) {
@@ -391,7 +395,8 @@ type RefsByNameView =
       state: "ambiguous";
       name: string;
       candidates: Array<{ symId: string; name: string; qualified: string; file: string; references: number }>;
-    };
+    }
+  | { state: "lib"; name: string; targets: LibTarget[] };
 
 /** One by-name refs answer. Definitions come ranked from the query layer
  * (symbolsDefining owns the shadow exclusion + comparator); when nothing
@@ -413,7 +418,13 @@ function refsByNameView(index: QueryIndex, name: string): RefsByNameView {
     };
   }
   const shadows = symbolsByExactName(index, name).filter(isImportBindingSymbol);
-  if (shadows.length === 0) return { state: 'not-found', name };
+  if (shadows.length === 0) {
+    // No repo definition and no import shadow: a lib name (console, String,
+    // console.log) answers with every usage site from the libRefs table.
+    const targets = libTargetsOf(index, name);
+    if (targets.length > 0) return { state: 'lib', name, targets };
+    return { state: 'not-found', name };
+  }
   const byFile = new Map<string, number>();
   for (const sym of shadows) {
 
@@ -426,7 +437,7 @@ function refsByNameView(index: QueryIndex, name: string): RefsByNameView {
   return { state: "import-only", name, total: shadows.length, files };
 }
 
-function refsByNameJson(v: RefsByNameView): unknown {
+function refsByNameJson(index: QueryIndex, v: RefsByNameView): unknown {
   switch (v.state) {
     case "resolved":
       return v.view;
@@ -436,6 +447,27 @@ function refsByNameJson(v: RefsByNameView): unknown {
       return { found: false, ambiguous: true, name: v.name, candidates: v.candidates };
     case "import-only":
       return { found: false, importedOnly: true, name: v.name, total: v.total, files: v.files };
+    case "lib":
+      return {
+        found: true,
+        lib: true,
+        name: v.name,
+        targets: v.targets.map((t) => ({
+          libName: t.libName,
+          libId: t.libId,
+          libPath: t.libPath,
+          ...(t.decl !== undefined ? { decl: t.decl } : {}),
+          ...(t.kind !== undefined ? { kind: t.kind } : {}),
+          ...(t.detail !== undefined ? { detail: t.detail } : {}),
+          siteCount: t.sites.length,
+          sites: t.sites.map((z) => ({
+            file: index.fileByIdx.get(z.fileIdx)?.path ?? '#' + z.fileIdx,
+            line: z.range.startLine,
+            char: z.range.startChar,
+            role: z.role ?? 0,
+          })),
+        })),
+      };
   }
 }
 
@@ -443,6 +475,11 @@ const ROLE_LABEL: Record<number, string> = {
   1: 'read', 2: 'write', 3: 'call', 4: 'type', 5: 'member', 6: 'jsx',
   7: 'import', 8: 're-export', 9: 'decorator',
 };
+
+/** SymbolKind names — def/hover renders `kind: Property (11)`, never a bare number. */
+const KIND_LABEL: Record<number, string> = Object.fromEntries(
+  Object.entries(SymbolKind).map(([k, v]) => [v, k]),
+) as Record<number, string>;
 
 function printImpactText(r: ImpactReport): void {
   console.log('impact: ' + r.name);
@@ -458,7 +495,7 @@ function printImpactText(r: ImpactReport): void {
   console.log('  files: ' + r.files.join(', '));
 }
 
-function printRefsByNameText(v: RefsByNameView): void {
+function printRefsByNameText(index: QueryIndex, v: RefsByNameView): void {
   switch (v.state) {
     case "resolved":
       printRefsText(v.view);
@@ -474,6 +511,20 @@ function printRefsByNameText(v: RefsByNameView): void {
     case "import-only": {
       console.log('symbol ' + v.name + ' is never declared in the indexed tree - only imported (' + v.total + ' site(s) across ' + v.files.length + ' file(s)); external symbols have no refs to list');
       for (const f of v.files) console.log('  ' + f.file + (f.sites > 1 ? ' (' + f.sites + ' sites)' : ''));
+      return;
+    }
+    case "lib": {
+      console.log('lib symbol ' + v.name + ': ' + v.targets.length + ' target(s), every usage site across the repo:');
+      for (const t of v.targets) {
+        const kind = KIND_LABEL[t.kind ?? 0] ?? t.kind ?? '?';
+        console.log(
+          '  ' + t.libName + '  (' + kind + (t.detail !== undefined ? ' · ' + t.detail : '') + ')' + (t.decl !== undefined ? ' — declared at ' + t.libPath + ':' + t.decl.line + ':' + t.decl.char : '') + ' · ' + t.sites.length + ' site(s)',
+        );
+        for (const z of t.sites) {
+          const f = index.fileByIdx.get(z.fileIdx)?.path ?? '#' + z.fileIdx;
+          console.log('    ' + f + ':' + z.range.startLine + ':' + z.range.startChar + '  role ' + (ROLE_LABEL[z.role ?? 0] ?? z.role ?? 0));
+        }
+      }
       return;
     }
   }
@@ -645,9 +696,10 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const view = refsByNameView(readIndex(), name);
-      if (json) console.log(JSON.stringify(refsByNameJson(view), null, 2));
-      else printRefsByNameText(view);
+      const index = readIndex();
+      const view = refsByNameView(index, name);
+      if (json) console.log(JSON.stringify(refsByNameJson(index, view), null, 2));
+      else printRefsByNameText(index, view);
       if (view.state !== 'resolved') process.exitCode = 1;
       break;
     }
@@ -659,10 +711,20 @@ async function main(): Promise<void> {
         return;
       }
       const gate = intFlag('--gate');
-      const view = refsByNameView(readIndex(), name);
+      const index = readIndex();
+      const view = refsByNameView(index, name);
       if (view.state !== 'resolved') {
-        if (json) console.log(JSON.stringify(refsByNameJson(view), null, 2));
-        else printRefsByNameText(view);
+        // A single lib target (console, String) is a resolved impact answer:
+        // the lib declaration as definition, every usage site as references.
+        if (view.state === 'lib' && view.targets.length === 1) {
+          const report = impactReport(refsOfLib(index, view.targets[0]));
+          if (json) console.log(JSON.stringify(report, null, 2));
+          else printImpactText(report);
+          if (gate !== undefined && report.files.length > gate) process.exitCode = 2;
+          break;
+        }
+        if (json) console.log(JSON.stringify(refsByNameJson(index, view), null, 2));
+        else printRefsByNameText(index, view);
         process.exitCode = 1;
         break;
       }

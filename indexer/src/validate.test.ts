@@ -32,18 +32,17 @@ describe('differential validation (sample)', () => {
     expect(r.disagreements).toHaveLength(0);
   });
 
-  it('graduates lib globals to lib refs; only CJS/framework intrinsics stay unresolved', { timeout: TIMEOUT }, () => {
+  it('graduates lib globals and CJS/framework intrinsics; the residual bucket is empty', { timeout: TIMEOUT }, () => {
     const r = runValidation(ROOT, { sampleOnly: true });
     // The lib tier emitted checker-confirmed lib refs for the bucket. Every
     // emitted row must bind the same name at the offset (never a guess), and
-    // the residual lib-not-loaded rows are CJS module vars (exports/module,
-    // compiler-binds the module object) and the Astro framework global
-    // (compiler binds nothing).
+    // the framework/intrinsic rows (CJS module-wrapper exports in the sample's
+    // .js functions, the Astro frontmatter global) graduate through canonical
+    // entries — the residual lib-not-loaded bucket is exactly zero.
     expect(r.counts.libRefs).toBeGreaterThan(400);
-    expect(r.counts.libRefAgree).toBe(r.counts.libRefs);
+    expect(r.counts.libRefAgree).toBe(r.counts.libRefs - r.counts.libRefFramework);
     expect(r.counts.libRefDisagree).toBe(0);
-    expect(r.counts.libNotLoaded).toBeGreaterThan(1);
-    expect(r.counts.libNotLoaded).toBeLessThan(10);
-    expect(r.counts.libCompilerNone).toBe(1); // Astro framework global
+    expect(r.counts.libRefFramework).toBeGreaterThanOrEqual(1); // CJS wrapper vars + Astro
+    expect(r.counts.libNotLoaded).toBe(0);
   });
 });

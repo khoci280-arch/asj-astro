@@ -302,6 +302,7 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     libRefs: 0,
     libRefAgree: 0,
     libRefDisagree: 0,
+    libRefFramework: 0,
     skippedNonBindable: 0,
     skippedJsxIntrinsic: 0,
     offsetMismatch: 0,
@@ -319,7 +320,8 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   for (const ref of r.refs) refTargetByOcc.set(`${ref.fileIdx}:${ref.range.start}`, ref.symKey);
   // Lib tier rows: not repo-bound refs, so they must not reach the unresolved
   // branch (which would read them as indexer-unresolved vs compiler-bound).
-  const libRefStart = new Set<string>(r.libRefs.map((z) => `${z.fileIdx}:${z.range.start}`));
+  const libRefByStart = new Map(r.libRefs.map((z) => [`${z.fileIdx}:${z.range.start}`, z]));
+  const libRefStart = new Set(libRefByStart.keys());
 
   const lineOf = (f: FileNode, start: number): number => {
     // Binary search the line index for the greatest line whose offset <= start.
@@ -364,6 +366,19 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
         const compilerName = id ? compilerNameAt(checker, id) : undefined;
         counts.libRefs++;
         fileAgg.lib++;
+        const libRow = libRefByStart.get(at);
+        if (libRow?.framework === true) {
+          // Canonical framework/intrinsic row (CJS wrapper vars, Astro global):
+          // the compiler binds no same-name declaration by construction, so the
+          // same-name check below would never agree. Still verify the identifier
+          // EXISTS at the mapped offset — a missing identifier is a real
+          // position-mapping bug, not a framework deviation.
+          if (id === undefined) {
+            counts.offsetMismatch++;
+            disagreements.push({ path: rel, line: lineOf(f, o.range.start), name: o.name, role: ROLE_NAME[o.role], reason: 'lib-framework', indexer: `lib-framework:${o.name}`, compiler: '<no-identifier-at-offset>' });
+          } else counts.libRefFramework++;
+          continue;
+        }
         if (id !== undefined && compilerName === o.name) counts.libRefAgree++;
         else {
           counts.libRefDisagree++;
@@ -476,10 +491,12 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   lines.push(`  bound (same name at offset):           ${counts.agreeBound}`);
   lines.push(`  unresolved (both unresolvable):        ${counts.agreeUnresolved}`);
   lines.push('deliberate deviations (excluded):');
-  lines.push(`  lib refs (emitted, compiler-confirm):   ${counts.libRefs} (agree ${counts.libRefAgree} / disagree ${counts.libRefDisagree})`);
-  lines.push(`  residual lib-not-loaded (framework):    ${counts.libNotLoaded}`);
-  lines.push(`    ↳ compiler also binds:                ${counts.libCompilerBinds}`);
-  lines.push(`    ↳ compiler binds nothing (framework): ${counts.libCompilerNone}`);
+  lines.push(`  lib refs (emitted):                     ${counts.libRefs} (compiler-confirm ${counts.libRefAgree} / disagree ${counts.libRefDisagree} / framework ${counts.libRefFramework})`);
+  lines.push(`  residual lib-not-loaded:                ${counts.libNotLoaded}`);
+  if (counts.libNotLoaded > 0) {
+    lines.push(`    ↳ compiler also binds:                ${counts.libCompilerBinds}`);
+    lines.push(`    ↳ compiler binds nothing (framework): ${counts.libCompilerNone}`);
+  }
   lines.push(`  non-bindable roles:                    ${counts.skippedNonBindable}`);
   lines.push(`  lowercase JSX intrinsics:              ${counts.skippedJsxIntrinsic}`);
   lines.push('disagreements:');

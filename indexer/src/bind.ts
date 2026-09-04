@@ -91,8 +91,9 @@ interface BindInput {
  * Known standard-library globals (ES built-ins, DOM, Node, TS utility types).
  * Tier 1 has no lib symbol tables, so these are classified `lib-not-loaded` —
  * distinct from genuine unknowns, which stay `global-unknown` as a real signal.
- * The lib tier (deep-tier.ts) graduates the bucket through the checker into
- * lib refs; only CJS module vars and framework globals stay here.
+ * The lib tier (deep-tier.ts) graduates the whole bucket through the checker
+ * into lib refs (CJS module vars + the Astro global via canonical framework
+ * entries) — deep builds carry zero lib-not-loaded rows.
  */
 const LIB_GLOBALS = new Set<string>([
   // ES value + built-in constructors

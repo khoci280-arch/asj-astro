@@ -17,9 +17,13 @@
  * console…) whose identifier the compiler binds to a lib/package
  * declaration of the same name, and (b) light-unbound Property occurrences
  * the compiler binds outside the repo (console.log → Console.log,
- * document.createElement → Document.createElement). Framework globals with
- * no lib declaration (Astro) stay unresolved. Deterministic: libIds are
- * paths relative to node_modules, refs are sorted like deep refs.
+ * document.createElement → Document.createElement). Framework/intrinsic rows
+ * with no same-name compiler declaration — CJS module-wrapper vars
+ * (`exports.handler = …`, `module.exports = …`) and the Astro frontmatter
+ * global — graduate through dedicated canonical entries pointing at the
+ * real declaration in the installed types (@types/node's CJS wrapper vars,
+ * astro's AstroGlobal interface). Deterministic: libIds are paths relative
+ * to node_modules, refs are sorted like deep refs.
  *
  * Cost: program creation ≈ 2.1 s on this tree vs ≈ 0.6 s for the whole
  * light build, so buildIndex defaults the tier ON (one-shot build/serve
@@ -36,12 +40,13 @@
  * indexer/dist/indexer/src/deep-tier.js
  */
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { buildIndex } from './build.js';
 import { buildProgram, identifierIndex, norm } from './program.js';
-import { OccurrenceRole, type FileIdx, type FileNode, type Occurrence, type Range, type SymKey, type SymbolNode, type UnresolvedReference } from '../../docs/code-index-schema.js';
+import { OccurrenceRole, SymbolKind, type FileIdx, type FileNode, type Occurrence, type Range, type SymKey, type SymbolNode, type UnresolvedReference } from '../../docs/code-index-schema.js';
 import type { BoundRef } from './bind.js';
 
 const ROOT = process.cwd().replace(/\\/g, '/');
@@ -66,6 +71,22 @@ export interface LibRefRow {
   libId: string;
   /** Qualified name inside the lib (e.g. `Console.log`, `JSON`, `process.env`). */
   libName: string;
+  /** Canonical framework/intrinsic entry (CJS module-wrapper vars, Astro
+   * global): the checker binds no same-name declaration, so the differential
+   * validator skips the same-name check for these rows (framework rows, not
+   * compiler-confirm rows). Build-side only; never serialized. */
+  framework?: boolean;
+  /** Declaration the ref binds to inside the lib file (1-based line, 0-based
+   * char) — the query layer's def/hover target (§8.5). */
+  decl?: { line: number; char: number };
+  /** SymbolKind of the lib declaration. */
+  kind?: number;
+  /** Short signature/kind text of the lib declaration (first source line,
+   * scanned at build time) — the def/hover detail (§8.5). */
+  detail?: string;
+  /** OccurrenceRole of the site (Property for member rows, Read/Callee/… for
+   * value rows) — the impact answer's per-role breakdown. */
+  role?: number;
 }
 
 export interface DeepBindOutput {
@@ -76,6 +97,12 @@ export interface DeepBindOutput {
   /** Occurrence keys (`fileIdx:start`) the lib pass graduated — the caller
    * drops those rows from the unresolved bucket. */
   graduated: Set<string>;
+  /** Light-bound refs at GENUINELY merged sites the caller rewrites onto the
+   * site's deterministic primary: occurrence key (`fileIdx:start`) → primary
+   * key. Only sites whose compiler target maps to ≥2 indexed declarations are
+   * included — a same-name single-declaration bind is never reassigned, so
+   * the rewrite can never fabricate a cross-file claim. */
+  rewrite: Map<string, SymKey>;
 }
 
 /** Deterministic lib file id: path relative to node_modules, else basename. */
@@ -94,17 +121,48 @@ const cleanLibName = (name: string, rootDir: string): string => {
   return name;
 };
 
+/** One canonical lib entry: the declaration file (id), the target name, the
+ * schema SymbolKind of the declaration, and the line pattern that finds the
+ * declaration in the installed file (deterministic under the lockfile). */
+interface CanonicalLib {
+  libId: string;
+  libName: string;
+  kind: number;
+  /** Line-start pattern locating the declaration inside the installed file
+   * (the decl line/char are scanned at build time — never hardcoded). */
+  pattern: RegExp;
+}
+
 /**
  * Intrinsic globals the checker binds but reports without declarations
  * (undefined, globalThis) — the lib tier's small tables (§4.3). The lib id
  * is the canonical ES lib the type comes from (ES5 for undefined, ES2020
- * for globalThis); the differential validator still proves the compiler
- * binds the same name at the offset. Everything else in the tier is fully
- * declaration-backed.
+ * for globalThis). TS ships no physical `declare var` for either (the
+ * checker synthesizes them), so these rows carry no decl position — the
+ * differential validator still proves the compiler binds the same name at
+ * the offset. Everything else in the tier is fully declaration-backed.
  */
-const DECLLESS_LIBS = new Map<string, string>([
-  ['undefined', 'typescript/lib/lib.es5.d.ts'],
-  ['globalThis', 'typescript/lib/lib.es2020.d.ts'],
+const DECLLESS_LIBS = new Map<string, { libId: string; libName: string; kind: number }>([
+  ['undefined', { libId: 'typescript/lib/lib.es5.d.ts', libName: 'undefined', kind: SymbolKind.Variable }],
+  ['globalThis', { libId: 'typescript/lib/lib.es2020.d.ts', libName: 'globalThis', kind: SymbolKind.Variable }],
+]);
+
+/**
+ * Framework/intrinsic entries — identifiers whose compiler binding is not a
+ * same-name declaration the tier can confirm, so they graduate through a
+ * dedicated canonical entry instead: CJS module-wrapper vars (`exports`,
+ * `module` in CommonJS files — the checker binds the in-file export
+ * property, never the wrapper) and the Astro frontmatter global (the
+ * checker binds nothing; Astro injects it per component). Each points at
+ * the real declaration in the installed types (@types/node's CJS wrapper
+ * vars, astro's AstroGlobal interface), located by scan at build time. The
+ * differential validator classifies these as framework rows (no same-name
+ * compiler check — it would never agree by construction).
+ */
+const FRAMEWORK_LIBS = new Map<string, CanonicalLib>([
+  ['exports', { libId: '@types/node/module.d.ts', libName: 'exports', kind: SymbolKind.Variable, pattern: /^\s*var exports:/m }],
+  ['module', { libId: '@types/node/module.d.ts', libName: 'module', kind: SymbolKind.Variable, pattern: /^\s*var module:/m }],
+  ['Astro', { libId: 'astro/dist/types/public/context.d.ts', libName: 'AstroGlobal', kind: SymbolKind.Interface, pattern: /^export interface AstroGlobal\b/m }],
 ]);
 
 /**
@@ -126,8 +184,116 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
     checker = p.checker;
     astroOffset = p.astroOffset;
   } catch {
-    return { refs: out, libRefs, graduated: new Set() }; // no readable tsconfig / program failure → tier degrades
+    return { refs: out, libRefs, graduated: new Set(), rewrite: new Map() }; // no readable tsconfig / program failure → tier degrades
   }
+
+  /** Name-node start of a lib declaration in the lib file's own coordinates
+   * (lib files are never .astro — no frontmatter offset applies). The name
+   * identifier anchors the def/hover click target; nodes without a usable
+   * name fall back to the node start. */
+  const declPosOf = (d: ts.Declaration): { line: number; char: number } | undefined => {
+    try {
+      const sf = d.getSourceFile();
+      let node: ts.Node = d;
+      const name = (d as ts.NamedDeclaration).name;
+      if (name !== undefined) {
+        if (ts.isIdentifier(name) || ts.isStringLiteral(name)) node = name;
+        else if (ts.isComputedPropertyName(name)) node = name.expression;
+      }
+      const lc = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+      return { line: lc.line + 1, char: lc.character };
+    } catch {
+      return undefined;
+    }
+  };
+
+  /** Short signature/kind text of a lib declaration: the first line of the
+   * declaration's source (the VariableDeclaration text reads `console:
+   * Console;`, a MethodDeclaration `log(...data: any[]): void;`), trimmed
+   * and capped — the def/hover detail. */
+  const declTextOf = (d: ts.Declaration): string | undefined => {
+    try {
+      const sf = d.getSourceFile();
+      const line = sf.text.slice(d.getStart(sf), d.getEnd()).split('\n')[0].trim();
+      return line.length === 0 ? undefined : line.length > 100 ? line.slice(0, 97) + '…' : line;
+    } catch {
+      return undefined;
+    }
+  };
+
+  /** Schema SymbolKind of a lib declaration node (def/hover rendering). */
+  const declKindOf = (d: ts.Declaration): number | undefined => {    switch (d.kind) {
+      case ts.SyntaxKind.InterfaceDeclaration: return SymbolKind.Interface;
+      case ts.SyntaxKind.ClassDeclaration: return SymbolKind.Class;
+      case ts.SyntaxKind.TypeAliasDeclaration: return SymbolKind.TypeAlias;
+      case ts.SyntaxKind.EnumDeclaration: return SymbolKind.Enum;
+      case ts.SyntaxKind.EnumMember: return SymbolKind.EnumMember;
+      case ts.SyntaxKind.FunctionDeclaration: return SymbolKind.Function;
+      case ts.SyntaxKind.Constructor: return SymbolKind.Constructor;
+      case ts.SyntaxKind.MethodDeclaration:
+      case ts.SyntaxKind.MethodSignature: return SymbolKind.Method;
+      case ts.SyntaxKind.GetAccessor:
+      case ts.SyntaxKind.SetAccessor:
+      case ts.SyntaxKind.PropertyDeclaration:
+      case ts.SyntaxKind.PropertySignature: return SymbolKind.Property;
+      case ts.SyntaxKind.ModuleDeclaration:
+        return (d.flags & ts.NodeFlags.Namespace) !== 0 ? SymbolKind.Namespace : SymbolKind.Module;
+      case ts.SyntaxKind.VariableDeclaration: {
+        const list = d.parent !== undefined && ts.isVariableDeclarationList(d.parent) ? d.parent : undefined;
+        return list !== undefined && (list.flags & ts.NodeFlags.Const) !== 0 ? SymbolKind.Constant : SymbolKind.Variable;
+      }
+      default: return undefined;
+    }
+  };
+
+  /** Locate a canonical declaration inside an installed types file — scanned
+   * from the file at build time (deterministic under the lockfile; never
+   * hardcoded line numbers). Returns the decl position plus the matched
+   * line's text (the row's short-signature detail). */
+  const libTextCache = new Map<string, string>();
+  const canonicalDecl = (libId: string, pattern: RegExp): { line: number; char: number; text: string } | undefined => {
+    try {
+      const abs = norm(join(rootDir, 'node_modules', libId));
+      let text = libTextCache.get(abs);
+      if (text === undefined) {
+        text = readFileSync(abs, 'utf8');
+        libTextCache.set(abs, text);
+      }
+      const m = pattern.exec(text);
+      if (m === null) return undefined;
+      const lineStart = text.lastIndexOf('\n', m.index) + 1;
+      const lineEnd = text.indexOf('\n', m.index);
+      const lineText = text.slice(lineStart, lineEnd < 0 ? undefined : lineEnd).trim();
+      return { line: text.slice(0, lineStart).split('\n').length, char: m.index - lineStart, text: lineText.slice(0, 100) };
+    } catch {
+      return undefined;
+    }
+  };
+
+  /** CJS module-wrapper write: `exports.handler = …` / `module.exports = …`
+   * — the identifier is the object of a property access that is the LHS of
+   * an assignment. (A genuine local `module`/`exports` would be scope-bound
+   * by the light tier and never reach the lib pass.) */
+  const isCjsWrapperWrite = (id: ts.Identifier): boolean => {
+    const par = id.parent;
+    return (
+      ts.isPropertyAccessExpression(par) &&
+      par.expression === id &&
+      ts.isBinaryExpression(par.parent) &&
+      par.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      par.parent.left === par
+    );
+  };
+
+  /** Canonical entry for a residual lib-not-loaded row, or undefined when it
+   * is an ordinary global the checker should bind by name. exports/module
+   * graduate only when the identifier IS the CJS wrapper write above; Astro
+   * only inside .astro frontmatter (Astro injects the global per component). */
+  const frameworkEntry = (u: UnresolvedReference, id: ts.Identifier, f: FileNode): CanonicalLib | undefined => {
+    if (u.name === 'Astro') return f.lang === 'astro' ? FRAMEWORK_LIBS.get('Astro') : undefined;
+    if (u.name === 'exports' || u.name === 'module') return isCjsWrapperWrite(id) ? FRAMEWORK_LIBS.get(u.name) : undefined;
+    return undefined;
+  };
 
   const boundStart = new Set<string>();
   for (const ref of refs) boundStart.add(`${ref.fileIdx}:${ref.range.start}`);
@@ -152,9 +318,13 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
   };
 
   const identsCache = new Map<string, Map<number, ts.Identifier>>();
+  /** Occurrence key → its compiler target's indexed declaration keys. Ref
+   * emission is deferred until the per-site primary is chosen (see below). */
+  const joinCands = new Map<string, { fileIdx: FileIdx; range: Range; name: string; bound: boolean; hits: SymKey[] }>();
   for (const o of occurrences) {
     if (o.role !== OccurrenceRole.Property) continue;
-    if (boundStart.has(`${o.fileIdx}:${o.range.start}`)) continue;
+    const at = `${o.fileIdx}:${o.range.start}`;
+    const alreadyBound = boundStart.has(at);
     const f = files[o.fileIdx as unknown as number];
     if (!f) continue;
     const rel = norm(join(rootDir, f.path));
@@ -183,7 +353,7 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
       alias = next;
     }
     sym = alias;
-    let joinKey: SymKey | undefined;
+    const hits: SymKey[] = [];
     let libDecl: ts.Declaration | undefined;
     for (const d of sym.declarations ?? []) {
       // Indexed files only — a declaration under rootDir that is not indexed
@@ -192,41 +362,92 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
       const targetFile = relD.startsWith(rootN) ? byPath.get(relD.slice(rootN.length)) : undefined;
       if (targetFile !== undefined) {
         const hit = declIndex.get(`${targetFile.idx}:${mapDeclStart(d)}`);
-        if (hit !== undefined) {
-          joinKey = hit;
-          break;
-        }
+        if (hit !== undefined && !hits.includes(hit)) hits.push(hit);
         continue;
       }
       if (!libDecl) libDecl = d;
     }
-    if (joinKey !== undefined) {
-      const t = keyToSym.get(joinKey);
-      // Never guess: the joined symbol must carry the member name.
-      if (!t || t.name !== o.name) continue;
-      out.push({ fileIdx: o.fileIdx, range: o.range, symKey: joinKey, role: o.role, resolvedVia: 'type', deep: true });
+    if (hits.length > 0) {
+      // Indexed target(s): a compiler symbol whose declarations span several
+      // indexed files (intersection-typed member access, interface+interface
+      // / namespace+namespace merging) is ONE symbol — every candidate join
+      // resolves through the merged group below. Light-bound occurrences join
+      // the discovery: when their compiler target maps to ≥2 declarations the
+      // caller rewrites the ref onto the group primary (deep.rewrite).
+      joinCands.set(at, { fileIdx: o.fileIdx, range: o.range, name: o.name, bound: alreadyBound, hits });
       continue;
     }
+    if (alreadyBound) continue; // light-bound, no indexed compiler decl — nothing to add
     // Lib/package target: the compiler binds a declaration outside the repo.
     // Emit a lib ref (no symKey — lib declarations are not repo symbols);
     // never a guess: the bound symbol must carry the member name.
     if (libDecl !== undefined && sym.name === o.name) {
+      const dPos = declPosOf(libDecl);
+      const dKind = declKindOf(libDecl);
+      const dText = declTextOf(libDecl);
       libRefs.push({
         fileIdx: o.fileIdx,
         range: o.range,
         name: o.name,
         libId: libIdOf(libDecl.getSourceFile().fileName),
         libName: cleanLibName(checker!.getFullyQualifiedName(sym), rootDir),
+        role: o.role,
+        ...(dPos !== undefined ? { decl: dPos } : {}),
+        ...(dKind !== undefined ? { kind: dKind } : {}),
+        ...(dText !== undefined ? { detail: dText } : {}),
       });
-      graduated.add(`${o.fileIdx}:${o.range.start}`);
+      graduated.add(at);
     }
+  }
+
+  // ── merged-declaration joins ──────────────────────────────────────────────
+  // A compiler symbol whose declarations map to ≥2 indexed symbols (true
+  // interface+interface / namespace+namespace declaration merging across
+  // files, and intersection/union-typed member access) is recognized as ONE
+  // symbol PER DECLARATION SET: every site whose compiler target maps to the
+  // same key set joins the same deterministic primary — the container-
+  // qualified member (SessionPayload.exp over an anonymous intersection
+  // member `exp`), ties to the smallest key (earliest file). Sites with a
+  // single indexed declaration never fold through another site's merge — a
+  // same-name bind elsewhere must not reassign them — so validation stays
+  // exact (the primary is always a declaration the compiler actually binds
+  // at the site).
+  const primaryOf = (keys: SymKey[]): SymKey =>
+    keys.slice().sort((a, b) => {
+      const sa = keyToSym.get(a);
+      const sb = keyToSym.get(b);
+      const qa = sa !== undefined && sa.qualified !== sa.name ? 0 : 1;
+      const qb = sb !== undefined && sb.qualified !== sb.name ? 0 : 1;
+      return qa - qb || a - b;
+    })[0];
+  const rewrite = new Map<string, SymKey>(); // occurrence key → primary
+  for (const [at, c] of joinCands) {
+    if (c.bound) {
+      // Light-bound at a genuinely merged site (compiler target maps to ≥2
+      // indexed declarations): the ref joins the site's deterministic primary.
+      if (c.hits.length >= 2) rewrite.set(at, primaryOf(c.hits));
+      continue;
+    }
+    // Deferred join emission: the target is the primary of the site's own
+    // declaration set (a single-declaration site targets the declaration
+    // itself). Never a guess: the target must carry the member name.
+    const target = primaryOf(c.hits);
+    const t = keyToSym.get(target);
+    if (!t || t.name !== c.name) continue;
+    out.push({ fileIdx: c.fileIdx, range: c.range, symKey: target, role: OccurrenceRole.Property, resolvedVia: 'type', deep: true });
   }
 
   // Lib tier, value half: the `lib-not-loaded` bucket (String, JSON, console,
   // document…). For each unresolved row, ask the checker at the same offset;
   // when it binds a lib/package declaration of the same name, the row
-  // graduates to a lib ref. Framework globals with no lib declaration (Astro)
-  // and genuine binder gaps stay unresolved.
+  // graduates to a lib ref. Framework/intrinsic rows with no same-name
+  // compiler declaration (CJS wrapper vars, the Astro frontmatter global)
+  // graduate through FRAMEWORK_LIBS (shape-checked); genuine binder gaps stay
+  // unresolved.
+  // Site role for the lib rows (value rows come from unresolvedRefs, which
+  // carry no role — look it up from the occurrence).
+  const roleByStart = new Map<string, number>();
+  for (const o of occurrences) roleByStart.set(`${o.fileIdx}:${o.range.start}`, o.role);
   const libUnByFile = new Map<number, UnresolvedReference[]>();
   for (const u of unresolvedRefs) {
     if (u.reason !== 'lib-not-loaded') continue;
@@ -250,6 +471,27 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
     for (const u of list) {
       const id = idents.get(u.range.start - fmOff);
       if (!id) continue;
+      // Framework/intrinsic rows first: the compiler binds no same-name
+      // declaration (the CJS wrapper's export property, or nothing for
+      // Astro), so the name-check below could never pass — the canonical
+      // entry is the honest answer.
+      const fr = frameworkEntry(u, id, f);
+      if (fr !== undefined) {
+        const decl = canonicalDecl(fr.libId, fr.pattern);
+        libRefs.push({
+          fileIdx: u.fileIdx,
+          range: u.range,
+          name: u.name,
+          libId: fr.libId,
+          libName: fr.libName,
+          framework: true,
+          role: roleByStart.get(`${u.fileIdx}:${u.range.start}`) ?? 1,
+          ...(decl !== undefined ? { decl: { line: decl.line, char: decl.char }, detail: decl.text } : {}),
+          kind: fr.kind,
+        });
+        graduated.add(`${u.fileIdx}:${u.range.start}`);
+        continue;
+      }
       let sym: ts.Symbol | undefined;
       try {
         sym = checker!.getSymbolAtLocation(id);
@@ -279,20 +521,43 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
       if (inRepo) continue; // binder gap — should have scope-bound; not a lib ref
       if (!libDecl) {
         // Declaration-less: intrinsic globals (undefined, globalThis) get the
-        // canonical lib from the small table; framework globals (Astro) stay
-        // unresolved.
+        // canonical lib from the small table. TS ships no physical `declare
+        // var` for either (the checker synthesizes them), so no decl position
+        // is recorded — the target name + lib file are the honest answer.
         const canonical = DECLLESS_LIBS.get(u.name);
         if (canonical === undefined) continue;
-        libRefs.push({ fileIdx: u.fileIdx, range: u.range, name: u.name, libId: canonical, libName: u.name });
+        let dText: string | undefined;
+        try {
+          dText = checker!.typeToString(checker!.getTypeAtLocation(id)).slice(0, 100);
+        } catch {
+          dText = undefined;
+        }
+        libRefs.push({
+          fileIdx: u.fileIdx,
+          range: u.range,
+          name: u.name,
+          libId: canonical.libId,
+          libName: canonical.libName,
+          kind: canonical.kind,
+          role: roleByStart.get(`${u.fileIdx}:${u.range.start}`) ?? 1,
+          ...(dText !== undefined && dText.length > 0 ? { detail: dText } : {}),
+        });
         graduated.add(`${u.fileIdx}:${u.range.start}`);
         continue;
       }
+      const dPos = declPosOf(libDecl);
+      const dKind = declKindOf(libDecl);
+      const dText = declTextOf(libDecl);
       libRefs.push({
         fileIdx: u.fileIdx,
         range: u.range,
         name: u.name,
         libId: libIdOf(libDecl.getSourceFile().fileName),
         libName: cleanLibName(checker!.getFullyQualifiedName(sym), rootDir),
+        role: roleByStart.get(`${u.fileIdx}:${u.range.start}`) ?? 1,
+        ...(dPos !== undefined ? { decl: dPos } : {}),
+        ...(dKind !== undefined ? { kind: dKind } : {}),
+        ...(dText !== undefined ? { detail: dText } : {}),
       });
       graduated.add(`${u.fileIdx}:${u.range.start}`);
     }
@@ -300,7 +565,7 @@ export function deepMemberBind(parts: DeepBindParts): DeepBindOutput {
 
   out.sort((a, b) => a.fileIdx - b.fileIdx || a.range.start - b.range.start || a.symKey - b.symKey);
   libRefs.sort((a, b) => a.fileIdx - b.fileIdx || a.range.start - b.range.start || a.libName.localeCompare(b.libName) || a.libId.localeCompare(b.libId));
-  return { refs: out, libRefs, graduated };
+  return { refs: out, libRefs, graduated, rewrite };
 }
 
 /**
@@ -395,7 +660,7 @@ function deepTierReport(rootDir: string): void {
         alias = next;
       }
       sym = alias;
-      let joinKey: SymKey | undefined;
+      const hits: SymKey[] = [];
       let inRepo = false;
       for (const d of sym.declarations ?? []) {
         // Indexed files only: a declaration under rootDir that is not indexed
@@ -406,13 +671,12 @@ function deepTierReport(rootDir: string): void {
         if (!targetFile) continue;
         inRepo = true;
         const hit = declIndex.get(`${targetFile.idx}:${mapDeclStart(d)}`);
-        if (hit !== undefined) {
-          joinKey = hit;
-          break;
-        }
+        if (hit !== undefined && !hits.includes(hit)) hits.push(hit);
       }
-      if (joinKey !== undefined) {
-        const t = keyToSym.get(joinKey);
+      if (hits.length > 0) {
+        // Merged-declaration targets (one compiler symbol, several indexed
+        // files) count as joinable — the wired tier emits to the primary.
+        const t = keyToSym.get(hits[0]);
         if (!t || t.name !== o.name) {
           check(false, `joinable name mismatch: ${o.name} vs ${t?.name ?? '?'} at ${rel}:${o.range.startLine}`);
           continue;

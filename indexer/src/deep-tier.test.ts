@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildIndex } from './build.js';
 import { dumpDoc, loadSnapshot } from './dump.js';
+import { impactReport, indexFromDoc, libTargetsOf, refsOfLib, resolveAt } from './query.js';
 import { OccurrenceRole, type Occurrence } from '../../docs/code-index-schema.js';
 
 const ROOT = process.cwd().replace(/\\/g, '/');
@@ -45,7 +46,8 @@ describe('deep tier (checker-backed member bind)', () => {
       expect(sym.name).toBe(member); // never a guess: name must match
     }
     // Lib tier: thousands of checker-confirmed lib refs, the value bucket
-    // reduced to framework globals, Property rows carrying the member name.
+    // fully graduated (CJS module-wrapper vars + the Astro global via
+    // canonical framework entries), Property rows carrying the member name.
     expect(r.libRefs.length).toBeGreaterThan(1000);
     expect(r.stats.libRefCount).toBe(r.libRefs.length);
     for (const z of r.libRefs) {
@@ -54,7 +56,12 @@ describe('deep tier (checker-backed member bind)', () => {
       const m = occName.get(`${z.fileIdx}:${z.range.start}`);
       if (m !== undefined) expect(m).toBe(z.name); // member rows match the site
     }
-    expect(r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded').length).toBeLessThan(50); // CJS + framework intrinsics
+    expect(r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded').length).toBe(0); // residual bucket closed
+    // Framework rows graduate to canonical declarations (@types/node CJS
+    // wrapper vars, astro's AstroGlobal) with scanned decl positions.
+    const fx = r.libRefs.filter((z) => z.framework === true);
+    expect(fx.length).toBeGreaterThanOrEqual(2);
+    for (const z of fx) expect(z.decl).toBeDefined();
     expect(r.stats.stageMs.deep).toBeGreaterThan(0);
   }, 120000);
 
@@ -84,6 +91,24 @@ describe('deep tier (checker-backed member bind)', () => {
     expect(loaded.libRefs.length).toBe(doc.libRefs.length);
   }, 120000);
 
+  it('def/hover on a lib ref answers with the lib declaration file + line (resolvedVia lib)', () => {
+    const r = buildIndex(ROOT);
+    const q = indexFromDoc(dumpDoc(r));
+    const row = r.libRefs.find((z) => z.decl !== undefined);
+    expect(row).toBeDefined();
+    const site = r.files[row!.fileIdx as unknown as number];
+    const view = resolveAt(q, site.path, row!.range.startLine, row!.range.startChar);
+    expect(view.fileFound).toBe(true);
+    expect(view.resolved).not.toBeNull();
+    expect(view.resolved!.resolvedVia).toBe('lib');
+    expect(view.resolved!.decls).toHaveLength(1);
+    // The answer points into the declaration file: uri ends with the lib id and
+    // the line equals the scanned declaration position inside the lib file.
+    const abs = row!.libId.includes('node_modules/') || /^[a-zA-Z]:/.test(row!.libId) ? row!.libId : `node_modules/${row!.libId}`;
+    expect(view.resolved!.decls[0].uri.endsWith(abs)).toBe(true);
+    expect(view.resolved!.decls[0].l).toBe(row!.decl!.line);
+  }, 120000);
+
   it('lib tier binds lib globals and members on a tsconfig fixture (never a guess)', () => {
     const fx = mkdtempSync(join(tmpdir(), 'idx-lib-fx-'));
     writeFileSync(join(fx, '.gitignore'), 'node_modules/\n', 'utf8');
@@ -106,6 +131,94 @@ describe('deep tier (checker-backed member bind)', () => {
     expect(names.some((n) => n === 'log@Console.log')).toBe(true); // member bind
     expect(names.some((n) => n === 'createElement@Document.createElement')).toBe(true);
     expect(r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded')).toHaveLength(0);
+    // Declaration-backed rows carry the real decl position inside the lib file
+    // (the def/hover target) — the fixture's lib program resolves against the
+    // installed typescript libs.
+    const stringRow = r.libRefs.find((z) => z.name === 'String');
+    expect(stringRow?.decl).toBeDefined();
+    expect(stringRow?.decl!.line).toBeGreaterThan(0);
+  }, 120000);
+
+  it('cross-file declaration merging: interface+interface members bind ONE deterministic symbol', () => {
+    // Two import-free .ts files are global scripts, so `interface MergeMe`
+    // declared in each MERGES in the compiler's model; the overloaded method
+    // `m` has one declaration in each file. A member access in a third file
+    // (where no local MergeMe exists — the light tier cannot bind it) must
+    // deep-join ONE indexed symbol from the site's own declaration set,
+    // deterministically across builds — never split, never guessed.
+    const fx = mkdtempSync(join(tmpdir(), 'idx-merge-fx-'));
+    writeFileSync(join(fx, '.gitignore'), 'node_modules/\n', 'utf8');
+    writeFileSync(
+      join(fx, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', strict: true, skipLibCheck: true, types: [] } }),
+      'utf8',
+    );
+    mkdirSync(join(fx, 'src'), { recursive: true });
+    writeFileSync(join(fx, 'src', 'f1.ts'), ['interface MergeMe { shared: string; m(x: string): string }', 'declare const gm: MergeMe;'].join('\n') + '\n', 'utf8');
+    writeFileSync(join(fx, 'src', 'f2.ts'), 'interface MergeMe { b: number; m(x: number): string }\n', 'utf8');
+    writeFileSync(join(fx, 'src', 'f3.ts'), ['const s: string = gm.m("a");', 'const n: number = gm.b;', 'export const both = [s, n];'].join('\n') + '\n', 'utf8');
+    const mk = () => buildIndex(fx);
+    const a = mk();
+    const b = mk();
+    const f3a = a.files.find((f) => f.path === 'src/f3.ts');
+    const occName = (r: typeof a) => {
+      const m = new Map<string, string>();
+      for (const o of r.occurrences) if (o.role === OccurrenceRole.Property) m.set(`${o.fileIdx}:${o.range.start}`, o.name);
+      return m;
+    };
+    const nameAt = occName(a);
+    const f3Idx = f3a!.idx as unknown as number;
+    const mRefs = a.refs.filter((z) => z.fileIdx === f3Idx && nameAt.get(`${z.fileIdx}:${z.range.start}`) === 'm');
+    const bRefs = a.refs.filter((z) => z.fileIdx === f3Idx && nameAt.get(`${z.fileIdx}:${z.range.start}`) === 'b');
+    expect(mRefs.length).toBe(1); // the merged overload binds exactly one symbol
+    expect(bRefs.length).toBe(1);
+    expect(mRefs[0].deep).toBe(true);
+    expect(bRefs[0].deep).toBe(true);
+    const mSym = a.symbols.find((s) => s.key === mRefs[0].symKey)!;
+    expect(mSym.name).toBe('m'); // never a guess: the joined symbol carries the member name
+    expect(mSym.qualified).toBe('MergeMe.m');
+    // Deterministic across builds: same site, same target key.
+    const mAt = `${mRefs[0].fileIdx}:${mRefs[0].range.start}`;
+    const bAt = `${bRefs[0].fileIdx}:${bRefs[0].range.start}`;
+    expect(a.refs.find((z) => `${z.fileIdx}:${z.range.start}` === mAt)!.symKey).toBe(b.refs.find((z) => `${z.fileIdx}:${z.range.start}` === mAt)!.symKey);
+    expect(a.refs.find((z) => `${z.fileIdx}:${z.range.start}` === bAt)!.symKey).toBe(b.refs.find((z) => `${z.fileIdx}:${z.range.start}` === bAt)!.symKey);
+    // Symbol detail: the merged interface + members carry their declaration's
+    // first source line as the def/hover signature, and the dump keeps it.
+    const f1 = a.symbols.find((s) => s.qualified === 'MergeMe' && s.fileIdx === (a.files.find((f) => f.path === 'src/f1.ts')!.idx as unknown as number))!;
+    expect(f1.detail).toContain('interface MergeMe');
+    const doc = dumpDoc(a);
+    expect(doc.symbols.find((s) => s.id === f1.id)!.detail).toBe(f1.detail);
+  }, 120000);
+
+  it('lib name refs/impact: every usage site of console/String from the libRefs table, with detail on def/hover', () => {
+    const r = buildIndex(ROOT);
+    const q = indexFromDoc(dumpDoc(r));
+    // idx refs console → the console target with every usage site.
+    const targets = libTargetsOf(q, 'console');
+    expect(targets.length).toBe(1);
+    expect(targets[0].libName).toBe('console');
+    expect(targets[0].sites.length).toBeGreaterThan(50);
+    for (const z of targets[0].sites) expect(z.name).toBe('console');
+    // RefView-shaped answer + impact report over the sites (file set = site files).
+    const view = refsOfLib(q, targets[0]);
+    const report = impactReport(view);
+    expect(report.siteCount).toBe(targets[0].sites.length);
+    expect(report.files.length).toBeGreaterThan(3);
+    expect(report.symId).toBe(`lib:${targets[0].libIdx}:console`);
+    // Qualified match: console.log → the Console.log member rows.
+    const logTargets = libTargetsOf(q, 'console.log');
+    expect(logTargets.some((t) => t.libName === 'Console.log')).toBe(true);
+    // detail flows to def/hover (task: short signature, not a bare numeric kind).
+    const withDecl = r.libRefs.find((z) => z.decl !== undefined && z.detail !== undefined)!;
+    const site = r.files[withDecl.fileIdx as unknown as number];
+    const v = resolveAt(q, site.path, withDecl.range.startLine, withDecl.range.startChar);
+    expect(v.resolved!.detail).toBe(withDecl.detail);
+    expect(v.resolved!.detail!.length).toBeGreaterThan(3);
+    // Value rows too: String's lib declaration signature.
+    expect(r.libRefs.filter((z) => z.name === 'String').every((z) => z.detail !== undefined)).toBe(true);
+    // Symbols carry the declaration line as detail in the dump (additive).
+    const symWithDetail = r.symbols.find((s) => s.detail !== undefined)!;
+    expect(symWithDetail.detail!.length).toBeGreaterThan(0);
   }, 120000);
 
   it('degrades to zero deep refs on a tsconfig-less root (watch opt-out too)', () => {

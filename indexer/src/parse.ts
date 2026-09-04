@@ -281,6 +281,10 @@ function declareSymbol(ctx: BinderCtx, o: DeclOpts): SymKey {
     centrality: 0,
   };
   if (o.typeRef !== undefined) sym.typeRef = o.typeRef;
+  // Short signature for def/hover (§8.5): the declaration's first source
+  // line, trimmed and capped — `function findMasterByWa(wa: string): Promise<…> {`.
+  const declLine = o.node.getText(ctx.sf).split('\n')[0].trim();
+  if (declLine.length > 0) sym.detail = declLine.length > 100 ? declLine.slice(0, 97) + '…' : declLine;
 
   ctx.symbols.push(sym);
   if (o.mergeable) ctx.mergeableByName.set(o.qualified, ctx.symbols.length - 1);

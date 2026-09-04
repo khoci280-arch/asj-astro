@@ -148,6 +148,18 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     // Rows the lib pass graduated are no longer unresolved (the bucket keeps
     // framework globals and binder gaps).
     if (deep.graduated.size > 0) bound.unresolved = bound.unresolved.filter((u) => !deep.graduated.has(`${u.fileIdx}:${u.range.start}`));
+    // Merged-declaration joins (§13): light-bound refs at genuinely merged
+    // sites (the compiler maps the occurrence to ≥2 indexed declarations —
+    // interface/namespace merging or intersection-typed member access) are
+    // rewritten onto the site's deterministic primary, so every site with the
+    // same declaration set binds ONE symbol. Same-name single-declaration
+    // binds are never reassigned (the pass only reports verified sites).
+    if (deep.rewrite.size > 0) {
+      for (const ref of bound.refs) {
+        const p = deep.rewrite.get(`${ref.fileIdx}:${ref.range.start}`);
+        if (p !== undefined) ref.symKey = p;
+      }
+    }
   }
   const deepMs = performance.now() - t45;
 

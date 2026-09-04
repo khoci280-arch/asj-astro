@@ -31,12 +31,14 @@ describe('full build', () => {
   it('reports occurrences, unresolved, and stage timings', () => {
     const r = built();
     expect(r.stats.referenceCount).toBeGreaterThan(20000); // bound references
-    // Unresolved bucket (Phase 4): lib globals are tagged lib-not-loaded and the
-    // lib tier graduates them to libRefs — only framework globals (Astro) stay;
-    // global-unknowns are zero (the five genuine dangling refs got fixed, §13).
+    // Unresolved bucket (Phase 4): lib globals are tagged lib-not-loaded and
+    // the lib tier graduates the whole bucket to libRefs — the residual is
+    // exactly zero (CJS module-wrapper vars + the Astro global graduate via
+    // canonical framework entries); global-unknowns are zero (the five genuine
+    // dangling refs got fixed, §13).
     const lib = r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded').length;
     const genuine = r.unresolvedRefs.filter((u) => u.reason === 'global-unknown').length;
-    expect(lib).toBeLessThan(50); // CJS module vars (exports/module) + framework globals (Astro)
+    expect(lib).toBe(0);
     expect(r.libRefs.length).toBeGreaterThan(1000);
     expect(r.stats.libRefCount).toBe(r.libRefs.length);
     expect(genuine).toBe(0);
