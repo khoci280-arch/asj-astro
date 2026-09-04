@@ -1,1371 +1,168 @@
 {
   "rootDir": "F:/astro",
   "sample": [
-    ".dependency-cruiser.cjs",
-    "astro.config.mjs",
-    "e2e/test-admin.mjs",
-    "e2e/test-public.mjs",
-    "e2e/test-supabase-auth.mjs",
-    "make-zip.cjs",
-    "netlify/functions/_lib/action-registry.test.ts",
-    "netlify/functions/_lib/actions-mail.test.ts",
-    "netlify/functions/_lib/actions-master.test.ts",
-    "netlify/functions/_lib/actions-wa.test.ts",
-    "netlify/functions/_lib/ai/chat.test.ts",
-    "netlify/functions/_lib/ai/chat.ts",
-    "netlify/functions/_lib/ai/classify.ts",
-    "netlify/functions/_lib/ai/cv.ts",
-    "netlify/functions/_lib/ai/providers.test.ts",
-    "netlify/functions/_lib/ai/providers.ts",
-    "netlify/functions/_lib/archiver.d.ts",
-    "netlify/functions/_lib/cache.ts",
-    "netlify/functions/_lib/candidate-helpers.ts",
-    "netlify/functions/_lib/characterisation.test.ts",
-    "netlify/functions/_lib/db/berkas.ts",
-    "netlify/functions/_lib/db/candidates.ts",
-    "netlify/functions/_lib/db/client.test.ts",
-    "netlify/functions/_lib/db/client.ts",
-    "netlify/functions/_lib/db/forms.ts",
-    "netlify/functions/_lib/db/jobs.ts",
-    "netlify/functions/_lib/db/master.ts",
-    "netlify/functions/_lib/db/misc.ts",
-    "netlify/functions/_lib/db/row-types.ts",
-    "netlify/functions/_lib/db/schema.generated.ts",
-    "netlify/functions/_lib/demo.ts",
-    "netlify/functions/_lib/env.ts",
-    "netlify/functions/_lib/event-handlers.ts",
-    "netlify/functions/_lib/fcm-helpers.ts",
-    "netlify/functions/_lib/fcm-server.test.ts",
-    "netlify/functions/_lib/fcm-server.ts",
-    "netlify/functions/_lib/handlers.test.ts",
-    "netlify/functions/_lib/handlers.ts",
-    "netlify/functions/_lib/kernel/cache.test.ts",
-    "netlify/functions/_lib/kernel/cache.ts",
-    "netlify/functions/_lib/kernel/db.ts",
-    "netlify/functions/_lib/kernel/errors.ts",
-    "netlify/functions/_lib/kernel/events.test.ts",
-    "netlify/functions/_lib/kernel/events.ts",
-    "netlify/functions/_lib/kernel/http.ts",
-    "netlify/functions/_lib/kernel/job-queue.ts",
-    "netlify/functions/_lib/kernel/log.ts",
-    "netlify/functions/_lib/kernel/metrics.ts",
-    "netlify/functions/_lib/kernel/optimistic.test.ts",
-    "netlify/functions/_lib/kernel/optimistic.ts",
-    "netlify/functions/_lib/kernel/rate-limit.ts",
-    "netlify/functions/_lib/kernel/request-helpers.ts",
-    "netlify/functions/_lib/kernel/resilience.test.ts",
-    "netlify/functions/_lib/kernel/resilience.ts",
-    "netlify/functions/_lib/kernel/validate.ts",
-    "netlify/functions/_lib/netlify-wrapper-surface.test.ts",
-    "netlify/functions/_lib/netlify-wrapper-surface.ts",
-    "netlify/functions/_lib/netlify-wrapper.ts",
-    "netlify/functions/_lib/rate-limit.test.ts",
-    "netlify/functions/_lib/rate-limit.ts",
-    "netlify/functions/_lib/session.test.ts",
-    "netlify/functions/_lib/session.ts",
-    "netlify/functions/_lib/storage.test.ts",
-    "netlify/functions/_lib/storage.ts",
-    "netlify/functions/admin-ai-context.js",
-    "netlify/functions/ai-chat.js",
-    "netlify/functions/ai-form-submit.js",
-    "netlify/functions/apply.js",
-    "netlify/functions/auth.js",
-    "netlify/functions/bridge-links.js",
-    "netlify/functions/candidates.js",
-    "netlify/functions/config.js",
-    "netlify/functions/contexts/ai-orchestration/index.ts",
-    "netlify/functions/contexts/applications/index.ts",
-    "netlify/functions/contexts/applications/repository.ts",
-    "netlify/functions/contexts/applications/service.ts",
-    "netlify/functions/contexts/catalog/index.ts",
-    "netlify/functions/contexts/catalog/repository.ts",
-    "netlify/functions/contexts/catalog/service.ts",
-    "netlify/functions/contexts/configuration/index.ts",
-    "netlify/functions/contexts/configuration/repository.ts",
-    "netlify/functions/contexts/configuration/service.ts",
-    "netlify/functions/contexts/diagnostics/index.ts",
-    "netlify/functions/contexts/diagnostics/repository.ts",
-    "netlify/functions/contexts/diagnostics/service.ts",
-    "netlify/functions/contexts/documents/download.ts",
-    "netlify/functions/contexts/documents/index.ts",
-    "netlify/functions/contexts/documents/repository.ts",
-    "netlify/functions/contexts/documents/service.ts",
-    "netlify/functions/contexts/identity/index.ts",
-    "netlify/functions/contexts/identity/repository.ts",
-    "netlify/functions/contexts/identity/service.test.ts",
-    "netlify/functions/contexts/identity/service.ts",
-    "netlify/functions/contexts/ingestion/index.ts",
-    "netlify/functions/contexts/ingestion/repository.ts",
-    "netlify/functions/contexts/ingestion/service.ts",
-    "netlify/functions/contexts/jobs/index.ts",
-    "netlify/functions/contexts/jobs/repository.ts",
-    "netlify/functions/contexts/jobs/service.ts",
-    "netlify/functions/contexts/master-data/index.ts",
-    "netlify/functions/contexts/master-data/repository.ts",
-    "netlify/functions/contexts/master-data/service.ts",
-    "netlify/functions/contexts/notifications/index.ts",
-    "netlify/functions/contexts/notifications/repository.ts",
-    "netlify/functions/contexts/notifications/service.ts",
-    "netlify/functions/contexts/registration/index.ts",
-    "netlify/functions/contexts/registration/repository.ts",
-    "netlify/functions/contexts/registration/service.ts",
-    "netlify/functions/contexts/registry/index.ts",
-    "netlify/functions/contexts/registry/repository.ts",
-    "netlify/functions/contexts/registry/service.ts",
-    "netlify/functions/contexts/scheduling/index.ts",
-    "netlify/functions/contexts/scheduling/repository.ts",
-    "netlify/functions/contexts/scheduling/service.ts",
-    "netlify/functions/drive-links.js",
-    "netlify/functions/files.js",
-    "netlify/functions/get-app-data.js",
-    "netlify/functions/ingest.js",
-    "netlify/functions/jobs.js",
-    "netlify/functions/mail.js",
-    "netlify/functions/master-data.js",
-    "netlify/functions/notify.js",
-    "netlify/functions/ping.js",
-    "netlify/functions/public.js",
-    "netlify/functions/register.js",
-    "netlify/functions/rincian-presets.js",
-    "netlify/functions/run-migration.js",
-    "netlify/functions/save-ai-cv.js",
-    "netlify/functions/save-master.js",
-    "netlify/functions/schedule-reminders.js",
-    "netlify/functions/schedule.js",
-    "netlify/functions/share-data.js",
-    "netlify/functions/shared/wa-rules.ts",
-    "netlify/functions/submit-apply.js",
-    "netlify/functions/submit-siswa-baru.js",
-    "netlify/functions/surfaces/ai.ts",
-    "netlify/functions/surfaces/auth.ts",
-    "netlify/functions/surfaces/candidates.ts",
-    "netlify/functions/surfaces/config.ts",
-    "netlify/functions/surfaces/diagnostics.ts",
-    "netlify/functions/surfaces/docs.ts",
-    "netlify/functions/surfaces/index.ts",
-    "netlify/functions/surfaces/ingest.ts",
-    "netlify/functions/surfaces/jobs.ts",
-    "netlify/functions/surfaces/mail.ts",
-    "netlify/functions/surfaces/master.ts",
-    "netlify/functions/surfaces/notify.ts",
-    "netlify/functions/surfaces/public.ts",
-    "netlify/functions/surfaces/register.ts",
-    "netlify/functions/surfaces/schedule.ts",
-    "netlify/functions/sweep-queue.ts",
-    "netlify/functions/whatsapp.js",
-    "scripts/build-icon-sprite.mjs",
-    "scripts/ci/netlify-rollback.mjs",
-    "scripts/ci/smoke-test.mjs",
-    "scripts/ci/typecheck-ratchet.mjs",
-    "scripts/ci/verify-env.mjs",
-    "scripts/ci/verify-migrations.mjs",
-    "scripts/db-baseline.mjs",
-    "scripts/migrate.mjs",
-    "serve.cjs",
-    "server.cjs",
-    "shared/wa-rules.test.ts",
-    "shared/wa-rules.ts",
-    "src/components/App.tsx",
-    "src/components/AuthGuard.tsx",
-    "src/components/BottomNav.tsx",
-    "src/components/CekSiswaModal.tsx",
-    "src/components/ChangePasswordModal.tsx",
-    "src/components/CvMiniModal.tsx",
-    "src/components/DocumentPreviewModal.tsx",
-    "src/components/ESignatureModal.tsx",
-    "src/components/Footer.astro",
-    "src/components/LoginModal.tsx",
-    "src/components/Toast.tsx",
-    "src/components/WAPintarModal.tsx",
-    "src/components/admin/AdminAiCopilot.tsx",
-    "src/components/admin/AdminJobEditModal.tsx",
-    "src/components/admin/AdminPanel.tsx",
-    "src/components/admin/AdminShareModal.tsx",
-    "src/components/admin/CandidateProfileModal.test.tsx",
-    "src/components/admin/CandidateProfileModal.tsx",
-    "src/components/admin/EditCandidateModal.test.tsx",
-    "src/components/admin/EditCandidateModal.tsx",
-    "src/components/admin/InputManualModal.tsx",
-    "src/components/admin/LaporanBulananModal.tsx",
-    "src/components/admin/ListKandidatModal.tsx",
-    "src/components/admin/MatchmakingModal.tsx",
-    "src/components/admin/PemberkasanModal.tsx",
-    "src/components/admin/RirekishoBuilder.tsx",
-    "src/components/admin/TabConfig.tsx",
-    "src/components/admin/TabDbJob.tsx",
-    "src/components/admin/TabJadwal.tsx",
-    "src/components/admin/TabKelola.tsx",
-    "src/components/admin/TabMail.tsx",
-    "src/components/admin/TabPelamar.test.tsx",
-    "src/components/admin/TabPelamar.tsx",
-    "src/components/admin/TabTambah.tsx",
-    "src/components/admin/TabWA.tsx",
-    "src/components/admin/UndanganKelasModal.tsx",
-    "src/components/candidate/CandidateDash.tsx",
-    "src/components/forms/AiCvForm.tsx",
-    "src/components/forms/ApplyFullForm.tsx",
-    "src/components/forms/FormToolbar.tsx",
-    "src/components/forms/MasterFullForm.tsx",
-    "src/components/forms/ShareView.tsx",
-    "src/components/forms/SiswaBaruForm.tsx",
-    "src/components/public/LayananSection.astro",
-    "src/components/public/LokerDetailModal.tsx",
-    "src/components/public/LokerTable.tsx",
-    "src/components/public/PamfletModal.tsx",
-    "src/components/ui/Icon.test.ts",
     "src/components/ui/Icon.tsx",
-    "src/components/ui/overlay-root.ts",
-    "src/components/ui/useOverlay.ts",
-    "src/env.d.ts",
-    "src/icons/sprite-map.ts",
-    "src/layouts/BaseLayout.astro",
-    "src/lib/apiClient.ts",
-    "src/lib/apiEndpoint.ts",
-    "src/lib/cloudinary.ts",
-    "src/lib/fcm-modules.d.ts",
-    "src/lib/fcm.ts",
-    "src/lib/helpers_cv.ts",
-    "src/lib/schemas.test.ts",
-    "src/lib/schemas.ts",
-    "src/lib/supabase-server.ts",
-    "src/lib/supabase.ts",
-    "src/lib/uploadGuard.ts",
-    "src/lib/useDraft.ts",
-    "src/pages/admin.astro",
-    "src/pages/ai-cv.astro",
-    "src/pages/apply.astro",
-    "src/pages/candidate.astro",
-    "src/pages/index.astro",
-    "src/pages/master.astro",
-    "src/pages/public.astro",
-    "src/pages/share.astro",
-    "src/pages/siswa-baru.astro",
-    "src/store/adminStore.test.ts",
-    "src/store/adminStore.ts",
-    "src/store/authReactive.ts",
-    "src/store/i18n-jp.ts",
+    "src/components/admin/TabMail.tsx",
+    "src/components/AuthGuard.tsx",
     "src/store/i18n.ts",
-    "src/store/theme.ts",
     "src/store/userStore.ts",
-    "src/types/api.ts"
+    "src/store/authReactive.ts",
+    "src/lib/schemas.ts",
+    "src/lib/fcm.ts",
+    "src/lib/supabase.ts",
+    "src/lib/cloudinary.ts",
+    "src/layouts/BaseLayout.astro",
+    "src/pages/index.astro",
+    "netlify/functions/auth.js",
+    "netlify/functions/ping.js",
+    "netlify/functions/sweep-queue.ts",
+    "netlify/functions/contexts/master-data/index.ts",
+    "netlify/functions/contexts/master-data/service.ts",
+    "netlify/functions/contexts/master-data/repository.ts",
+    "netlify/functions/contexts/catalog/repository.ts",
+    "netlify/functions/contexts/applications/service.ts",
+    "netlify/functions/contexts/documents/service.ts",
+    "netlify/functions/_lib/candidate-helpers.ts",
+    "netlify/functions/_lib/kernel/http.ts",
+    "netlify/functions/_lib/db/candidates.ts",
+    "shared/wa-rules.ts"
   ],
   "program": {
     "rootNames": 247,
     "options": {}
   },
-  "universe": 24288,
+  "universe": 3887,
   "counts": {
-    "agreeBound": 21442,
+    "agreeBound": 3402,
     "agreeUnresolved": 0,
-    "libNotLoaded": 2846,
-    "libCompilerBinds": 2845,
+    "libNotLoaded": 485,
+    "libCompilerBinds": 484,
     "libCompilerNone": 1,
-    "skippedNonBindable": 16071,
-    "skippedJsxIntrinsic": 1878,
+    "skippedNonBindable": 2521,
+    "skippedJsxIntrinsic": 54,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
     "disagreeNameMismatch": 0,
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 19808,
-    "alias-vs-chase": 1623,
-    "merged-declaration": 9,
-    "shadowing-disagreement": 2,
+    "match": 3355,
+    "alias-vs-chase": 46,
+    "merged-declaration": 0,
+    "shadowing-disagreement": 1,
     "unmappable": 0
   },
   "perFile": [
     {
-      "path": ".dependency-cruiser.cjs",
-      "universe": 1,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 57,
-      "disagree": 0
-    },
-    {
-      "path": "astro.config.mjs",
-      "universe": 3,
-      "agreeBound": 3,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 24,
-      "disagree": 0
-    },
-    {
-      "path": "e2e/test-admin.mjs",
-      "universe": 78,
-      "agreeBound": 63,
-      "agreeUnresolved": 0,
-      "lib": 15,
-      "skipped": 48,
-      "disagree": 0
-    },
-    {
-      "path": "e2e/test-public.mjs",
-      "universe": 57,
-      "agreeBound": 46,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 31,
-      "disagree": 0
-    },
-    {
-      "path": "e2e/test-supabase-auth.mjs",
-      "universe": 122,
-      "agreeBound": 93,
-      "agreeUnresolved": 0,
-      "lib": 29,
-      "skipped": 124,
-      "disagree": 0
-    },
-    {
-      "path": "make-zip.cjs",
-      "universe": 125,
-      "agreeBound": 117,
-      "agreeUnresolved": 0,
-      "lib": 8,
-      "skipped": 83,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "universe": 87,
-      "agreeBound": 79,
-      "agreeUnresolved": 0,
-      "lib": 8,
-      "skipped": 42,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "universe": 65,
-      "agreeBound": 64,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 44,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/actions-master.test.ts",
-      "universe": 68,
-      "agreeBound": 65,
-      "agreeUnresolved": 0,
-      "lib": 3,
-      "skipped": 123,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/actions-wa.test.ts",
-      "universe": 62,
-      "agreeBound": 62,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 26,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/chat.test.ts",
-      "universe": 48,
-      "agreeBound": 47,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 41,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/chat.ts",
-      "universe": 577,
-      "agreeBound": 492,
-      "agreeUnresolved": 0,
-      "lib": 85,
-      "skipped": 419,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/classify.ts",
-      "universe": 100,
-      "agreeBound": 82,
-      "agreeUnresolved": 0,
-      "lib": 18,
-      "skipped": 79,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/cv.ts",
-      "universe": 597,
-      "agreeBound": 522,
-      "agreeUnresolved": 0,
-      "lib": 75,
-      "skipped": 428,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/providers.test.ts",
+      "path": "src/components/ui/Icon.tsx",
       "universe": 17,
-      "agreeBound": 17,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 15,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/ai/providers.ts",
-      "universe": 159,
-      "agreeBound": 131,
-      "agreeUnresolved": 0,
-      "lib": 28,
-      "skipped": 110,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/archiver.d.ts",
-      "universe": 1,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/cache.ts",
-      "universe": 30,
-      "agreeBound": 24,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 14,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/candidate-helpers.ts",
-      "universe": 34,
-      "agreeBound": 27,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 13,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/characterisation.test.ts",
-      "universe": 252,
-      "agreeBound": 252,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 156,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/berkas.ts",
-      "universe": 118,
-      "agreeBound": 98,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 57,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/candidates.ts",
-      "universe": 322,
-      "agreeBound": 282,
-      "agreeUnresolved": 0,
-      "lib": 40,
-      "skipped": 148,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/client.test.ts",
-      "universe": 72,
-      "agreeBound": 71,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 33,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/client.ts",
-      "universe": 181,
-      "agreeBound": 159,
-      "agreeUnresolved": 0,
-      "lib": 22,
-      "skipped": 97,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/forms.ts",
-      "universe": 135,
-      "agreeBound": 110,
-      "agreeUnresolved": 0,
-      "lib": 25,
-      "skipped": 94,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/jobs.ts",
-      "universe": 124,
-      "agreeBound": 107,
-      "agreeUnresolved": 0,
-      "lib": 17,
-      "skipped": 51,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/master.ts",
-      "universe": 20,
-      "agreeBound": 17,
-      "agreeUnresolved": 0,
-      "lib": 3,
-      "skipped": 18,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/misc.ts",
-      "universe": 77,
-      "agreeBound": 76,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 41,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/row-types.ts",
-      "universe": 7,
-      "agreeBound": 6,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/db/schema.generated.ts",
-      "universe": 1,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 2,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/demo.ts",
-      "universe": 49,
-      "agreeBound": 49,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 190,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/env.ts",
-      "universe": 268,
-      "agreeBound": 252,
-      "agreeUnresolved": 0,
-      "lib": 16,
-      "skipped": 184,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/event-handlers.ts",
-      "universe": 48,
-      "agreeBound": 48,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 81,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/fcm-helpers.ts",
-      "universe": 34,
-      "agreeBound": 29,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 22,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/fcm-server.test.ts",
-      "universe": 12,
       "agreeBound": 12,
       "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 27,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/fcm-server.ts",
-      "universe": 97,
-      "agreeBound": 74,
-      "agreeUnresolved": 0,
-      "lib": 23,
-      "skipped": 74,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/handlers.test.ts",
-      "universe": 37,
-      "agreeBound": 37,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 19,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/handlers.ts",
-      "universe": 131,
-      "agreeBound": 119,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 103,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/cache.test.ts",
-      "universe": 79,
-      "agreeBound": 79,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 57,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/cache.ts",
-      "universe": 118,
-      "agreeBound": 105,
-      "agreeUnresolved": 0,
-      "lib": 13,
-      "skipped": 43,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/db.ts",
-      "universe": 69,
-      "agreeBound": 62,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 59,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/errors.ts",
-      "universe": 50,
-      "agreeBound": 46,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 51,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/events.test.ts",
-      "universe": 82,
-      "agreeBound": 64,
-      "agreeUnresolved": 0,
-      "lib": 18,
-      "skipped": 64,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/events.ts",
-      "universe": 57,
-      "agreeBound": 51,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 27,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/http.ts",
-      "universe": 139,
-      "agreeBound": 123,
-      "agreeUnresolved": 0,
-      "lib": 16,
-      "skipped": 70,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/job-queue.ts",
-      "universe": 121,
-      "agreeBound": 107,
-      "agreeUnresolved": 0,
-      "lib": 14,
-      "skipped": 81,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/log.ts",
-      "universe": 68,
-      "agreeBound": 58,
-      "agreeUnresolved": 0,
-      "lib": 10,
-      "skipped": 26,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/metrics.ts",
-      "universe": 115,
-      "agreeBound": 103,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 43,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/optimistic.test.ts",
-      "universe": 67,
-      "agreeBound": 60,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 67,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/optimistic.ts",
-      "universe": 68,
-      "agreeBound": 61,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 32,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/rate-limit.ts",
-      "universe": 94,
-      "agreeBound": 87,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 56,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/request-helpers.ts",
-      "universe": 34,
-      "agreeBound": 29,
-      "agreeUnresolved": 0,
       "lib": 5,
-      "skipped": 15,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/resilience.test.ts",
-      "universe": 110,
-      "agreeBound": 105,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 88,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/resilience.ts",
-      "universe": 215,
-      "agreeBound": 195,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 107,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/kernel/validate.ts",
-      "universe": 64,
-      "agreeBound": 64,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 63,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/netlify-wrapper-surface.test.ts",
-      "universe": 57,
-      "agreeBound": 50,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 71,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/netlify-wrapper-surface.ts",
-      "universe": 102,
-      "agreeBound": 83,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 77,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/netlify-wrapper.ts",
-      "universe": 66,
-      "agreeBound": 55,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 49,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/rate-limit.test.ts",
-      "universe": 47,
-      "agreeBound": 47,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 55,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/rate-limit.ts",
-      "universe": 92,
-      "agreeBound": 87,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 20,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/session.test.ts",
-      "universe": 143,
-      "agreeBound": 136,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 72,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/session.ts",
-      "universe": 64,
-      "agreeBound": 47,
-      "agreeUnresolved": 0,
-      "lib": 17,
-      "skipped": 45,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/storage.test.ts",
-      "universe": 72,
-      "agreeBound": 71,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 52,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/_lib/storage.ts",
-      "universe": 137,
-      "agreeBound": 117,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 98,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/admin-ai-context.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/ai-chat.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/ai-form-submit.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/apply.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/auth.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/bridge-links.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/candidates.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/config.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/ai-orchestration/index.ts",
-      "universe": 3,
-      "agreeBound": 3,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/applications/index.ts",
-      "universe": 7,
-      "agreeBound": 7,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/applications/repository.ts",
-      "universe": 40,
-      "agreeBound": 35,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 30,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/applications/service.ts",
-      "universe": 440,
-      "agreeBound": 371,
-      "agreeUnresolved": 0,
-      "lib": 69,
-      "skipped": 250,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/catalog/index.ts",
-      "universe": 9,
-      "agreeBound": 9,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/catalog/repository.ts",
-      "universe": 295,
-      "agreeBound": 267,
-      "agreeUnresolved": 0,
-      "lib": 28,
-      "skipped": 184,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/catalog/service.ts",
-      "universe": 546,
-      "agreeBound": 481,
-      "agreeUnresolved": 0,
-      "lib": 65,
-      "skipped": 323,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/configuration/index.ts",
-      "universe": 5,
-      "agreeBound": 5,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/configuration/repository.ts",
-      "universe": 40,
-      "agreeBound": 34,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 49,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/configuration/service.ts",
-      "universe": 75,
-      "agreeBound": 64,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 67,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/diagnostics/index.ts",
-      "universe": 2,
-      "agreeBound": 2,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/diagnostics/repository.ts",
-      "universe": 69,
-      "agreeBound": 58,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 64,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/diagnostics/service.ts",
-      "universe": 72,
-      "agreeBound": 71,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 79,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/documents/download.ts",
-      "universe": 137,
-      "agreeBound": 121,
-      "agreeUnresolved": 0,
-      "lib": 16,
-      "skipped": 79,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/documents/index.ts",
-      "universe": 8,
-      "agreeBound": 8,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/documents/repository.ts",
-      "universe": 100,
-      "agreeBound": 87,
-      "agreeUnresolved": 0,
-      "lib": 13,
-      "skipped": 38,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/documents/service.ts",
-      "universe": 831,
-      "agreeBound": 722,
-      "agreeUnresolved": 0,
-      "lib": 109,
-      "skipped": 701,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/identity/index.ts",
-      "universe": 13,
-      "agreeBound": 13,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/identity/repository.ts",
-      "universe": 30,
-      "agreeBound": 26,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 25,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/identity/service.test.ts",
-      "universe": 82,
-      "agreeBound": 80,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 73,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/identity/service.ts",
-      "universe": 160,
-      "agreeBound": 148,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 137,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/ingestion/index.ts",
-      "universe": 1,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/ingestion/repository.ts",
-      "universe": 25,
-      "agreeBound": 19,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 20,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/ingestion/service.ts",
-      "universe": 286,
-      "agreeBound": 237,
-      "agreeUnresolved": 0,
-      "lib": 49,
-      "skipped": 197,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/jobs/index.ts",
-      "universe": 7,
-      "agreeBound": 7,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/jobs/repository.ts",
-      "universe": 75,
-      "agreeBound": 65,
-      "agreeUnresolved": 0,
-      "lib": 10,
-      "skipped": 59,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/jobs/service.ts",
-      "universe": 219,
-      "agreeBound": 182,
-      "agreeUnresolved": 0,
-      "lib": 37,
-      "skipped": 139,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/master-data/index.ts",
-      "universe": 11,
-      "agreeBound": 11,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/master-data/repository.ts",
-      "universe": 42,
-      "agreeBound": 38,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 24,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/master-data/service.ts",
-      "universe": 1139,
-      "agreeBound": 1027,
-      "agreeUnresolved": 0,
-      "lib": 112,
-      "skipped": 688,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/notifications/index.ts",
-      "universe": 5,
-      "agreeBound": 5,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/notifications/repository.ts",
-      "universe": 15,
-      "agreeBound": 13,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 20,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/notifications/service.ts",
-      "universe": 166,
-      "agreeBound": 135,
-      "agreeUnresolved": 0,
-      "lib": 31,
-      "skipped": 100,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/registration/index.ts",
-      "universe": 6,
-      "agreeBound": 6,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/registration/repository.ts",
-      "universe": 7,
-      "agreeBound": 6,
-      "agreeUnresolved": 0,
-      "lib": 1,
       "skipped": 10,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/registration/service.ts",
-      "universe": 121,
-      "agreeBound": 81,
+      "path": "src/components/admin/TabMail.tsx",
+      "universe": 64,
+      "agreeBound": 63,
       "agreeUnresolved": 0,
-      "lib": 40,
-      "skipped": 65,
+      "lib": 1,
+      "skipped": 99,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/registry/index.ts",
-      "universe": 3,
-      "agreeBound": 3,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/contexts/registry/repository.ts",
-      "universe": 41,
-      "agreeBound": 37,
+      "path": "src/components/AuthGuard.tsx",
+      "universe": 16,
+      "agreeBound": 12,
       "agreeUnresolved": 0,
       "lib": 4,
-      "skipped": 29,
+      "skipped": 16,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/registry/service.ts",
-      "universe": 182,
-      "agreeBound": 132,
+      "path": "src/store/i18n.ts",
+      "universe": 44,
+      "agreeBound": 37,
       "agreeUnresolved": 0,
-      "lib": 50,
-      "skipped": 122,
+      "lib": 7,
+      "skipped": 25,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/scheduling/index.ts",
-      "universe": 6,
-      "agreeBound": 6,
+      "path": "src/store/userStore.ts",
+      "universe": 107,
+      "agreeBound": 107,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 0,
+      "skipped": 68,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/scheduling/repository.ts",
-      "universe": 56,
-      "agreeBound": 47,
+      "path": "src/store/authReactive.ts",
+      "universe": 55,
+      "agreeBound": 43,
       "agreeUnresolved": 0,
-      "lib": 9,
-      "skipped": 67,
+      "lib": 12,
+      "skipped": 46,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/contexts/scheduling/service.ts",
-      "universe": 257,
-      "agreeBound": 214,
+      "path": "src/lib/schemas.ts",
+      "universe": 45,
+      "agreeBound": 45,
       "agreeUnresolved": 0,
-      "lib": 43,
-      "skipped": 202,
+      "lib": 0,
+      "skipped": 75,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/drive-links.js",
-      "universe": 2,
-      "agreeBound": 1,
+      "path": "src/lib/fcm.ts",
+      "universe": 82,
+      "agreeBound": 48,
       "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
+      "lib": 34,
+      "skipped": 43,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/files.js",
-      "universe": 2,
-      "agreeBound": 1,
+      "path": "src/lib/supabase.ts",
+      "universe": 9,
+      "agreeBound": 7,
       "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
+      "lib": 2,
+      "skipped": 7,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/get-app-data.js",
-      "universe": 2,
-      "agreeBound": 1,
+      "path": "src/lib/cloudinary.ts",
+      "universe": 73,
+      "agreeBound": 53,
       "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
+      "lib": 20,
+      "skipped": 30,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/ingest.js",
-      "universe": 21,
-      "agreeBound": 16,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 21,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/jobs.js",
-      "universe": 2,
-      "agreeBound": 1,
+      "path": "src/layouts/BaseLayout.astro",
+      "universe": 1,
+      "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 1,
-      "skipped": 1,
+      "skipped": 5,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/mail.js",
-      "universe": 2,
-      "agreeBound": 1,
+      "path": "src/pages/index.astro",
+      "universe": 0,
+      "agreeBound": 0,
       "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
+      "lib": 0,
+      "skipped": 6,
       "disagree": 0
     },
     {
-      "path": "netlify/functions/master-data.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/notify.js",
+      "path": "netlify/functions/auth.js",
       "universe": 2,
       "agreeBound": 1,
       "agreeUnresolved": 0,
@@ -1383,249 +180,6 @@
       "disagree": 0
     },
     {
-      "path": "netlify/functions/public.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/register.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/rincian-presets.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/run-migration.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/save-ai-cv.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/save-master.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/schedule-reminders.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/schedule.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/share-data.js",
-      "universe": 9,
-      "agreeBound": 7,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 12,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/shared/wa-rules.ts",
-      "universe": 56,
-      "agreeBound": 54,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 31,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/submit-apply.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/submit-siswa-baru.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/ai.ts",
-      "universe": 45,
-      "agreeBound": 44,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 28,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/auth.ts",
-      "universe": 63,
-      "agreeBound": 63,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 25,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/candidates.ts",
-      "universe": 12,
-      "agreeBound": 12,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 4,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/config.ts",
-      "universe": 14,
-      "agreeBound": 14,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/diagnostics.ts",
-      "universe": 5,
-      "agreeBound": 5,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 4,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/docs.ts",
-      "universe": 17,
-      "agreeBound": 17,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 14,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/index.ts",
-      "universe": 145,
-      "agreeBound": 129,
-      "agreeUnresolved": 0,
-      "lib": 16,
-      "skipped": 263,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/ingest.ts",
-      "universe": 6,
-      "agreeBound": 6,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 9,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/jobs.ts",
-      "universe": 21,
-      "agreeBound": 21,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 14,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/mail.ts",
-      "universe": 20,
-      "agreeBound": 20,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 6,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/master.ts",
-      "universe": 16,
-      "agreeBound": 16,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/notify.ts",
-      "universe": 18,
-      "agreeBound": 18,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 17,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/public.ts",
-      "universe": 18,
-      "agreeBound": 16,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 10,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/register.ts",
-      "universe": 18,
-      "agreeBound": 18,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 7,
-      "disagree": 0
-    },
-    {
-      "path": "netlify/functions/surfaces/schedule.ts",
-      "universe": 22,
-      "agreeBound": 22,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 7,
-      "disagree": 0
-    },
-    {
       "path": "netlify/functions/sweep-queue.ts",
       "universe": 54,
       "agreeBound": 50,
@@ -1635,111 +189,84 @@
       "disagree": 0
     },
     {
-      "path": "netlify/functions/whatsapp.js",
-      "universe": 2,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/build-icon-sprite.mjs",
-      "universe": 223,
-      "agreeBound": 200,
-      "agreeUnresolved": 0,
-      "lib": 23,
-      "skipped": 120,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/ci/netlify-rollback.mjs",
-      "universe": 167,
-      "agreeBound": 125,
-      "agreeUnresolved": 0,
-      "lib": 42,
-      "skipped": 118,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/ci/smoke-test.mjs",
-      "universe": 160,
-      "agreeBound": 128,
-      "agreeUnresolved": 0,
-      "lib": 32,
-      "skipped": 124,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/ci/typecheck-ratchet.mjs",
-      "universe": 205,
-      "agreeBound": 151,
-      "agreeUnresolved": 0,
-      "lib": 54,
-      "skipped": 159,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/ci/verify-env.mjs",
-      "universe": 128,
-      "agreeBound": 88,
-      "agreeUnresolved": 0,
-      "lib": 40,
-      "skipped": 106,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/ci/verify-migrations.mjs",
-      "universe": 300,
-      "agreeBound": 227,
-      "agreeUnresolved": 0,
-      "lib": 73,
-      "skipped": 261,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/db-baseline.mjs",
-      "universe": 453,
-      "agreeBound": 358,
-      "agreeUnresolved": 0,
-      "lib": 95,
-      "skipped": 248,
-      "disagree": 0
-    },
-    {
-      "path": "scripts/migrate.mjs",
-      "universe": 347,
-      "agreeBound": 263,
-      "agreeUnresolved": 0,
-      "lib": 84,
-      "skipped": 265,
-      "disagree": 0
-    },
-    {
-      "path": "serve.cjs",
-      "universe": 65,
-      "agreeBound": 63,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 42,
-      "disagree": 0
-    },
-    {
-      "path": "server.cjs",
-      "universe": 102,
-      "agreeBound": 88,
-      "agreeUnresolved": 0,
-      "lib": 14,
-      "skipped": 64,
-      "disagree": 0
-    },
-    {
-      "path": "shared/wa-rules.test.ts",
-      "universe": 42,
-      "agreeBound": 42,
+      "path": "netlify/functions/contexts/master-data/index.ts",
+      "universe": 11,
+      "agreeBound": 11,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 21,
+      "skipped": 0,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/contexts/master-data/service.ts",
+      "universe": 1139,
+      "agreeBound": 1027,
+      "agreeUnresolved": 0,
+      "lib": 112,
+      "skipped": 688,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/contexts/master-data/repository.ts",
+      "universe": 42,
+      "agreeBound": 38,
+      "agreeUnresolved": 0,
+      "lib": 4,
+      "skipped": 24,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/contexts/catalog/repository.ts",
+      "universe": 295,
+      "agreeBound": 267,
+      "agreeUnresolved": 0,
+      "lib": 28,
+      "skipped": 184,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/contexts/applications/service.ts",
+      "universe": 440,
+      "agreeBound": 371,
+      "agreeUnresolved": 0,
+      "lib": 69,
+      "skipped": 250,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "universe": 831,
+      "agreeBound": 722,
+      "agreeUnresolved": 0,
+      "lib": 109,
+      "skipped": 701,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/_lib/candidate-helpers.ts",
+      "universe": 34,
+      "agreeBound": 27,
+      "agreeUnresolved": 0,
+      "lib": 7,
+      "skipped": 13,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/_lib/kernel/http.ts",
+      "universe": 139,
+      "agreeBound": 123,
+      "agreeUnresolved": 0,
+      "lib": 16,
+      "skipped": 70,
+      "disagree": 0
+    },
+    {
+      "path": "netlify/functions/_lib/db/candidates.ts",
+      "universe": 322,
+      "agreeBound": 282,
+      "agreeUnresolved": 0,
+      "lib": 40,
+      "skipped": 148,
       "disagree": 0
     },
     {
@@ -1750,1215 +277,342 @@
       "lib": 2,
       "skipped": 31,
       "disagree": 0
-    },
-    {
-      "path": "src/components/App.tsx",
-      "universe": 169,
-      "agreeBound": 157,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 96,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/AuthGuard.tsx",
-      "universe": 16,
-      "agreeBound": 12,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 16,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/BottomNav.tsx",
-      "universe": 41,
-      "agreeBound": 33,
-      "agreeUnresolved": 0,
-      "lib": 8,
-      "skipped": 33,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/CekSiswaModal.tsx",
-      "universe": 39,
-      "agreeBound": 36,
-      "agreeUnresolved": 0,
-      "lib": 3,
-      "skipped": 46,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ChangePasswordModal.tsx",
-      "universe": 64,
-      "agreeBound": 58,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 48,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/CvMiniModal.tsx",
-      "universe": 102,
-      "agreeBound": 90,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 79,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/DocumentPreviewModal.tsx",
-      "universe": 154,
-      "agreeBound": 137,
-      "agreeUnresolved": 0,
-      "lib": 17,
-      "skipped": 72,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ESignatureModal.tsx",
-      "universe": 121,
-      "agreeBound": 119,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 92,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/Footer.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/LoginModal.tsx",
-      "universe": 250,
-      "agreeBound": 228,
-      "agreeUnresolved": 0,
-      "lib": 22,
-      "skipped": 139,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/Toast.tsx",
-      "universe": 74,
-      "agreeBound": 67,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 56,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/WAPintarModal.tsx",
-      "universe": 53,
-      "agreeBound": 49,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 39,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/AdminAiCopilot.tsx",
-      "universe": 273,
-      "agreeBound": 242,
-      "agreeUnresolved": 0,
-      "lib": 31,
-      "skipped": 164,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/AdminJobEditModal.tsx",
-      "universe": 82,
-      "agreeBound": 70,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 104,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/AdminPanel.tsx",
-      "universe": 191,
-      "agreeBound": 167,
-      "agreeUnresolved": 0,
-      "lib": 24,
-      "skipped": 168,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/AdminShareModal.tsx",
-      "universe": 55,
-      "agreeBound": 49,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 49,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/CandidateProfileModal.test.tsx",
-      "universe": 68,
-      "agreeBound": 61,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 69,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/CandidateProfileModal.tsx",
-      "universe": 197,
-      "agreeBound": 179,
-      "agreeUnresolved": 0,
-      "lib": 18,
-      "skipped": 256,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/EditCandidateModal.test.tsx",
-      "universe": 85,
-      "agreeBound": 79,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 85,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/EditCandidateModal.tsx",
-      "universe": 237,
-      "agreeBound": 216,
-      "agreeUnresolved": 0,
-      "lib": 21,
-      "skipped": 213,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/InputManualModal.tsx",
-      "universe": 210,
-      "agreeBound": 184,
-      "agreeUnresolved": 0,
-      "lib": 26,
-      "skipped": 223,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/LaporanBulananModal.tsx",
-      "universe": 56,
-      "agreeBound": 53,
-      "agreeUnresolved": 0,
-      "lib": 3,
-      "skipped": 50,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/ListKandidatModal.tsx",
-      "universe": 113,
-      "agreeBound": 103,
-      "agreeUnresolved": 0,
-      "lib": 10,
-      "skipped": 77,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/MatchmakingModal.tsx",
-      "universe": 232,
-      "agreeBound": 202,
-      "agreeUnresolved": 0,
-      "lib": 30,
-      "skipped": 255,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/PemberkasanModal.tsx",
-      "universe": 249,
-      "agreeBound": 242,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 234,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/RirekishoBuilder.tsx",
-      "universe": 741,
-      "agreeBound": 706,
-      "agreeUnresolved": 0,
-      "lib": 35,
-      "skipped": 173,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabConfig.tsx",
-      "universe": 116,
-      "agreeBound": 98,
-      "agreeUnresolved": 0,
-      "lib": 18,
-      "skipped": 139,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabDbJob.tsx",
-      "universe": 177,
-      "agreeBound": 157,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 156,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabJadwal.tsx",
-      "universe": 126,
-      "agreeBound": 107,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 128,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabKelola.tsx",
-      "universe": 101,
-      "agreeBound": 90,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 100,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabMail.tsx",
-      "universe": 64,
-      "agreeBound": 63,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 99,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabPelamar.test.tsx",
-      "universe": 62,
-      "agreeBound": 58,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 82,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabPelamar.tsx",
-      "universe": 162,
-      "agreeBound": 146,
-      "agreeUnresolved": 0,
-      "lib": 16,
-      "skipped": 198,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabTambah.tsx",
-      "universe": 226,
-      "agreeBound": 199,
-      "agreeUnresolved": 0,
-      "lib": 27,
-      "skipped": 175,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/TabWA.tsx",
-      "universe": 97,
-      "agreeBound": 78,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 92,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/admin/UndanganKelasModal.tsx",
-      "universe": 197,
-      "agreeBound": 178,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 123,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/candidate/CandidateDash.tsx",
-      "universe": 358,
-      "agreeBound": 339,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 345,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/AiCvForm.tsx",
-      "universe": 454,
-      "agreeBound": 434,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 272,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/ApplyFullForm.tsx",
-      "universe": 341,
-      "agreeBound": 322,
-      "agreeUnresolved": 0,
-      "lib": 19,
-      "skipped": 247,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/FormToolbar.tsx",
-      "universe": 23,
-      "agreeBound": 23,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 14,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/MasterFullForm.tsx",
-      "universe": 606,
-      "agreeBound": 551,
-      "agreeUnresolved": 0,
-      "lib": 55,
-      "skipped": 633,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/ShareView.tsx",
-      "universe": 196,
-      "agreeBound": 182,
-      "agreeUnresolved": 0,
-      "lib": 14,
-      "skipped": 187,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/forms/SiswaBaruForm.tsx",
-      "universe": 236,
-      "agreeBound": 205,
-      "agreeUnresolved": 0,
-      "lib": 31,
-      "skipped": 228,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/public/LayananSection.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 1,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/public/LokerDetailModal.tsx",
-      "universe": 250,
-      "agreeBound": 239,
-      "agreeUnresolved": 0,
-      "lib": 11,
-      "skipped": 193,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/public/LokerTable.tsx",
-      "universe": 222,
-      "agreeBound": 207,
-      "agreeUnresolved": 0,
-      "lib": 15,
-      "skipped": 188,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/public/PamfletModal.tsx",
-      "universe": 25,
-      "agreeBound": 25,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 19,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ui/Icon.test.ts",
-      "universe": 128,
-      "agreeBound": 124,
-      "agreeUnresolved": 0,
-      "lib": 4,
-      "skipped": 51,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ui/Icon.tsx",
-      "universe": 17,
-      "agreeBound": 12,
-      "agreeUnresolved": 0,
-      "lib": 5,
-      "skipped": 10,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ui/overlay-root.ts",
-      "universe": 16,
-      "agreeBound": 10,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 9,
-      "disagree": 0
-    },
-    {
-      "path": "src/components/ui/useOverlay.ts",
-      "universe": 85,
-      "agreeBound": 68,
-      "agreeUnresolved": 0,
-      "lib": 17,
-      "skipped": 38,
-      "disagree": 0
-    },
-    {
-      "path": "src/env.d.ts",
-      "universe": 1,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "src/icons/sprite-map.ts",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "src/layouts/BaseLayout.astro",
-      "universe": 1,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/apiClient.ts",
-      "universe": 137,
-      "agreeBound": 114,
-      "agreeUnresolved": 0,
-      "lib": 23,
-      "skipped": 48,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/apiEndpoint.ts",
-      "universe": 3,
-      "agreeBound": 3,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 76,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/cloudinary.ts",
-      "universe": 73,
-      "agreeBound": 53,
-      "agreeUnresolved": 0,
-      "lib": 20,
-      "skipped": 30,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/fcm-modules.d.ts",
-      "universe": 1,
-      "agreeBound": 1,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/fcm.ts",
-      "universe": 82,
-      "agreeBound": 48,
-      "agreeUnresolved": 0,
-      "lib": 34,
-      "skipped": 43,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/helpers_cv.ts",
-      "universe": 119,
-      "agreeBound": 92,
-      "agreeUnresolved": 0,
-      "lib": 27,
-      "skipped": 32,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/schemas.test.ts",
-      "universe": 62,
-      "agreeBound": 62,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 70,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "universe": 45,
-      "agreeBound": 45,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 75,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/supabase-server.ts",
-      "universe": 11,
-      "agreeBound": 11,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 22,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/supabase.ts",
-      "universe": 9,
-      "agreeBound": 7,
-      "agreeUnresolved": 0,
-      "lib": 2,
-      "skipped": 7,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/uploadGuard.ts",
-      "universe": 30,
-      "agreeBound": 30,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 30,
-      "disagree": 0
-    },
-    {
-      "path": "src/lib/useDraft.ts",
-      "universe": 40,
-      "agreeBound": 32,
-      "agreeUnresolved": 0,
-      "lib": 8,
-      "skipped": 8,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/admin.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 6,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/ai-cv.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 4,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/apply.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/candidate.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/index.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 6,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/master.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 3,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/public.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 6,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/share.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 4,
-      "disagree": 0
-    },
-    {
-      "path": "src/pages/siswa-baru.astro",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 5,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/adminStore.test.ts",
-      "universe": 102,
-      "agreeBound": 102,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 128,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/adminStore.ts",
-      "universe": 89,
-      "agreeBound": 83,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 62,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/authReactive.ts",
-      "universe": 55,
-      "agreeBound": 43,
-      "agreeUnresolved": 0,
-      "lib": 12,
-      "skipped": 46,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/i18n-jp.ts",
-      "universe": 0,
-      "agreeBound": 0,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 0,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/i18n.ts",
-      "universe": 44,
-      "agreeBound": 37,
-      "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 25,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/theme.ts",
-      "universe": 39,
-      "agreeBound": 33,
-      "agreeUnresolved": 0,
-      "lib": 6,
-      "skipped": 17,
-      "disagree": 0
-    },
-    {
-      "path": "src/store/userStore.ts",
-      "universe": 107,
-      "agreeBound": 107,
-      "agreeUnresolved": 0,
-      "lib": 0,
-      "skipped": 68,
-      "disagree": 0
-    },
-    {
-      "path": "src/types/api.ts",
-      "universe": 12,
-      "agreeBound": 11,
-      "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 0,
-      "disagree": 0
     }
   ],
   "disagreements": [],
   "identityExamples": [
     {
-      "path": "astro.config.mjs",
-      "line": 6,
-      "name": "defineConfig",
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 26,
+      "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "defineConfig → indexer astro.config.mjs decls 9 · compiler <unmappable>:357"
+      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 206 · compiler <unmappable>:759"
     },
     {
-      "path": "astro.config.mjs",
-      "line": 7,
-      "name": "preact",
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 27,
+      "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "preact → indexer astro.config.mjs decls 53 · compiler <unmappable>:360"
+      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 206 · compiler <unmappable>:759"
     },
     {
-      "path": "astro.config.mjs",
-      "line": 11,
-      "name": "tailwindcss",
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 28,
+      "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "tailwindcss → indexer astro.config.mjs decls 133 · compiler <unmappable>:177"
+      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 206 · compiler <unmappable>:759"
     },
     {
-      "path": "e2e/test-admin.mjs",
-      "line": 11,
-      "name": "chromium",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "chromium → indexer e2e/test-admin.mjs decls 101 · compiler <unmappable>:953505"
-    },
-    {
-      "path": "e2e/test-public.mjs",
-      "line": 11,
-      "name": "chromium",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "chromium → indexer e2e/test-public.mjs decls 102 · compiler <unmappable>:953505"
-    },
-    {
-      "path": "e2e/test-supabase-auth.mjs",
-      "line": 11,
-      "name": "chromium",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "chromium → indexer e2e/test-supabase-auth.mjs decls 123 · compiler <unmappable>:953505"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 6,
-      "name": "fs",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "fs → indexer make-zip.cjs decls 6 · compiler <unmappable>:202182"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 7,
-      "name": "path",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "path → indexer make-zip.cjs decls 33 · compiler <unmappable>:33,<unmappable>:6898"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 8,
-      "name": "path",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "path → indexer make-zip.cjs decls 33 · compiler <unmappable>:33,<unmappable>:6898"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 8,
-      "name": "path",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "path → indexer make-zip.cjs decls 33 · compiler <unmappable>:33,<unmappable>:6898"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 9,
-      "name": "fs",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "fs → indexer make-zip.cjs decls 6 · compiler <unmappable>:202182"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 31,
-      "name": "fs",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "fs → indexer make-zip.cjs decls 6 · compiler <unmappable>:202182"
-    },
-    {
-      "path": "make-zip.cjs",
-      "line": 85,
-      "name": "fs",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "fs → indexer make-zip.cjs decls 6 · compiler <unmappable>:202182"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 39,
-      "name": "join",
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 30,
+      "name": "useEffect",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "join → indexer netlify/functions/_lib/action-registry.test.ts decls 1296 · compiler <unmappable>:2347"
+      "compiler": "useEffect → indexer src/components/admin/TabMail.tsx decls 163 · compiler <unmappable>:2987"
     },
     {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 47,
-      "name": "readdirSync",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "readdirSync → indexer netlify/functions/_lib/action-registry.test.ts decls 1246 · compiler <unmappable>:104250,<unmappable>:104868,<unmappable>:105456,<unmappable>:106028,<unmappable>:106469"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 48,
-      "name": "join",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "join → indexer netlify/functions/_lib/action-registry.test.ts decls 1296 · compiler <unmappable>:2347"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 49,
-      "name": "statSync",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "statSync → indexer netlify/functions/_lib/action-registry.test.ts decls 1259 · compiler <unmappable>:50763,<unmappable>:50809,<unmappable>:51002,<unmappable>:51186,<unmappable>:51378,<unmappable>:51562,<unmappable>:51728"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 62,
-      "name": "readFileSync",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "readFileSync → indexer netlify/functions/_lib/action-registry.test.ts decls 1232 · compiler <unmappable>:137234,<unmappable>:137404,<unmappable>:137555,<unmappable>:137706"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 72,
-      "name": "describe",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "describe → indexer netlify/functions/_lib/action-registry.test.ts decls 1184 · compiler <unmappable>:6534"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 73,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 75,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 79,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 81,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 82,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 86,
-      "name": "describe",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "describe → indexer netlify/functions/_lib/action-registry.test.ts decls 1184 · compiler <unmappable>:6534"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 92,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 94,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 100,
-      "name": "describe",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "describe → indexer netlify/functions/_lib/action-registry.test.ts decls 1184 · compiler <unmappable>:6534"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 103,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 104,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 107,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 109,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 121,
-      "name": "describe",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "describe → indexer netlify/functions/_lib/action-registry.test.ts decls 1184 · compiler <unmappable>:6534"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 122,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 123,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 126,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 127,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 130,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/action-registry.test.ts decls 1194 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 131,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/action-registry.test.ts",
-      "line": 133,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/action-registry.test.ts decls 1198 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
+      "path": "src/components/AuthGuard.tsx",
       "line": 13,
-      "name": "describe",
-      "role": "Callee",
+      "name": "ComponentChildren",
+      "role": "TypeRef",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "describe → indexer netlify/functions/_lib/actions-mail.test.ts decls 327 · compiler <unmappable>:6534"
+      "compiler": "ComponentChildren → indexer src/components/AuthGuard.tsx decls 300 · compiler <unmappable>:1179"
     },
     {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 14,
-      "name": "it",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/actions-mail.test.ts decls 337 · compiler <unmappable>:7415"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 15,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 16,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 17,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 18,
-      "name": "expect",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
-    },
-    {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
+      "path": "src/components/AuthGuard.tsx",
       "line": 19,
-      "name": "expect",
+      "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
+      "compiler": "useStore → indexer src/components/AuthGuard.tsx decls 197 · compiler <unmappable>:759"
     },
     {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 22,
-      "name": "it",
+      "path": "src/store/i18n.ts",
+      "line": 8,
+      "name": "persistentAtom",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "it → indexer netlify/functions/_lib/actions-mail.test.ts decls 337 · compiler <unmappable>:7415"
+      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 66 · compiler <unmappable>:3027"
     },
     {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 23,
-      "name": "expect",
+      "path": "src/store/userStore.ts",
+      "line": 34,
+      "name": "computed",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
+      "compiler": "computed → indexer src/store/userStore.ts decls 744 · compiler <unmappable>:1466"
     },
     {
-      "path": "netlify/functions/_lib/actions-mail.test.ts",
-      "line": 24,
-      "name": "expect",
+      "path": "src/store/userStore.ts",
+      "line": 37,
+      "name": "computed",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "expect → indexer netlify/functions/_lib/actions-mail.test.ts decls 341 · compiler <unmappable>:6536"
+      "compiler": "computed → indexer src/store/userStore.ts decls 744 · compiler <unmappable>:1466"
     },
     {
-      "path": "netlify/functions/_lib/session.test.ts",
-      "line": 35,
-      "name": "exp",
+      "path": "src/store/userStore.ts",
+      "line": 40,
+      "name": "computed",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "computed → indexer src/store/userStore.ts decls 744 · compiler <unmappable>:1466"
+    },
+    {
+      "path": "src/store/userStore.ts",
+      "line": 43,
+      "name": "computed",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "computed → indexer src/store/userStore.ts decls 744 · compiler <unmappable>:1466"
+    },
+    {
+      "path": "src/store/authReactive.ts",
+      "line": 40,
+      "name": "persistentAtom",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "persistentAtom → indexer src/store/authReactive.ts decls 316 · compiler <unmappable>:3027"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 18,
+      "name": "z",
       "role": "Read",
-      "reason": "shadowing-disagreement",
+      "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "exp → indexer netlify/functions/_lib/session.test.ts decls 1356 · compiler netlify/functions/_lib/session.test.ts:1482"
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 32,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 35,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 38,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 45,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 46,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 47,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 48,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 49,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 50,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 52,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 57,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 64,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 65,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 68,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 69,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 70,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 75,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 76,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 82,
+      "name": "z",
+      "role": "TypeRef",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 83,
+      "name": "z",
+      "role": "TypeRef",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 84,
+      "name": "z",
+      "role": "TypeRef",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/supabase.ts",
+      "line": 31,
+      "name": "createClient",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "createClient → indexer src/lib/supabase.ts decls 489 · compiler <unmappable>:35876"
+    },
+    {
+      "path": "netlify/functions/auth.js",
+      "line": 13,
+      "name": "makeSurfaceHandler",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "makeSurfaceHandler → indexer netlify/functions/auth.js decls 395 · compiler netlify/functions/_lib/netlify-wrapper-surface.ts:2290"
+    },
+    {
+      "path": "netlify/functions/contexts/master-data/service.ts",
+      "line": 422,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
@@ -2968,6 +622,87 @@
       "reason": "shadowing-disagreement",
       "indexer": "bound",
       "compiler": "rows → indexer netlify/functions/contexts/catalog/repository.ts decls 4919 · compiler netlify/functions/contexts/catalog/repository.ts:6008"
+    },
+    {
+      "path": "netlify/functions/contexts/catalog/repository.ts",
+      "line": 170,
+      "name": "demo",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "demo → indexer netlify/functions/contexts/catalog/repository.ts decls 302 · compiler netlify/functions/_lib/demo.ts:221"
+    },
+    {
+      "path": "netlify/functions/contexts/catalog/repository.ts",
+      "line": 245,
+      "name": "demo",
+      "role": "ExportSpecifier",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "demo → indexer netlify/functions/contexts/catalog/repository.ts decls 302 · compiler netlify/functions/_lib/demo.ts:221"
+    },
+    {
+      "path": "netlify/functions/contexts/catalog/repository.ts",
+      "line": 245,
+      "name": "session",
+      "role": "ExportSpecifier",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/catalog/repository.ts decls 344 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/applications/service.ts",
+      "line": 75,
+      "name": "bcrypt",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "bcrypt → indexer netlify/functions/contexts/applications/service.ts decls 169 · compiler <unmappable>:244"
+    },
+    {
+      "path": "netlify/functions/contexts/applications/service.ts",
+      "line": 138,
+      "name": "fcm",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "fcm → indexer netlify/functions/contexts/applications/service.ts decls 590 · compiler netlify/functions/_lib/fcm-server.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 80,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 807 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 118,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 807 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 299,
+      "name": "bcrypt",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "bcrypt → indexer netlify/functions/contexts/documents/service.ts decls 160 · compiler <unmappable>:244"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 355,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 807 · compiler netlify/functions/_lib/session.ts:0"
     }
   ]
 }

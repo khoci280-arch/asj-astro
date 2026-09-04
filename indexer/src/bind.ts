@@ -360,18 +360,19 @@ export function bindIndex(input: BindInput): BindResult {
     type MemberPolicy = 'any' | 'static' | 'instance';
 
     /**
-     * The member named o.name owned by typeSym — own members first, then the
+     * The member named `name` owned by typeSym — own members first, then the
      * heritage chain (class/interface typeRef is the comma-joined extends
      * list). Policy: 'static'/'instance' filter by modifiers.static; 'any'
-     * matches everything (enums, namespaces).
+     * matches everything (enums, namespaces). Returns the member SYMBOL so
+     * chains can keep hopping through its own type.
      */
-    const resolveMemberIn = (typeSym: SymbolNode, o: Occurrence, policy: MemberPolicy, depth = 0): BoundRef | undefined => {
-      if (depth > 3) return undefined;
+    const memberSymIn = (typeSym: SymbolNode | undefined, name: string, policy: MemberPolicy, o: Occurrence, depth = 0): SymbolNode | undefined => {
+      if (!typeSym || depth > 3) return undefined;
       for (const m of membersByParent.get(typeSym.key) ?? []) {
-        if (m.name !== o.name) continue;
+        if (m.name !== name) continue;
         if (policy === 'static' && !m.modifiers.static) continue;
         if (policy === 'instance' && m.modifiers.static) continue;
-        return { fileIdx, range: o.range, symKey: m.key, role: o.role, resolvedVia: 'type' };
+        return m;
       }
       const heritage = typeSym.typeRef;
       if (heritage) {
@@ -380,7 +381,7 @@ export function bindIndex(input: BindInput): BindResult {
           if (!t) continue;
           const parent = findTypeSym(t, o, false);
           if (parent) {
-            const hit = resolveMemberIn(parent, o, policy, depth + 1);
+            const hit = memberSymIn(parent, name, policy, o, depth + 1);
             if (hit) return hit;
           }
         }
@@ -389,16 +390,20 @@ export function bindIndex(input: BindInput): BindResult {
     };
 
     /**
-     * Member chase from a base VALUE symbol (never a guess — every hop needs
-     * a resolvable type or shape). Depth-bounded for alias cycles.
+     * Resolve `name` as a member of what baseSym stands for, returning the
+     * member SYMBOL (never a guess — every hop needs a resolvable type or
+     * shape). The policy is re-derived per hop: class-as-value → static,
+     * enum/namespace → any, instance (annotation / new / cast / factory
+     * return) → non-static. Aliases recurse (depth-bounded). Used for both
+     * single accesses (`svc.get()`) and multi-hop chains (`svc.repo.get()`).
      */
-    const tryMemberFromSymbol = (baseSym: SymbolNode | undefined, o: Occurrence, depth: number): BoundRef | undefined => {
+    const memberOf = (baseSym: SymbolNode | undefined, name: string, o: Occurrence, depth: number): SymbolNode | undefined => {
       if (!baseSym || depth > 3) return undefined;
       if (baseSym.kind === SymbolKind.Class || baseSym.kind === SymbolKind.Component) {
-        return resolveMemberIn(baseSym, o, 'static'); // class object → static members
+        return memberSymIn(baseSym, name, 'static', o);
       }
       if (baseSym.kind === SymbolKind.Enum || baseSym.kind === SymbolKind.Namespace) {
-        return resolveMemberIn(baseSym, o, 'any');
+        return memberSymIn(baseSym, name, 'any', o);
       }
       // Annotated type: const x: Foo / param (x: Foo) → Foo.member
       if (baseSym.typeRef) {
@@ -406,7 +411,7 @@ export function bindIndex(input: BindInput): BindResult {
         if (t) {
           const typeSym = findTypeSym(t, o, false);
           if (typeSym) {
-            const hit = resolveMemberIn(typeSym, o, 'instance');
+            const hit = memberSymIn(typeSym, name, 'instance', o);
             if (hit) return hit;
           }
         }
@@ -418,12 +423,12 @@ export function bindIndex(input: BindInput): BindResult {
           if (!t) continue;
           const typeSym = findTypeSym(t, o, it.k === 'new'); // new → class value; cast → type
           if (!typeSym) continue;
-          const hit = resolveMemberIn(typeSym, o, 'instance');
+          const hit = memberSymIn(typeSym, name, 'instance', o);
           if (hit) return hit;
         } else if (it.k === 'id') {
           const alias = findByName(it.t, o.scopeKey, true);
           if (!alias) continue;
-          const hit = tryMemberFromSymbol(alias.kind === SymbolKind.ImportBinding ? chasedSym(o, it.t) : alias, o, depth + 1);
+          const hit = memberOf(alias.kind === SymbolKind.ImportBinding ? chasedSym(o, it.t) : alias, name, o, depth + 1);
           if (hit) return hit;
         } else if (it.k === 'call') {
           // callee's declared return type
@@ -435,7 +440,7 @@ export function bindIndex(input: BindInput): BindResult {
           if (!t) continue;
           const typeSym = findTypeSym(t, o, false);
           if (!typeSym) continue;
-          const hit = resolveMemberIn(typeSym, o, 'instance');
+          const hit = memberSymIn(typeSym, name, 'instance', o);
           if (hit) return hit;
         } else if (it.k === 'mcall') {
           // factory.ctor() → the member's declared return type
@@ -443,47 +448,68 @@ export function bindIndex(input: BindInput): BindResult {
           if (!base) continue;
           const baseSym2 = base.kind === SymbolKind.ImportBinding ? chasedSym(o, it.base) : base;
           if (!baseSym2) continue;
-          const member = (membersByParent.get(baseSym2.key) ?? []).find((m) => m.name === it.member);
+          const member = memberSymIn(baseSym2, it.member, 'any', o);
           if (!member || !member.typeRef) continue;
           const t = firstTypeIdent(returnTypeOf(member.typeRef));
           if (!t) continue;
           const typeSym = findTypeSym(t, o, false);
           if (!typeSym) continue;
-          const hit = resolveMemberIn(typeSym, o, 'instance');
+          const hit = memberSymIn(typeSym, name, 'instance', o);
           if (hit) return hit;
         }
       }
       return undefined;
     };
 
-    /** The Tier-2 entry: resolve a Property occurrence through its base. */
+    /**
+     * The Tier-2 entry: resolve a Property occurrence through its base —
+     * single access (`svc.get()`, `Foo.staticBar()`, `Color.Red`) or a
+     * multi-hop chain recorded by the parser (`this.repo.get()` carries
+     * baseChain ['this','repo']). `this` resolves through the innermost
+     * enclosing class scope (instance first, static fallback); identifier
+     * heads resolve as values with import chasing.
+     */
     const tryTypedMember = (o: Occurrence): BoundRef | undefined => {
-      if (o.base === undefined) return undefined;
-      if (o.base === 'this') {
+      const chain = o.baseChain ?? (o.base !== undefined ? [o.base] : undefined);
+      if (!chain || chain.length === 0) return undefined;
+      const names = [...chain, o.name];
+      let cur: SymbolNode | undefined;
+      if (names[0] === 'this') {
         // innermost enclosing class/interface/enum/namespace scope
         let scopeKey: number | undefined = o.scopeKey;
         while (scopeKey !== undefined) {
           const owner = typeSymByScope.get(scopeKey);
           if (owner !== undefined) {
-            const own = keyToSym.get(owner);
-            if (!own) return undefined;
-            return resolveMemberIn(own, o, 'instance') ?? resolveMemberIn(own, o, 'static');
+            cur = keyToSym.get(owner);
+            break;
           }
           scopeKey = scopeMap.get(scopeKey)?.parentKey;
         }
-        return undefined;
+        if (!cur) return undefined;
+        const m = memberSymIn(cur, names[1], 'instance', o) ?? memberSymIn(cur, names[1], 'static', o);
+        if (!m) return undefined;
+        cur = m;
+        for (let i = 2; i < names.length; i++) {
+          cur = memberOf(cur, names[i], o, 0);
+          if (!cur) return undefined;
+        }
+      } else {
+        const found = searchScopeChain({ ...o, name: names[0] }, true);
+        if (found.kind !== 'bound') return undefined;
+        let head: SymbolNode | undefined = found.sym;
+        if (head.kind === SymbolKind.ImportBinding) {
+          head = chasedSym(o, names[0]);
+          if (!head) return undefined;
+        }
+        cur = head;
+        for (let i = 1; i < names.length; i++) {
+          cur = memberOf(cur, names[i], o, 0);
+          if (!cur) return undefined;
+        }
       }
-      const found = searchScopeChain({ ...o, name: o.base }, true);
-      if (found.kind !== 'bound') return undefined;
-      let baseSym: SymbolNode | undefined = found.sym;
-      if (baseSym.kind === SymbolKind.ImportBinding) {
-        baseSym = chasedSym(o, o.base);
-        if (!baseSym) return undefined;
-      }
-      return tryMemberFromSymbol(baseSym, o, 0);
+      return { fileIdx, range: o.range, symKey: cur.key, role: o.role, resolvedVia: 'type' };
     };
 
-    /** Resolve an import binding to its chased symbol, if unambiguous. */
     /** Resolve an import binding to its chased symbol, if unambiguous. */
     const chasedSym = (o: Occurrence, localName: string): SymbolNode | undefined => {
       const chased = chaseImportBinding(o, localName, true);
@@ -516,7 +542,7 @@ export function bindIndex(input: BindInput): BindResult {
     // type-only targets are not claimed; any other member access stays
     // unindexed (resolved through types, Tier 2).
     const tryNamespaceMember = (o: Occurrence): BoundRef | undefined => {
-      if (o.base === undefined) return undefined;
+      if (o.base === undefined || o.baseChain !== undefined) return undefined;
       for (const rec of input.resolvedImports.get(fileIdx) ?? []) {
         const b = rec.bindings?.find((x) => x.local === o.base);
         if (!b || b.shape !== 'namespace' || typeof rec.to !== 'number') continue;

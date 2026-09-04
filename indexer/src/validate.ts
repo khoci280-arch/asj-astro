@@ -26,6 +26,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { buildIndex, type BuildResult } from './build.js';
@@ -45,10 +46,10 @@ const ROOT = process.cwd().replace(/\\/g, '/');
 const REPORT_PATH = 'indexer/validate-report.json';
 
 /** TS normalizes host paths to forward slashes on every OS (§13). */
-const norm = (p: string): string => p.replace(/\\/g, '/');
+export const norm = (p: string): string => p.replace(/\\/g, '/');
 
 /** Deterministic sample: 12 src + 12 netlify/functions + 1 shared. */
-const SAMPLE: readonly string[] = [
+export const SAMPLE: readonly string[] = [
   'src/components/ui/Icon.tsx',
   'src/components/admin/TabMail.tsx',
   'src/components/AuthGuard.tsx',
@@ -128,7 +129,7 @@ interface Report {
  * One pass per file: identifier start-offset → node. The full-inventory run
  * queries ~40k occurrences, so a per-occurrence walk would be quadratic.
  */
-function identifierIndex(sf: ts.SourceFile): Map<number, ts.Identifier> {
+export function identifierIndex(sf: ts.SourceFile): Map<number, ts.Identifier> {
   const map = new Map<number, ts.Identifier>();
   const visit = (n: ts.Node): void => {
     if (ts.isIdentifier(n)) map.set(n.getStart(sf), n);
@@ -145,7 +146,7 @@ function identifierIndex(sf: ts.SourceFile): Map<number, ts.Identifier> {
  * declaration sites (declared symbol) — TS 5.8 exposes no public
  * getBindingAtLocation, and this is the equivalent for name comparison.
  */
-function compilerNameAt(checker: ts.TypeChecker, id: ts.Identifier): string | undefined {
+export function compilerNameAt(checker: ts.TypeChecker, id: ts.Identifier): string | undefined {
   return checker.getSymbolAtLocation(id)?.name;
 }
 
@@ -265,7 +266,7 @@ function makeIdentityComparator(
   return { keyToSym, classify, example };
 }
 
-function buildProgram(r: BuildResult, rootDir: string): { program: ts.Program; checker: ts.TypeChecker; astroOffset: Map<string, number> } {
+export function buildProgram(r: BuildResult, rootDir: string): { program: ts.Program; checker: ts.TypeChecker; astroOffset: Map<string, number> } {
   const tsconfigPath = join(rootDir, 'tsconfig.json');
   const cfg = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (cfg.error) throw new Error(`tsconfig read failed: ${JSON.stringify(cfg.error)}`);
@@ -544,4 +545,7 @@ function main(): void {
   runValidation(ROOT, { sampleOnly: process.argv.includes('--sample') });
 }
 
-main();
+// Run only when executed directly (dist or src), not when imported (deep-tier.ts).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

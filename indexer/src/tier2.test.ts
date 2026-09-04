@@ -153,6 +153,31 @@ w.grow();
   });
 });
 
+  it('resolves parameter properties and chained member access', () => {
+    const bound = bindFx({
+      'fx/pp.ts': `class Repo { get(): string { return 'x'; } }
+class Service {
+  constructor(private repo: Repo, readonly label: string) {}
+  run(): string { return this.repo.get(); }
+}
+class Holder { constructor(public svc: Service) {} }
+const svc = new Service(new Repo(), 'a');
+const h = new Holder(svc);
+svc.run();
+h.svc.run();
+`,
+    });
+    const typeRefs = bound.refs.filter((r) => r.resolvedVia === 'type');
+    const target = (q: string): number => symByName(bound, q)!.key;
+    const count = (q: string): number => typeRefs.filter((r) => r.symKey === target(q)).length;
+    // this.repo.get() hops: this → Service → repo (param prop, typeRef Repo) → Repo.get
+    expect(count('Service.repo')).toBe(1); // the this.repo site itself
+    expect(count('Repo.get')).toBe(1); // the chained .get() through the param prop
+    expect(count('Service.run')).toBe(2); // svc.run + h.svc.run (2-hop chain)
+    expect(count('Holder.svc')).toBe(1); // h.svc mid-hop binds the param prop
+    expect(count('Service.label')).toBe(0); // readonly param prop exists but is unused
+  });
+
 describe('Tier 2 member binding (real tree)', () => {
   const TIMEOUT = 60_000;
   it('binds member call sites in the real repo and every type-via ref joins', { timeout: TIMEOUT }, () => {

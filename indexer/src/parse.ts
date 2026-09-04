@@ -453,6 +453,33 @@ function walkConstructor(ctx: BinderCtx, n: ts.ConstructorDeclaration): void {
     node: n,
     sig: `constructor|${qualified}|${n.parameters.map((p) => p.type?.getText(ctx.sf) ?? p.name.getText(ctx.sf)).join(',')}`,
   });
+  // Parameter properties (`constructor(private repo: Repo)`) declare a class
+  // member AND a parameter: the member lands in the class scope (still the
+  // top scope here) so `this.repo` resolves through it; the parameter itself
+  // walks below. The decl range is the whole parameter so declaration
+  // identity matches the compiler's (which starts at the modifier).
+  for (const p of n.parameters) {
+    const isParamProp =
+      ts.isIdentifier(p.name) &&
+      p.modifiers?.some(
+        (m) =>
+          m.kind === ts.SyntaxKind.PublicKeyword ||
+          m.kind === ts.SyntaxKind.PrivateKeyword ||
+          m.kind === ts.SyntaxKind.ProtectedKeyword ||
+          m.kind === ts.SyntaxKind.ReadonlyKeyword,
+      );
+    if (!isParamProp) continue;
+    const name = p.name.text;
+    declareSymbol(ctx, {
+      kind: SymbolKind.Property,
+      name,
+      qualified: [...ctx.containerNames, name].join('.'),
+      node: p,
+      typeRef: p.type?.getText(ctx.sf),
+      modifiers: { readonly: !!p.modifiers?.some((m) => m.kind === ts.SyntaxKind.ReadonlyKeyword) },
+      sig: `prop|${[...ctx.containerNames, name].join('.')}|${p.type?.getText(ctx.sf) ?? ''}|class:true|paramProp`,
+    });
+  }
   const fr = openScope(ctx, ScopeKind.Function, 'constructor', n);
   ctx.symStack.push(key);
   n.parameters.forEach((p) => walk(p, ctx));
@@ -1134,17 +1161,30 @@ function walk(node: ts.Node, ctx: BinderCtx): void {
       // `base.member` through a namespace import (masterData.someFn).
       const start = ctx.offset + n.name.getStart(ctx.sf);
       const end = ctx.offset + n.name.getEnd();
+      // Tier 2: the full head chain, root first — `this.repo.get()` records
+      // base 'this' + baseChain ['this','repo'] on the `get` occurrence so the
+      // binder can hop member-by-member through types.
+      const mid: string[] = [];
+      let head = n.expression;
+      while (ts.isPropertyAccessExpression(head)) {
+        mid.unshift(head.name.text);
+        head = head.expression;
+      }
+      const base =
+        ts.isIdentifier(head) ? head.text
+        : head.kind === ts.SyntaxKind.ThisKeyword ? 'this'
+        : undefined;
       ctx.occurrences.push({
         fileIdx: ctx.fileIdx,
         range: makeRange(ctx.lineIndex, start, end),
         name: n.name.text,
         scopeKey: topScope(ctx).key,
         role: OccurrenceRole.Property,
-        ...(ts.isIdentifier(n.expression)
-          ? { base: n.expression.text }
-          : n.expression.kind === ts.SyntaxKind.ThisKeyword
-            ? { base: 'this' }
-            : {}),
+        ...(base !== undefined
+          ? mid.length > 0
+            ? { base, baseChain: [base, ...mid] }
+            : { base }
+          : {}),
       });
       return;
     }

@@ -238,6 +238,10 @@ export interface Occurrence {
    * chases the member through the base export when the base is a namespace
    * import. Parse-side only; never serialized to dump documents. */
   base?: string;
+  /** Tier 2: the full head chain of a multi-hop member access, root first —
+   * `this.repo.get()` records ['this','repo'] on the `get` occurrence so the
+   * binder can hop member-by-member. Parse-side only; never serialized. */
+  baseChain?: string[];
 }
 
 /** An occurrence that bound to something. */
