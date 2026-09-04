@@ -114,6 +114,11 @@ describe('query layer over the real index', () => {
     const files = new Set(view.references.map((r) => r.file));
     expect(files.size).toBeGreaterThan(1); // barrel re-exports + callers
     expect(view.references.every((r) => r.range.start <= r.range.end)).toBe(true);
+    // row-9 read surface: the target's kind + short signature ride the view
+    const row = index.symbolById.get(FINDBYWA)!;
+    expect(view.kind).toBe(row.kind);
+    expect(view.detail).toBe(row.detail);
+    expect(row.detail).toBeTruthy(); // a real declaration signature on this tree
   });
 
   it('refsOf returns not-found for unknown symIds', () => {
@@ -126,6 +131,8 @@ describe('query layer over the real index', () => {
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0].match).toBe('name'); // exact-name matches outrank substring hits
     expect(hits.map((h) => h.symId)).toContain(FINDBYWA);
+    const hit = hits.find((h) => h.symId === FINDBYWA)!;
+    expect(hit.detail).toBe(index.symbolById.get(FINDBYWA)!.detail); // hover signature rides the hit
     const capped = search(index, 'toast', 5);
     expect(capped.length).toBeLessThanOrEqual(5);
     expect(search(index, 'zzzz-no-such-symbol-zzzz')).toHaveLength(0);
@@ -302,7 +309,15 @@ describe('file outline queries', () => {
       expect(e.scopeId.startsWith(`scope:${view.file}#`)).toBe(true);
       expect(row!.parentKey).toBe(e.parentKey);
       expect(e.decls).toEqual(row!.decls);
+      // Row-9 read-surface rendering: outline entries carry the hover
+      // signature fields (detail/typeRef) exactly as the dump row does.
+      expect(e.detail).toBe(row!.detail);
+      expect(e.typeRef).toBe(row!.typeRef);
     }
+    // The flagship symbol of this file carries both (a real signature).
+    const fm = view.symbols.find((e) => e.id === FINDBYWA);
+    expect(fm?.detail).toBeTruthy();
+    expect(fm?.typeRef).toBeTruthy();
     // symbols are the file's full dump rows, flat, in source order
     expect(view.symbols.map((e) => e.symKey)).toEqual(index.symbolsByFile.get(fileIdx)!.map((s) => s.key));
     const starts = view.symbols.map((e) => e.decls[0].startLine);
@@ -366,6 +381,55 @@ describe('file outline queries', () => {
     expect(view.exports.length).toBeGreaterThan(0);
   });
 });
+
+describe('row-9 read surfaces — detail/kind carried on outline, refs, search (fixture)', () => {
+  const signed = (withMeta: boolean): Record<string, unknown> => ({
+    id: 'sym:a#greet',
+    key: 7,
+    name: 'greet',
+    qualified: 'greet',
+    kind: SymbolKind.Function,
+    fileIdx: 0,
+    scopeId: 'scope:a.ts#module',
+    decls: [decl(0, 0, 'greet')],
+    exported: true,
+    exportNames: ['greet'],
+    modifiers: {},
+    centrality: 0,
+    ...(withMeta ? { detail: 'export function greet(wa: string): void {', typeRef: '(wa: string) => void' } : {}),
+  });
+
+  it('outline entries, refs targets, and search hits render the symbol hover metadata', () => {
+    const index = mkDoc([signed(true)]);
+    // file outline: detail + typeRef survive the projection (hover signature)
+    const [entry] = fileSymbols(index, 'a.ts').symbols;
+    expect(entry).toBeDefined();
+    expect(entry.symKey).toBe(7);
+    expect(entry.kind).toBe(SymbolKind.Function);
+    expect(entry.detail).toBe('export function greet(wa: string): void {');
+    expect(entry.typeRef).toBe('(wa: string) => void');
+    // search hits carry the same signature
+    const [hit] = search(index, 'greet');
+    expect(hit.kind).toBe(SymbolKind.Function);
+    expect(hit.detail).toBe('export function greet(wa: string): void {');
+    // refs answers name the target's kind + detail
+    const view = refsOf(index, 'sym:a#greet');
+    expect(view.kind).toBe(SymbolKind.Function);
+    expect(view.detail).toBe('export function greet(wa: string): void {');
+  });
+
+  it('legacy rows without detail keep the additive fields absent', () => {
+    const index = mkDoc([signed(false)]);
+    const [entry] = fileSymbols(index, 'a.ts').symbols;
+    expect(entry.detail).toBeUndefined();
+    expect(entry.typeRef).toBeUndefined();
+    expect(search(index, 'greet')[0].detail).toBeUndefined();
+    const view = refsOf(index, 'sym:a#greet');
+    expect(view.kind).toBe(SymbolKind.Function); // kind is always on the row
+    expect(view.detail).toBeUndefined();
+  });
+});
+
 describe('HTTP surface (Phase 5 endpoints)', () => {
   function requestJson(port: number, path: string, method: string): Promise<{ status: number; body: Record<string, unknown> }> {
     return new Promise((resolveP, reject) => {
@@ -400,14 +464,18 @@ describe('HTTP surface (Phase 5 endpoints)', () => {
 
       const search = await getJson(port, `/search?q=${encodeURIComponent('findMasterByWa')}`);
       expect(search.status).toBe(200);
-      const results = (search.body as { results: Array<{ symId: string; match: string }> }).results;
+      const results = (search.body as { results: Array<{ symId: string; match: string; detail?: string }> }).results;
       expect(results[0].match).toBe('name');
       expect(results.some((r) => r.symId === FINDBYWA)).toBe(true);
+      const hit = results.find((r) => r.symId === FINDBYWA)!;
+      expect(hit.detail).toBeTruthy(); // row-9 read surface: hover signature rides the hit
 
       const refs = await getJson(port, `/refs?symId=${encodeURIComponent(FINDBYWA)}`);
       expect(refs.status).toBe(200);
-      const total = (refs.body as { references: unknown[] }).references.length;
-      expect(total).toBeGreaterThan(0);
+      const refsBody = refs.body as { references: unknown[]; kind?: number; detail?: string };
+      expect(refsBody.references.length).toBeGreaterThan(0);
+      expect(typeof refsBody.kind).toBe('number');
+      expect(refsBody.detail).toBeTruthy();
 
       const missing = await getJson(port, `/refs?symId=${encodeURIComponent('sym:nope')}`);
       expect(missing.status).toBe(404);
@@ -434,6 +502,9 @@ describe('HTTP surface (Phase 5 endpoints)', () => {
       const ov = outline.body as { fileFound: boolean; symbols: Array<{ id: string }> };
       expect(ov.fileFound).toBe(true);
       expect(ov.symbols.some((s) => s.id === FINDBYWA)).toBe(true);
+      const oe = (outline.body as { symbols: Array<{ id: string; detail?: string; typeRef?: string }> }).symbols.find((s) => s.id === FINDBYWA);
+      expect(oe?.detail).toBeTruthy(); // row-9 read surface: outline entries carry the hover signature
+      expect(oe?.typeRef).toBeTruthy();
 
       const noParam = await getJson(port, '/symbols');
       expect(noParam.status).toBe(400);

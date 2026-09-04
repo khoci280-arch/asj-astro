@@ -322,6 +322,13 @@ export interface RefView {
   found: boolean;
   symId: string;
   name: string;
+  /** Schema kind of the target symbol (row-9 read-surface rendering — the
+   * refs answer names its hover metadata like /resolve does). Absent on the
+   * not-found view. */
+  kind?: number;
+  /** Short signature of the target's declaration (hover metadata; absent on
+   * symbols without one and on legacy snapshots). */
+  detail?: string;
   file: string;
   decls: Array<{ uri: string; l: number; c: number }>;
   /** Files importing this symbol (specifier decl positions) - ImportBinding
@@ -361,6 +368,8 @@ export function refsOf(index: QueryIndex, symId: string): RefView {
     found: true,
     symId: sym.id,
     name: sym.name,
+    kind: sym.kind,
+    ...(sym.detail !== undefined ? { detail: sym.detail } : {}),
     file: path,
     decls: declView(index, sym),
     references,
@@ -422,6 +431,8 @@ export function refsOfLib(index: QueryIndex, target: LibTarget): RefView {
     found: true,
     symId: `lib:${target.libIdx}:${target.libName}`,
     name: target.libName.split('.').pop() ?? target.libName,
+    ...(target.kind !== undefined ? { kind: target.kind } : {}),
+    ...(target.detail !== undefined ? { detail: target.detail } : {}),
     file: target.libPath,
     decls: target.decl !== undefined ? [{ uri: target.libPath, l: target.decl.line, c: target.decl.char }] : [],
     references: target.sites.map((z) => ({
@@ -838,6 +849,10 @@ export interface SearchHit {
   name: string;
   qualified: string;
   kind: number;
+  /** Short signature of the declaration (row-9 read-surface rendering — a
+   * hit answers hover with the same signature /resolve shows). Absent on
+   * symbols without one and on legacy snapshots. */
+  detail?: string;
   file: string;
   /** match class — also the primary ranking key (see search()). */
   match: 'name' | 'qualified' | 'id';
@@ -899,7 +914,15 @@ function searchCands(index: QueryIndex, q: string): SearchCand[] {
     else continue;
     const file = pathOf(index, s.fileIdx);
     cands.push({
-      hit: { symId: s.id, name: s.name, qualified: s.qualified, kind: s.kind, file, match: pri <= 1 ? 'name' : pri === 2 ? 'qualified' : 'id' },
+      hit: {
+        symId: s.id,
+        name: s.name,
+        qualified: s.qualified,
+        kind: s.kind,
+        ...(s.detail !== undefined ? { detail: s.detail } : {}),
+        file,
+        match: pri <= 1 ? 'name' : pri === 2 ? 'qualified' : 'id',
+      },
       pri,
       key: s.key,
     });
@@ -1031,12 +1054,14 @@ export function cyclesOf(index: QueryIndex, file?: string): CyclesView {
 /**
  * A dump symbol row projected for the file outline. Derived from DumpSymbol so
  * the two cannot drift: drops fileIdx (implied by the response) plus the
- * ranking/type metadata (modifiers, centrality, typeRef, detail); `key` is
- * renamed `symKey` — the join vocabulary of the query API.
+ * ranking state (modifiers, centrality); `key` is renamed `symKey` — the join
+ * vocabulary of the query API. The hover signature fields (typeRef, detail)
+ * are carried: an outline entry answers hover with the same signature
+ * /resolve shows (row-9 read-surface rendering).
  */
 export type FileSymbolEntry = Omit<
   DumpSymbol,
-  'key' | 'fileIdx' | 'modifiers' | 'centrality' | 'typeRef' | 'detail'
+  'key' | 'fileIdx' | 'modifiers' | 'centrality'
 > & { symKey: number };
 
 export interface FileSymbolsView {
@@ -1075,7 +1100,7 @@ export function fileSymbols(index: QueryIndex, file: string): FileSymbolsView {
     .slice()
     .sort((a, b) => byLine(a) - byLine(b) || byChar(a) - byChar(b))
     .map((s) => {
-      const { key, fileIdx: _fi, modifiers: _m, centrality: _c, typeRef: _t, detail: _d, ...rest } = s;
+      const { key, fileIdx: _fi, modifiers: _m, centrality: _c, ...rest } = s;
       return { symKey: key, ...rest };
     });
   const surface = index.surfaceByFile.get(hit.idx);
