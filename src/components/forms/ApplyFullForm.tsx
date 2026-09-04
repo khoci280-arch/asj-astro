@@ -146,7 +146,7 @@ export default function ApplyFullForm() {
     if (form.email) { var ve = validate(emailSchema, form.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
     setLoading(true);
     try {
-      // 1) Upload all files to Cloudinary first (pipeline: validate -> Cloudinary -> send URL)
+      // 1) Upload files to Cloudinary first (pipeline: validate -> Cloudinary -> send URL)
       const fileUrls: Record<string, string> = {};
       for (const [key, u] of Object.entries(uploads)) {
         if (u.file) {
@@ -154,18 +154,36 @@ export default function ApplyFullForm() {
           fileUrls[key] = await uploadToCloudinary(u.file);
         }
       }
-      // 2) Send URLs to backend
+      // 2) Parity fix (2026-09-04): backend submitApply expects a FLAT payload
+      // with photoFile/cvFile/jftFile/sswFile URL keys (not a nested fileUrls
+      // map) and used to be posted to the wrong action/submitFormPelamar stub.
       const token = authStore.get().sessionToken;
-      const payload = { ...form, fileUrls };
-      const res = await fetch(getEndpoint('cekDataPelamar'), {
+      const payload = {
+        job: form.job,
+        bidang: form.bidang,
+        wa: form.wa,
+        nama: form.nama,
+        email: form.email,
+        gender: form.gender,
+        usia: form.usia,
+        tb: form.tb,
+        bb: form.bb,
+        photoFile: fileUrls['photo'] || null,
+        cvFile: fileUrls['cv'] || null,
+        jftFile: fileUrls['jft'] || null,
+        sswFile: fileUrls['ssw'] || null,
+        extraFiles: [],
+      };
+      const res = await fetch(getEndpoint('submitApply'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ action: 'submitFormPelamar', payload: [payload] }),
+        body: JSON.stringify({ action: 'submitApply', payload: [payload] }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.success) {
         setSuccess(true);
       } else {
-        showToast(t('apply.error_submit'), 'error');
+        showToast(data.message || t('apply.error_submit'), 'error');
       }
     } catch (e) {
       showToast(t('apply.error_submit') + ' ' + (e as Error).message, 'error');

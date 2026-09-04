@@ -662,3 +662,33 @@ bandingkan fitur/modal/pipeline data sbg referensi menuju **100% produksi**.
 
 ---
 
+# 🔄 HANDOVER Sesi 2026-09-04 (6) — Parity QA per halaman (apply/master/ai-cv/siswa)
+
+**Branch:** `dev` · QA sesuai checklist §6 referensi parity thd deep-doc legacy.
+
+## Temuan struktural (verifikasi kode)
+- Dispatcher backend = JSON + field `action` saja; form Astro yg kirim raw FormData TANPA
+  action → no-op "pong" HTTP 200 (false-success). Terkena: MasterFullForm.save,
+  AiCvForm.saveToDatabase, SiswaBaruForm.handleSubmit.
+- `surfaces/docs.ts` menyandera submitApply/berkas/kandidat/download sbg NOT_IMPL padahal
+  handler ada di contexts/documents → alur lamaran/dokumen tak reachable via HTTP.
+- ApplyFullForm submit salah action (submitFormPelamar stub) + payload nested salah.
+
+## Fixed sesi ini (3 file, BELUM di-commit)
+- `surfaces/docs.ts` — wire 6 action ke handler nyata (shareData tetap stub → butuh token).
+- `surfaces/register.ts` — normalisasi payload submitDaftarSiswa (objek|array).
+- `ApplyFullForm.tsx` — submit action `submitApply` + payload flat (photoFile/cvFile/jftFile/
+  sswFile) + parse `data.success`.
+
+## Delta tersisa (tercatat di docs/PARITY_QA_2026-09-04.md + salinan legacy docs/)
+- siswa: chat endpoint 404 (ke register, harus ai-chat) + save no-op → kontrak siap (S1+S3).
+- master: save no-op (FormData) → bangun payload flat + Cloudinary → submitMasterForm JSON.
+- ai-cv: save no-op; tentukan submitDataAsj + mapping 70+ field (terbesar).
+- apply polish: old* refill, syarat dokumen dari server, draft localStorage.
+
+## Verifikasi
+- `npm run typecheck` exit 0 · suite backend **23 file / 216 test** hijau.
+- BELUM QA browser (perangkat/akun); kontrak handler diverifikasi via bacaan kode.
+
+---
+

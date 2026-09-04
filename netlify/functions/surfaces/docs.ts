@@ -1,8 +1,15 @@
 /**
  * surfaces/docs.ts — Document upload/download surface
  *
- * Handles: getUploadUrls, cekDataPelamar
- * Auth: Required (session check already in handlers)
+ * Handles: getUploadUrls, cekDataPelamar, submitApply, kandidat/berkas/revisi
+ * uploads, downloadJobDocs
+ * Auth: Required (session check already in handlers); submitApply is public.
+ *
+ * Parity wiring (2026-09-04): these actions previously fell through to
+ * NOT_IMPL stubs while the real handlers existed in contexts/documents — the
+ * public apply + candidate document + admin ZIP flows were unreachable over
+ * HTTP. shareData stays NOT_IMPL until the share viewer is gated behind a
+ * per-job token (see docs/LEGACY_PARITY_REFERENCE.md P1).
  */
 import * as documents from '../contexts/documents';
 
@@ -11,15 +18,16 @@ const NOT_IMPL = { success: false, message: 'Fungsi ini belum diimplementasi di 
 export const DOCS_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   getUploadUrls: (payload, sessionToken) => documents.handleGetUploadUrls(payload, sessionToken),
   cekDataPelamar: (payload, sessionToken) => documents.handleCekDataPelamar(payload, sessionToken),
-  // The actions below were stub-only (throw NOT_IMPLEMENTED). Inlined to
-  // remove the dead actions-upload/actions-master/actions-download modules.
+  submitApply: (payload, sessionToken) => documents.handleSubmitApply(payload),
+  getExistingCandidateJsonByWa: (payload, sessionToken) => documents.handleGetExistingCandidateJsonByWa(payload, sessionToken),
+  simpanKandidatDanUpload: (payload, sessionToken) => documents.handleSimpanKandidatDanUpload(payload, sessionToken),
+  simpanBerkasTahapan: (payload, sessionToken) => documents.handleSimpanBerkasTahapan(payload, sessionToken),
+  simpanRevisiKandidat: (payload, sessionToken) => documents.handleSimpanRevisiKandidat(payload, sessionToken),
+  downloadJobDocs: (payload, sessionToken) => documents.handleDownloadJobDocs(payload, sessionToken),
+  // No handler in the rebuild yet — keep stubs (legacy-only names / pending
+  // share-token gate):
   isJobRequiresCv: async () => NOT_IMPL,
-  submitApply: async () => NOT_IMPL,
   submitFormPelamar: async () => NOT_IMPL,
-  getExistingCandidateJsonByWa: async () => NOT_IMPL,
   simpanBiodataLengkap: async () => NOT_IMPL,
-  simpanKandidatDanUpload: async () => NOT_IMPL,
-  simpanBerkasTahapan: async () => NOT_IMPL,
-  simpanRevisiKandidat: async () => NOT_IMPL,
-  downloadJobDocs: async () => NOT_IMPL,
+  shareData: async () => NOT_IMPL,
 };
