@@ -375,7 +375,7 @@ export interface IndexStats {
   symbolCount: number;
   referenceCount: number;
   unresolvedCount: number;
-  stageMs: { discover: number; parse: number; resolve: number; bind: number; commit: number };
+  stageMs: { discover: number; parse: number; resolve: number; bind: number; commit: number; deep: number };
   memoryBytes: number;
 }
 

@@ -51,6 +51,9 @@ export default defineConfig({
           // Code index (docs/CODE_INDEX_DESIGN.md). pool: 'threads' is required
           // on Windows — same hang lesson as the backend project above.
           name: 'indexer',
+          // Real-tree suites (buildIndex now runs the checker-backed deep
+          // tier, ~2-9 s per build) need more than the 5 s vitest default.
+          testTimeout: 60000,
           environment: 'node',
           pool: 'threads',
           include: ['indexer/**/*.test.ts'],

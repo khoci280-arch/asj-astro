@@ -87,7 +87,7 @@ Five stages. Stages 1–2 are per-file and embarrassingly parallel; 3–5 are gl
 This is what runs on every keystroke-scale change. Cost is linear in file size and roughly
 1/10th of a checker-backed pass.
 
-**Tier 2 — light type-guided member binding (shipped, 2026-09-04), deep checker-backed program (design).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 member refs bound on this tree, compiler-verified (validate run: 21,446/21,446, 0 disagreements; §13). The design's checker-backed full program (`ts.createProgram` per resolution universe) remains the deep tier for lib binding (`lib-not-loaded`), cross-file declaration merging, and `detail`/hover strings (§9.1, §13).
+**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, compiler-verified (validate run: 22,495/22,495, 0 disagreements; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; what remains is lib binding (`lib-not-loaded`, needs lib tables) and `detail`/hover strings (§9.1, §13).
 (`src` universe and `netlify` universe share `shared/`), reused incrementally via
 `ts.createIncrementalProgram` / `oldProgram`. Used for:
 - resolving `export { _mapForm as mapForm }` and multi-hop barrel chains
@@ -776,7 +776,7 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
-| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`), binder-owned policy in bind.ts (`tryTypedMember`/`memberOf`/`memberSymIn`), 252 member refs bound on this tree (L1Cache.store, Kandidat.wa, `this.` chains, heritage, enums, namespaces, factory-return types, constructor parameter properties, multi-hop chains), differential validation extended to check every bound Property ref against the compiler (21,446/21,446, 0 disagreements); the checker-backed full program (lib binding, merging, hovers) is the open remainder — §13 |
+| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs bound on this tree, differential validation **22,495/22,495, 0 disagreements**; open remainder: lib tables for `lib-not-loaded` binding and `detail`/hover strings — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
@@ -957,22 +957,23 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
 - the full run builds a per-file identifier position index (one walk per file)
   — a per-occurrence walk would be quadratic at ~24k occurrences.
 
-**Full-inventory results (246 files, 24,134 bindable occurrences, ~5.6 s):**
+**Full-inventory results (247 files, 25,341 bindable occurrences incl. deep refs):**
 
-- agreement **21,442/21,442 (100%)** (Tier 2 landed 2026-09-04: the universe
+- agreement **22,495/22,495 (100%)** (Tier 2 landed 2026-09-04: the universe
   now includes every bound Property ref — type-guided member binds and
   namespace-member chases are compiler-checked like all other refs);
 - disagreements **0** — no bound-but-unbound, no name mismatch, no
   false-positive, no offset mismatch. **No genuine binder bugs were exposed**
   by the full run; the Phase-4 curation paid off, so no fix-tests were needed;
 - deliberate deviations, classified not forced to zero:
-  - `lib-not-loaded` 2,815 — the compiler confirms 2,814 bind lib symbols
+  - `lib-not-loaded` 2,846 — the compiler confirms 2,845 bind lib symbols
     (classification validated); the 1 exception is `Astro` (BaseLayout.astro),
     a framework global with no lib declaration;
-  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 16,071 —
+  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 15,018 —
     recorded, never scope-bound by design (§4.3, member access is Tier 2);
-    bound Property refs are NOT skipped: they join the universe and must agree
-    with the compiler (they do — see the agreement line above);
+    bound Property refs (light-tier + the deep tier's 1,049 checker joins) are
+    NOT skipped: they join the universe and must agree with the compiler (they
+    do — see the agreement line above);
   - lowercase JSX intrinsics (`<div>` …) 1,878.
 
 Scope note: comparison is **name-level** — it proves the compiler binds *a*
@@ -980,7 +981,8 @@ symbol with the same name at the offset, which is blind to same-name shadowing
 (binder picking a different declaration of the same name). Declaration-identity
 comparison (decl file + offset) is the natural hardening next step.
 `validate.test.ts` (2 tests) locks the sample-mode harness at zero
-disagreements — 61 indexer tests total.
+disagreements — 158 indexer tests total (13 files, incl. the 4-test
+deep-tier suite).
 
 ### Phase 5 shipped — read side: `idx dump` + `idx serve` + query layer (2026-09-03)
 
@@ -1049,10 +1051,13 @@ match the pipeline's one coordinate space (§8 note): line 1-based, char a
 
 **Measured on this tree, 2026-09-03** (snapshot numbers drift as the repo grows):
 
-- snapshot cold start — node boot + 8.8 MB dump parse + QueryIndex build +
-  listening: **~425 ms**; live-build `serve` to listening: **~987 ms**;
-- 246 files · 9,276 symbols · 21,314 bound refs · 11,032 symbol edges · 964 import edges ·
-  2,822 unresolved total (2,820 ref-level + 2 imports); dump ~8.8 MB compact,
+- snapshot cold start — node boot + dump parse + QueryIndex build + listening:
+  **~425 ms** (unchanged — `serve --snapshot` never runs the pipeline);
+  live-build `serve` to listening: **~4.5 s** with the default deep tier
+  (light ~0.6 s + deep ~3.5 s; `idx watch` generations stay light-only);
+- 247 files · 9,263 symbols · 22,495 bound refs (21,446 light + 1,049 deep) ·
+  10,919 symbol edges · 1,005 import edges (incl. 49 astro Renders);
+  2,848 unresolved total (2,846 ref-level + 2 imports); dump ~8.8 MB compact,
   byte-identical across runs, zero dangling joins;
 - `idx dump` joins: ref `symKey` / edge `target` → `symbols[].key`; `fileIdx` →
   `files[].idx`; export entries carry `symKey` (or `localName`/`targetName` per
@@ -1630,7 +1635,45 @@ violation counts unchanged (11).
   and are not listed (ReExports edges are skipped by the chase).
 
 
-### Deep-tier prototype: checker-backed member fallback measured (2026-09-04)
+### Deep tier SHIPPED: checker-backed member tier wired into buildIndex (2026-09-05)
+
+Row 9's "checker-backed program" remainder is now a real tier: `buildIndex`
+defaults `{ deep: true }` and after the light chase runs `deepMemberBind`
+(deep-tier.ts): for every light-unbound Property occurrence it asks a
+`ts.createProgram` over the inventory what the receiver binds to, and emits a
+ref **only** when the compiler's declaration maps 1:1 onto an indexed symbol
+(exact decl-offset join) and the member name matches — never a guess. Emitted
+refs carry `resolvedVia: 'type'` + the additive `deep: true` flag (legacy
+snapshots load unchanged; dump round-trip pinned in deep-tier.test.ts).
+
+Real effect on this tree: **1,049 deep refs** (total refs 22,495 = 21,446
+light + 1,049 deep) — the interface-field read families the light tier could
+not reach when the receiver's static type arrives through untraced paths:
+`SessionPayload.role` ×26, `FormRawRow.id` ×26, `AuthState.sessionToken` ×19,
+`AI_ACTIONS` ×16, `Job.code` ×13, `Kandidat.wa` ×11, `ImportMeta.env` ×10
+(src/env.d.ts declares it in-tree). Differential universe extended: full run
+**22,495/22,495 (100%), 0 disagreements** — every deep ref joins the universe
+and agrees with the compiler (decl identity: match 20,827, merged-declaration
+43, alias-vs-chase 1,623, shadowing-disagreement 2 — both pre-existing
+Tier-1 reads).
+
+Cost & gating: program creation + pass ≈ **3.5 s** (stageMs.deep) vs ≈ 0.6 s
+for the whole light build, so one-shot build/serve run it by default while
+`idx watch` opts out (`{ deep: false }`) to keep generation latency; the
+tier degrades to zero refs (never throws) when no program can be built — a
+tsconfig-less root yields exactly the light surface (pinned). Architecture:
+the program machinery moved out of validate.ts into `program.ts` (one owner,
+no build → deep-tier → validate cycle); `deepTierReport` now sizes what a
+FUTURE tier could add (lib tables for the lib-or-package bucket, §9.1 — the
+remaining open remainder — and the compiler-none bucket, unreachable even
+for the checker).
+
+### ~~Deep-tier prototype~~ superseded by the shipped tier (2026-09-04)
+
+> The entry below was written while the tier was a measurement prototype.
+> The joinable bucket it measured (80 on the sample) is now emitted by
+> buildIndex itself; the report's remaining buckets size lib tables.
+
 
 `deep-tier.ts` (prototype, NOT wired into the pipeline or dump) answers the
 row-9 open remainder on the deterministic 25-file sample: for every Property
@@ -1720,6 +1763,13 @@ does not write `.to` onto parse records):
     exportTables.ts  per-file export surfaces + lazy     → ExportSurfaces + resolveExport
                     multi-hop barrel/alias resolution
     bind.ts       occurrence → refs/edges/unresolved     → refs, symbolEdges, unresolved
+    program.ts    ts.createProgram over the inventory    → program/checker/astroOffset
+                  (astro frontmatter-stripped sources;   (the ONE owner; validate.ts and
+                   shared by validate + deep tier)        deep-tier.ts consume it)
+    deep-tier.ts  checker-backed member tier (deep)      → refs with deep: true, resolvedVia
+                  (light-unbound Property occurrences     type — exact decl-offset join +
+                   resolved via the compiler; default     name match, never a guess; also
+                   ON in buildIndex, off in watch)        the deepTierReport measurement
     build.ts      orchestrates stages → BuildResult      (single owner of the pipeline;
                                                            memoized per CLI process)
 

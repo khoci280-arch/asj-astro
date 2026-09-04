@@ -1,5 +1,5 @@
 {
-  "rootDir": "F:/astro",
+  "rootDir": "E:/astro",
   "sample": [
     "src/components/ui/Icon.tsx",
     "src/components/admin/TabMail.tsx",
@@ -31,14 +31,14 @@
     "rootNames": 247,
     "options": {}
   },
-  "universe": 3887,
+  "universe": 3967,
   "counts": {
-    "agreeBound": 3402,
+    "agreeBound": 3482,
     "agreeUnresolved": 0,
     "libNotLoaded": 485,
     "libCompilerBinds": 484,
     "libCompilerNone": 1,
-    "skippedNonBindable": 2521,
+    "skippedNonBindable": 2441,
     "skippedJsxIntrinsic": 54,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
@@ -46,20 +46,20 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3355,
+    "match": 3413,
     "alias-vs-chase": 46,
-    "merged-declaration": 0,
+    "merged-declaration": 22,
     "shadowing-disagreement": 1,
     "unmappable": 0
   },
   "perFile": [
     {
       "path": "src/components/ui/Icon.tsx",
-      "universe": 17,
-      "agreeBound": 12,
+      "universe": 18,
+      "agreeBound": 13,
       "agreeUnresolved": 0,
       "lib": 5,
-      "skipped": 10,
+      "skipped": 9,
       "disagree": 0
     },
     {
@@ -73,38 +73,38 @@
     },
     {
       "path": "src/components/AuthGuard.tsx",
-      "universe": 16,
-      "agreeBound": 12,
+      "universe": 18,
+      "agreeBound": 14,
       "agreeUnresolved": 0,
       "lib": 4,
-      "skipped": 16,
+      "skipped": 14,
       "disagree": 0
     },
     {
       "path": "src/store/i18n.ts",
-      "universe": 44,
-      "agreeBound": 37,
+      "universe": 45,
+      "agreeBound": 38,
       "agreeUnresolved": 0,
       "lib": 7,
-      "skipped": 25,
+      "skipped": 24,
       "disagree": 0
     },
     {
       "path": "src/store/userStore.ts",
-      "universe": 107,
-      "agreeBound": 107,
+      "universe": 112,
+      "agreeBound": 112,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 68,
+      "skipped": 63,
       "disagree": 0
     },
     {
       "path": "src/store/authReactive.ts",
-      "universe": 55,
-      "agreeBound": 43,
+      "universe": 61,
+      "agreeBound": 49,
       "agreeUnresolved": 0,
       "lib": 12,
-      "skipped": 46,
+      "skipped": 40,
       "disagree": 0
     },
     {
@@ -127,20 +127,20 @@
     },
     {
       "path": "src/lib/supabase.ts",
-      "universe": 9,
-      "agreeBound": 7,
+      "universe": 13,
+      "agreeBound": 11,
       "agreeUnresolved": 0,
       "lib": 2,
-      "skipped": 7,
+      "skipped": 3,
       "disagree": 0
     },
     {
       "path": "src/lib/cloudinary.ts",
-      "universe": 73,
-      "agreeBound": 53,
+      "universe": 75,
+      "agreeBound": 55,
       "agreeUnresolved": 0,
       "lib": 20,
-      "skipped": 30,
+      "skipped": 28,
       "disagree": 0
     },
     {
@@ -199,11 +199,11 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "universe": 1139,
-      "agreeBound": 1027,
+      "universe": 1141,
+      "agreeBound": 1029,
       "agreeUnresolved": 0,
       "lib": 112,
-      "skipped": 688,
+      "skipped": 686,
       "disagree": 0
     },
     {
@@ -226,20 +226,20 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "universe": 440,
-      "agreeBound": 371,
+      "universe": 462,
+      "agreeBound": 393,
       "agreeUnresolved": 0,
       "lib": 69,
-      "skipped": 250,
+      "skipped": 228,
       "disagree": 0
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "universe": 831,
-      "agreeBound": 722,
+      "universe": 861,
+      "agreeBound": 752,
       "agreeUnresolved": 0,
       "lib": 109,
-      "skipped": 701,
+      "skipped": 671,
       "disagree": 0
     },
     {
@@ -253,11 +253,11 @@
     },
     {
       "path": "netlify/functions/_lib/kernel/http.ts",
-      "universe": 139,
-      "agreeBound": 123,
+      "universe": 144,
+      "agreeBound": 128,
       "agreeUnresolved": 0,
       "lib": 16,
-      "skipped": 70,
+      "skipped": 65,
       "disagree": 0
     },
     {

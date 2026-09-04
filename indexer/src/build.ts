@@ -15,6 +15,7 @@ import type { ModuleGraph } from './graph.js';
 import { buildModuleGraph } from './graph.js';
 import { buildExportSurfaces, createExportIndex, type ExportIndex, type ExportSurfaces } from './exportTables.js';
 import { bindIndex, type BindResult } from './bind.js';
+import { deepMemberBind } from './deep-tier.js';
 import type { InitType } from './parse.js';
 import type { FileIdx, SymKey } from '../../docs/code-index-schema.js';
 import { fileIdx } from './util.js';
@@ -42,7 +43,14 @@ export interface BuildResult {
   stats: IndexStats;
 }
 
-export function buildIndex(rootDirAbs: string): BuildResult {
+export interface BuildOptions {
+  /** Checker-backed member tier (§9.1): resolves light-unbound Property
+   * occurrences through ts.createProgram (≈2.1 s on this tree). Default
+   * true; watch opts out ({ deep: false }) to keep generation latency. */
+  deep?: boolean;
+}
+
+export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildResult {
   const t0 = performance.now();
   const rootDir = rootDirAbs.replace(/\\/g, '/');
 
@@ -124,12 +132,22 @@ export function buildIndex(rootDirAbs: string): BuildResult {
   const bound = bindIndex({ symbols, scopes, occurrences, exportIndex, resolvedImports: graph.resolvedImports, resolvedReexports: graph.resolvedReexports, initTypes, typeScopes });
   const bindMs = performance.now() - t4;
 
+  // Stage 4.5: checker-backed member tier (deep, §9.1) — appends refs for
+  // light-unbound Property occurrences the compiler resolves to an indexed
+  // declaration. Degrades to zero refs when no program can be built.
+  const t45 = performance.now();
+  if ((opts.deep ?? true) === true) {
+    const deepRefs = deepMemberBind({ files, symbols, occurrences, refs: bound.refs, rootDir });
+    bound.refs.push(...deepRefs);
+  }
+  const deepMs = performance.now() - t45;
+
   const stats: IndexStats = {
     fileCount: files.length,
     symbolCount: symbols.length,
     referenceCount: bound.refs.length,
     unresolvedCount: bound.unresolved.length + graph.unresolved.length,
-    stageMs: { discover: discoverMs, parse: parseMs, resolve: resolveMs, bind: bindMs, commit: 0 },
+    stageMs: { discover: discoverMs, parse: parseMs, resolve: resolveMs, bind: bindMs, commit: 0, deep: deepMs },
     memoryBytes:
       files.length * 320 +
       symbols.length * 256 +

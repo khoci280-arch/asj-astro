@@ -226,7 +226,7 @@ async function buildGeneration(
   prevDoc: DumpDoc | null,
 ): Promise<DumpDoc> {
   const t0 = Date.now();
-  const r = buildIndex(opts.rootDir);
+  const r = buildIndex(opts.rootDir, { deep: false }); // deep tier off: generation latency (§13)
   const doc = dumpDoc(r);
   const line = commitGenerationLine(prevDoc, doc, trigger, Date.now() - t0);
   if (!line) return prevDoc ?? doc; // unchanged — no new generation

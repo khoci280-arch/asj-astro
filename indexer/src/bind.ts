@@ -55,6 +55,8 @@ export interface BoundRef {
   role: number;
   resolvedVia: 'scope' | 'import' | 'global' | 'lib' | 'type';
   usedBeforeDecl?: boolean;
+  /** Checker-backed (deep tier) — resolved via ts.createProgram, §13. */
+  deep?: boolean;
 }
 
 export interface SymbolEdge {

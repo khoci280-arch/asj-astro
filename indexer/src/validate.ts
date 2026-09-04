@@ -29,6 +29,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import ts from 'typescript';
+import { buildProgram, identifierIndex, norm } from './program.js';
 import { buildIndex, type BuildResult } from './build.js';
 import type { BoundRef } from './bind.js';
 import { splitAstroFrontmatter } from './parse.js';
@@ -46,7 +47,6 @@ const ROOT = process.cwd().replace(/\\/g, '/');
 const REPORT_PATH = 'indexer/validate-report.json';
 
 /** TS normalizes host paths to forward slashes on every OS (§13). */
-export const norm = (p: string): string => p.replace(/\\/g, '/');
 
 /** Deterministic sample: 12 src + 12 netlify/functions + 1 shared. */
 export const SAMPLE: readonly string[] = [
@@ -125,19 +125,6 @@ interface Report {
   identityExamples: DiffRow[];
 }
 
-/**
- * One pass per file: identifier start-offset → node. The full-inventory run
- * queries ~40k occurrences, so a per-occurrence walk would be quadratic.
- */
-export function identifierIndex(sf: ts.SourceFile): Map<number, ts.Identifier> {
-  const map = new Map<number, ts.Identifier>();
-  const visit = (n: ts.Node): void => {
-    if (ts.isIdentifier(n)) map.set(n.getStart(sf), n);
-    ts.forEachChild(n, visit);
-  };
-  visit(sf);
-  return map;
-}
 
 /**
  * Name the compiler binds at an identifier, or undefined if nothing binds it.
@@ -266,43 +253,6 @@ function makeIdentityComparator(
   return { keyToSym, classify, example };
 }
 
-export function buildProgram(r: BuildResult, rootDir: string): { program: ts.Program; checker: ts.TypeChecker; astroOffset: Map<string, number> } {
-  const tsconfigPath = join(rootDir, 'tsconfig.json');
-  const cfg = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
-  if (cfg.error) throw new Error(`tsconfig read failed: ${JSON.stringify(cfg.error)}`);
-  // allowNonTsExtensions: without it createProgram drops root files whose
-  // extension is unknown — i.e. every .astro file (§13 differential validation).
-  const parsed = ts.parseJsonConfigFileContent(
-    cfg.config,
-    ts.sys,
-    rootDir,
-    { noEmit: true, skipLibCheck: true, allowJs: true, allowNonTsExtensions: true },
-    tsconfigPath,
-  );
-
-  const rootNames = r.files.map((f) => join(rootDir, f.path));
-  const defaultHost = ts.createCompilerHost(parsed.options, true);
-  const astroOffset = new Map<string, number>();
-  const astroPaths = new Set(r.files.filter((f) => f.lang === 'astro').map((f) => norm(join(rootDir, f.path))));
-
-  const host: ts.CompilerHost = {
-    ...defaultHost,
-    getSourceFile(fileName: string, languageVersion: ts.ScriptTarget): ts.SourceFile | undefined {
-      if (astroPaths.has(norm(fileName))) {
-        const content = readFileSync(fileName, 'utf8');
-        const fm = splitAstroFrontmatter(content);
-        const text = fm ? fm.text : '';
-        astroOffset.set(norm(fileName), fm ? fm.offset : 0);
-        return ts.createSourceFile(fileName, text, languageVersion, true, ts.ScriptKind.TS);
-      }
-      return defaultHost.getSourceFile(fileName, languageVersion);
-    },
-  };
-
-  const program = ts.createProgram({ rootNames, options: parsed.options, host });
-  return { program, checker: program.getTypeChecker(), astroOffset };
-}
-
 /**
  * Run differential validation over a set of target files and return the report.
  * Default targets: the full inventory; `opts.sampleOnly` opts back into the
@@ -330,7 +280,7 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     unByFile.set(u.fileIdx, list);
   }
 
-  const { program, checker, astroOffset } = buildProgram(r, rootDir);
+  const { program, checker, astroOffset } = buildProgram(r.files, rootDir);
 
   // Sanity: for every .astro file the program source must be byte-identical
   // to the frontmatter text parse.ts feeds the binder (same offsets, §13).

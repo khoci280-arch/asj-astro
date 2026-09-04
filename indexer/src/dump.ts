@@ -59,6 +59,8 @@ export interface DumpRef {
   resolvedVia: string;
   range: Range;
   usedBeforeDecl?: boolean;
+  /** Checker-backed member bind (deep tier). */
+  deep?: boolean;
 }
 
 export interface DumpUnresolved {
@@ -187,6 +189,7 @@ export function dumpDoc(r: BuildResult): DumpDoc {
       resolvedVia: z.resolvedVia,
       range: z.range,
       ...(z.usedBeforeDecl ? { usedBeforeDecl: true } : {}),
+      ...(z.deep ? { deep: true } : {}),
     })),
     unresolved: r.unresolvedRefs.map((u) => ({ fileIdx: u.fileIdx, name: u.name, reason: u.reason, range: u.range })),
     unresolvedImports: r.graph.unresolved.map((u) => ({ fileIdx: u.from, specifier: u.specifier, reason: u.reason })),
