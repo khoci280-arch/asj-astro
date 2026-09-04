@@ -10,6 +10,13 @@ interface Props {
   nama: string;
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Row kandidat yang SUDAH ter-dekorasi (mapCandidate + berkas/bio/
+   * applications dari getCandidatesPage) — dioper dari TabPelamar supaya
+   * modal tidak perlu fetch ulang lewat getAppData mode 'kandidat'
+   * (mode itu menolak sesi admin → modal selalu tampil kosong).
+   */
+  candidate?: Record<string, any> | null;
 }
 
 interface CandidateData {
@@ -42,54 +49,101 @@ interface CandidateData {
   bio?: Record<string, string>;
 }
 
+// A class tag is [KELAS XX] or a bare [TAG]; [VIP] is not a class (legacy
+// js/admin_modal/cv.ts), so it never marks a candidate as an ASJ student.
+function hasClassTag(s: string): boolean {
+  const tagRe = /\[(?:KELAS\s*)?([A-Z0-9]+)\]/gi;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(s)) !== null) {
+    if (m[1].toUpperCase() !== 'VIP') return true;
+  }
+  return false;
+}
+
 function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbackWa: string): CandidateData {
+  const catatanInt = String(c.catatanInt || c.catatanInternal || '');
+  const catatanExt = String(c.catatanExt || c.catatanExternal || '');
+  const tb = c.tb ?? '';
+  const bb = c.bb ?? '';
+  // Fisik = TB/BB gabungan (legacy dossier: cv-tbbb = c.tbBb), bukan URL.
+  const fisik = c.fisik || c.tbBb || ((tb || bb) ? [tb, bb].filter(Boolean).join(' / ') : '');
   return {
     nama: c.nama || fallbackNama,
     wa: c.wa || fallbackWa,
-    idKandidat: c.idKandidat,
+    idKandidat: c.idKandidat || c.id,
     gender: c.gender,
     usia: c.usia,
-    fisik: c.fisik,
+    fisik,
     pendidikan: c.pendidikan,
-    tmplahir: c.bio?.tmplahir || c.tmplahir,
-    tgllahir: c.bio?.tgllahir || c.tgllahir,
+    tmplahir: c.bio?.tmplahir || c.tempatLahir || c.tmplahir,
+    tgllahir: c.bio?.tgllahir || c.tglLahir || c.tgllahir,
     email: c.bio?.email || c.email,
-    alamat: c.bio?.alamat || c.alamat,
-    jft: c.jft,
-    ssw: c.ssw,
+    alamat: c.bio?.alamat || c.alamat_lengkap || c.alamat,
+    // Tile JFT/SSW menampilkan NILAI teks (jftText/sswText) seperti legacy
+    // dossier (cv-jft-nilai/cv-ssw) — URL sertifikat tetap di data.berkas.
+    jft: c.jftText || c.jftNilai || '',
+    ssw: c.sswText || c.sswBidang || '',
     tahapan: c.tahapan,
     status: c.status,
-    catatanInternal: c.catatanInt || c.catatanInternal || '',
-    catatanExternal: c.catatanExt || c.catatanExternal || '',
-    isVIP: c.isVIP,
-    isSiswaASJ: c.isSiswaASJ || false,
-    foto: c.berkas?.foto || c.foto,
+    catatanInternal: catatanInt,
+    catatanExternal: catatanExt,
+    // VIP = tag [VIP] di catatan internal (legacy isVipCatatan); KELAS/tag
+    // lain = Siswa ASJ. [VIP] BUKAN tag kelas.
+    isVIP: /\[VIP\]/i.test(catatanInt),
+    isSiswaASJ: !!c.isSiswaASJ || hasClassTag(catatanInt),
+    foto: c.berkas?.foto || c.pasPhoto || c.foto || '',
     applications: c.applications || [],
     berkas: c.berkas || {},
     bio: c.bio || {},
   };
 }
 
-export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Props) {
+export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candidate }: Props) {
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [catatanInternal, setCatatanInternal] = useState('');
   const [catatanExternal, setCatatanExternal] = useState('');
   const [isVIP, setIsVIP] = useState(false);
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
+  // Row yang sudah ter-dekorasi (dari getCandidatesPage) — kalau ada, tidak
+  // perlu fetch sama sekali (fix: getAppData mode 'kandidat' menolak sesi
+  // admin, jadi modal lama selalu kosong saat dibuka dari TabPelamar).
+  const seed =
+    candidate && typeof candidate === 'object' && Object.keys(candidate).length > 0
+      ? candidate
+      : null;
+
   useEffect(() => {
-    if (!isOpen || !wa) return;
+    if (!isOpen) return;
     const controller = new AbortController();
+    const apply = (c: Record<string, any>) => {
+      const mapped = mapApiToCandidate(c, nama, wa);
+      setData(mapped);
+      setCatatanInternal(mapped.catatanInternal ?? '');
+      setCatatanExternal(mapped.catatanExternal ?? '');
+      setIsVIP(mapped.isVIP ?? false);
+    };
+    if (seed) {
+      apply(seed);
+      return () => controller.abort();
+    }
+    if (!wa) {
+      setData({ nama, wa, applications: [] });
+      return () => controller.abort();
+    }
+    // Fallback (pemanggil lain yang hanya punya WA): getExistingCandidateJsonByWa
+    // — di-guard isOwnerOrAdmin di backend, jadi aman untuk sesi admin.
     setLoading(true);
     setData(null);
     const sessionToken = authStore.get().sessionToken || '';
-    fetch(getEndpoint('getAppData'), {
+    fetch(getEndpoint('getExistingCandidateJsonByWa'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'getAppData',
-        args: ['kandidat', wa],
+        action: 'getExistingCandidateJsonByWa',
+        args: [wa],
         sessionToken,
       }),
       signal: controller.signal,
@@ -97,12 +151,11 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
       .then(r => r.json())
       .then(d => {
         if (controller.signal.aborted) return;
-        // Backend returns candidates array; kandidat mode has exactly one entry.
-        const c = d.candidates?.[0] || d.data || {};
-        setData(mapApiToCandidate(c, nama, wa));
-        setCatatanInternal(c.catatanInt || c.catatanInternal || '');
-        setCatatanExternal(c.catatanExt || c.catatanExternal || '');
-        setIsVIP(!!c.isVIP || !!c.isSiswaASJ);
+        if (!d || d.success === false || !d.data) {
+          setData({ nama, wa, applications: [] });
+          return;
+        }
+        apply(d.data);
       })
       .catch(e => {
         if (e.name === 'AbortError') return;
@@ -110,13 +163,53 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [isOpen, wa]);
+  }, [isOpen, wa, seed]);
 
   if (!isOpen) return null;
 
-  const handleSaveCatatan = () => {
-    // TODO: register updateCandidateNotes action in backend
-    showToast('Fitur simpan catatan belum tersedia', 'info');
+  // Parity dengan legacy simpanCatatanCv (js/admin_modal/cv.ts): tulis ulang
+  // tag [VIP] sesuai toggle & pertahankan tag kelas ([KELAS X] / [X]), lalu
+  // simpan catatan internal + external via updateCatatanKandidat.
+  const handleSaveCatatan = async () => {
+    if (!data || !data.wa) return;
+    setSaving(true);
+    try {
+      const sessionToken = authStore.get().sessionToken || '';
+      let intNote = catatanInternal.trim();
+      if (isVIP) {
+        if (!/\[VIP\]/i.test(intNote)) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
+      } else {
+        intNote = intNote.replace(/\[VIP\]\s*/gi, '').trim();
+      }
+      // Tag kelas ([KELAS X] / [X]) TIDAK ditulis ulang otomatis: teksarea
+      // menampilkan catatan mentah (termasuk tag), jadi apa yang admin lihat
+      // adalah apa yang tersimpan — tanpa duplikasi tag diam-diam.
+      const extNote = catatanExternal.trim();
+      const res = await fetch(getEndpoint('updateCatatanKandidat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateCatatanKandidat',
+          args: [{ wa: data.wa, catatanInternal: intNote, catatanExternal: extNote }],
+          sessionToken,
+        }),
+      });
+      const out = await res.json();
+      if (out && out.success) {
+        const patched = { ...data, catatanInternal: intNote, catatanExternal: extNote, isVIP };
+        setData(patched);
+        setCatatanInternal(intNote);
+        setCatatanExternal(extNote);
+        showToast('Evaluasi catatan tersimpan.', 'success');
+        window.dispatchEvent(new CustomEvent('candidates-changed', { detail: { wa: data.wa } }));
+      } else {
+        showToast((out && out.error) || 'Gagal menyimpan catatan.', 'error');
+      }
+    } catch (e) {
+      showToast('Network error: ' + (e instanceof Error ? e.message : String(e)), 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDownloadBiodata = () => {
@@ -214,7 +307,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
                   <p class="text-white font-bold">{data.usia ? `${data.usia} Tahun` : '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Fisik (Tinggi)</span>
+                  <span class="text-[10px] text-slate-500 uppercase">TB / BB (Fisik)</span>
                   <p class="text-white font-bold">{data.fisik || '-'}</p>
                 </div>
                 <div>
@@ -339,9 +432,10 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose }: Pro
             <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-700/50">
               <button
                 onClick={handleSaveCatatan}
-                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+                disabled={saving}
+                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
               >
-                <Icon name="save" /> Simpan Evaluasi Catatan
+                {saving ? <><Icon spin name="spinner" /> Menyimpan...</> : <><Icon name="save" /> Simpan Evaluasi Catatan</>}
               </button>
               <div class="flex gap-2">
                 <a

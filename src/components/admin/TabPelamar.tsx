@@ -26,6 +26,14 @@ import Icon from '../ui/Icon';
 export default function TabPelamar() {
                         
   useEffect(() => { fetchKandidatFromAPI(); }, []);
+
+  // Refresh daftar setelah evaluasi kandidat (catatan/VIP) disimpan dari
+  // CandidateProfileModal — padanan legacy refreshDataDinamis('pelamar').
+  useEffect(() => {
+    const onCandidatesChanged = () => { fetchKandidatFromAPI(); };
+    window.addEventListener('candidates-changed', onCandidatesChanged);
+    return () => window.removeEventListener('candidates-changed', onCandidatesChanged);
+  }, []);
   const kandidat = useStore(kandidatList);
   const [rirekWa, setRirekWa] = useState("");
   const [showRirek, setShowRirek] = useState(false);
@@ -156,7 +164,7 @@ te-800">
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
                       <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> Edit</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>

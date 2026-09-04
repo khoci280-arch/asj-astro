@@ -62,7 +62,13 @@ describe('TabPelamar clock button', () => {
 
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
-        detail: { wa: '628123', nama: 'Budi' },
+        // Full decorated row ikut dikirim → CandidateProfileModal bisa render
+        // tanpa fetch (fix A02: getAppData mode 'kandidat' menolak sesi admin).
+        detail: expect.objectContaining({
+          wa: '628123',
+          nama: 'Budi',
+          candidate: expect.objectContaining({ wa: '628123' }),
+        }),
       })
     );
 

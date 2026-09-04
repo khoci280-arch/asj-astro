@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/preact';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/preact';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CandidateProfileModal from './CandidateProfileModal';
 
 const mockFetch = vi.fn();
@@ -13,22 +13,27 @@ vi.mock('../../lib/apiEndpoint', () => ({
   getEndpoint: (key: string) => `/.netlify/functions/${key}`,
 }));
 
-// Real API shape: backend returns { success, candidates: [...] }, not { data }
+// Real API shape (getCandidatesPage / mapCandidate): decorated row with flat
+// legacy fields + berkas/bio/applications, exactly like the row TabPelamar
+// passes into the modal through the showCandidateHistory event.
 const mockCandidate = {
   nama: 'REVIN ANTHONIO NOVRI ANDHI',
   wa: '6285854256720',
   idKandidat: 'ASJ00159',
   gender: 'LAKI-LAKI',
   usia: '19',
+  tb: '175',
+  bb: '70',
   tahapan: 'Baru (LULUS)',
   status: 'LULUS',
-  catatanInt: 'Kekuahan/Catatan khusus admin',
+  catatanInt: '[KELAS G] Kekuatan/Catatan khusus admin',
   catatanExt: 'Feedback untuk kandidat',
-  isVIP: true,
   isSiswaASJ: true,
+  jftText: 'A2',
+  sswText: 'SSW',
   applications: [{ code: 'UMUM', kategori: 'UMUM', status: 'LULUS' }],
-  berkas: { foto: '' },
-  bio: { email: 'revin@test.com' },
+  berkas: { ktp: 'https://x.supabase.co/ktp.pdf' },
+  bio: { tmplahir: 'Ponorogo', tgllahir: '2007-01-01', email: 'revin@test.com', alamat: 'Jl. Test 1' },
 };
 
 function expectExists(text: string | RegExp) {
@@ -41,9 +46,35 @@ describe('CandidateProfileModal', () => {
     mockFetch.mockReset();
   });
 
-  it('fetches from d.candidates[0] and renders data', async () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('renders from the passed decorated candidate row without any fetch', async () => {
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={mockCandidate}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expectExists('REVIN ANTHONIO NOVRI ANDHI');
+    expectExists('Siswa ASJ');
+    expectExists('19 Tahun');
+    expectExists('LAKI-LAKI');
+    expectExists('175 / 70');
+    expectExists('A2');
+    expectExists('LULUS');
+    // Data comes from the row — no network call at all.
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('falls back to getExistingCandidateJsonByWa when no row is passed', async () => {
     mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ success: true, candidates: [mockCandidate] }),
+      json: () => Promise.resolve({ success: true, data: mockCandidate }),
     });
 
     render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
@@ -51,8 +82,17 @@ describe('CandidateProfileModal', () => {
     await waitFor(() => {
       expectExists('REVIN ANTHONIO NOVRI ANDHI');
       expectExists('Siswa ASJ');
-      expectExists('19 Tahun');
-      expectExists('LAKI-LAKI');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/.netlify/functions/getExistingCandidateJsonByWa',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'getExistingCandidateJsonByWa',
+            args: ['6285854256720'],
+            sessionToken: 'test-token',
+          }),
+        })
+      );
     });
   });
 
@@ -75,7 +115,7 @@ describe('CandidateProfileModal', () => {
     rerender(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={false} onClose={() => {}} />);
 
     // Resolve fetch — should not crash or set state
-    resolveFetch!({ json: () => Promise.resolve({ success: true, candidates: [mockCandidate] }) });
+    resolveFetch!({ json: () => Promise.resolve({ success: true, data: mockCandidate }) });
 
     // No crash = pass. The AbortError is caught silently.
     await waitFor(() => {
@@ -95,32 +135,58 @@ describe('CandidateProfileModal', () => {
     });
   });
 
-  it('does not fetch when wa is empty', () => {
+  it('does not fetch when wa is empty and no row is passed', () => {
     render(<CandidateProfileModal wa="" nama="REVIN" isOpen={true} onClose={() => {}} />);
 
-    // No fetch should be made
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('calls getAppData with correct payload', async () => {
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ success: true, candidates: [mockCandidate] }),
-    });
+  it('saves catatan internal/external + VIP tag via updateCatatanKandidat', async () => {
+    mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: true }) });
 
-    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+    const changed: string[] = [];
+    const onChanged = (e: Event) => changed.push((e as CustomEvent).detail?.wa || '');
+    window.addEventListener('candidates-changed', onChanged);
+
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={mockCandidate}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    // Seed row has no [VIP] → toggle it on, then save.
+    fireEvent.click(screen.getByText('☐ Tandai VIP'));
+    fireEvent.click(screen.getByText('Simpan Evaluasi Catatan'));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        '/.netlify/functions/getAppData',
+        '/.netlify/functions/updateCatatanKandidat',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
-            action: 'getAppData',
-            args: ['kandidat', '6285854256720'],
+            action: 'updateCatatanKandidat',
+            args: [
+              {
+                wa: mockCandidate.wa,
+                // VIP prefix added; raw textarea content kept as-is.
+                catatanInternal: '[VIP] [KELAS G] Kekuatan/Catatan khusus admin',
+                catatanExternal: mockCandidate.catatanExt,
+              },
+            ],
             sessionToken: 'test-token',
           }),
         })
       );
     });
+
+    await waitFor(() => {
+      // Row refresh signal dispatched so TabPelamar refetches.
+      expect(changed).toContain(mockCandidate.wa);
+    });
+    window.removeEventListener('candidates-changed', onChanged);
   });
 });

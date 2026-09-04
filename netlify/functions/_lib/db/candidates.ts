@@ -16,6 +16,21 @@ function mapCandidate(row: Record<string, unknown>) {
   ).replace(/\D/g, '');
   const idKandidat = toText(pick(row, ['id_kandidat', 'id', 'kandidat_id', 'uid']));
   const catatanInt = toText(pick(row, ['catatan_internal', 'catatan_int']));
+  // Single source of truth for ASJ student status — legacy semantics
+  // (js/admin_modal/cv.ts): a class tag is [KELAS XX] or a bare [TAG];
+  // [VIP] is NOT a class (it has its own toggle), so a VIP-only note does
+  // not mark the candidate as an ASJ student.
+  let catatanHasClassTag = false;
+  {
+    const tagRe = /\[(?:KELAS\s*)?([A-Z0-9]+)\]/gi;
+    let tagM: RegExpExecArray | null;
+    while ((tagM = tagRe.exec(catatanInt)) !== null) {
+      if (tagM[1].toUpperCase() !== 'VIP') {
+        catatanHasClassTag = true;
+        break;
+      }
+    }
+  }
   const tb = toText(pick(row, ['tb']));
   const bb = toText(pick(row, ['bb']));
   const tempatLahir = toText(pick(row, ['tempat_lahir', 'tempatLahir']));
@@ -46,9 +61,7 @@ function mapCandidate(row: Record<string, unknown>) {
     catatanInt,
     catatanExt: toText(pick(row, ['catatan_external', 'catatan_ext'])),
     catatan: toText(pick(row, ['catatan_admin'])),
-    // Single source of truth for ASJ student status — matches legacy
-    // isVipCatatan() pattern: [VIP], [KELAS XX], or any [TAG] format.
-    isSiswaASJ: /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(catatanInt),
+    isSiswaASJ: catatanHasClassTag,
     tahapan: toText(pick(row, ['tahapan_seleksi', 'tahapan'])),
     status: toText(pick(row, ['status_kandidat', 'status'])),
     idLoker: toText(pick(row, ['id_loker_pilihan', 'id_loker'])),

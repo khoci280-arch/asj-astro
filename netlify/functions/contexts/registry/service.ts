@@ -19,27 +19,49 @@ export async function handleUpdateCatatanKandidat(payload: unknown[], sessionTok
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   cacheClear();
-  // Support both formats:
-  // Legacy positional: [id, intNote, extNote, updatedAt]
-  // Frontend object: [{ wa, catatan }]
+  // Support both formats (parity with legacy js/admin_modal/cv.ts simpanCatatanCv):
+  //   Frontend object: [{ wa, catatan }] → catatan_admin (table note, EditCandidateModal)
+  //   Frontend object: [{ wa, catatanInternal, catatanExternal }] → evaluasi dossier
+  //   Legacy positional: [idKandidat|id, intNote, extNote, adminName?] → internal/ext
   let id: string | number | undefined;
-  let intNote = '';
+  const patch: Record<string, string> = {};
   let updatedAt: string | undefined;
   const first = payload?.[0];
   if (first && typeof first === 'object') {
-    // Frontend format: { wa, catatan }
+    // Frontend formats
     const data = first as Record<string, unknown>;
     const row = await findCandidateByWa(String(data.wa || ''));
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
     id = row.id;
-    intNote = String(data.catatan || '');
+    if (data.catatan !== undefined) patch.catatan_admin = String(data.catatan ?? '');
+    if (data.catatanInternal !== undefined) patch.catatan_internal = String(data.catatanInternal ?? '');
+    if (data.catatanExternal !== undefined) patch.catatan_external = String(data.catatanExternal ?? '');
+    if (!Object.keys(patch).length) return { success: false, error: 'Tidak ada catatan untuk disimpan.' };
   } else {
-    // Legacy positional format
-    [id, intNote, , updatedAt] = (payload || []) as [string | number | undefined, string, unknown, string | undefined];
+    // Legacy positional format — id boleh id_kandidat (ASJ#####) atau id numerik
+    const [idRaw, intNote, extNote, maybe4] = (payload || []) as unknown[];
+    if (idRaw === undefined || idRaw === null || String(idRaw).trim() === '') {
+      return { success: false, error: 'ID kandidat tidak ditemukan.' };
+    }
+    const raw = String(idRaw).trim();
+    if (/^\d+$/.test(raw)) {
+      id = raw;
+    } else {
+      const { findCandidateByIdFiltered } = await import('../../_lib/db/candidates');
+      const row = await findCandidateByIdFiltered(raw);
+      if (!row || row.id === undefined) return { success: false, error: 'Kandidat tidak ditemukan.' };
+      id = row.id;
+    }
+    patch.catatan_internal = String(intNote ?? '');
+    if (extNote !== undefined) patch.catatan_external = String(extNote ?? '');
+    // Arg ke-4 legacy = nama admin (bukan timestamp) — jangan dijadikan If-Match.
+    // Hanya arg berbentuk ISO timestamp yang dipakai optimistic locking.
+    const m4 = String(maybe4 ?? '');
+    if (/^\d{4}-\d{2}-\d{2}T/.test(m4)) updatedAt = m4;
   }
-  if (!id) return { success: false, error: 'ID kandidat tidak ditemukan.' };
+  if (id === undefined) return { success: false, error: 'ID kandidat tidak ditemukan.' };
   try {
-    await patchCandidate(String(id), { catatan_admin: intNote || '' }, updatedAt, sessionToken);
+    await patchCandidate(String(id), patch, updatedAt, sessionToken);
     return { success: true };
   } catch (e: unknown) {
     const msg = String(e instanceof Error ? e.message : e);

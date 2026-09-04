@@ -718,3 +718,22 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
 ## Next
 - C04 siswa-baru (S1+S3) → C02 master → C03 ai-cv → A02+ modal 1:1 → C06 share token.
 
+## 🔄 Sesi 2026-09-04 — Parity A02: CandidateProfileModal root-fixed
+- Crosscheck 1:1 vs legacy dossier (`khoci921/js/admin_modal/cv.ts` simpanCatatanCv + getAppData admin).
+- Temuan akar: (1) modal fetch `getAppData args=['kandidat', wa]` — backend menolak sesi ADMIN
+  (mode kandidat = self-only) → selalu tampil kosong; (2) tombol "Simpan Evaluasi" cuma toast TODO;
+  (3) updateCatatanKandidat (backend) tak pernah menulis catatan_internal/external; (4) regex tag
+  [VIP] ikut terdeteksi sbg tag kelas (badge 🎓 salah); (5) tile JFT/SSW menampilkan URL bukan nilai,
+  fisik kosong (data tbBb tidak dipakai).
+- Fix: TabPelamar kirim row ter-dekorasi getCandidatesPage lewat event `showCandidateHistory`
+  (+`candidate`) → modal render tanpa fetch; fallback fetch `getExistingCandidateJsonByWa`; simpan
+  evaluasi di-wire ke `updateCatatanKandidat` object {wa, catatanInternal, catatanExternal}; backend
+  registry handler menulis internal/ext + dukung id_kandidat (ASJ#####) positional + tetap kompat
+  {wa, catatan}→catatan_admin; tag [VIP] vs KELAS dipisah di `mapCandidate` (scan eksplisit, ganti
+  regex lookahead yang ternyata tak match tag telanjang); refresh daftar via event `candidates-changed`.
+- Verifikasi: typecheck exit 0; backend 24 file / 222 test (+1 file, +6), frontend 6 file / 48 test (+1);
+  CRLF konsisten. Belum di-commit (menumpuk dgn Sesi 6/7).
+
+## Next
+- A03 EditCandidateModal → lanjut A04... urut checklist `docs/PARITY_CHECKLIST.md`.
+
