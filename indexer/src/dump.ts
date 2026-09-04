@@ -9,9 +9,12 @@
  *   ref.fileIdx / edge.source (sourceKind "file") / importEdges.from → files[].idx
   importEdges.to (number) → files[].idx, or a module id (`ext:`/`asset:`/`unresolved:`)
  *   importEdges[].bindings[].local (named/default) → symbols[] rows of kind ImportBinding;
- * importEdges also carries row-8 astro Renders edges (EdgeType 13, specifier `<Tag>`):
- *   template component tags resolved through the frontmatter import bindings — an
- *   additive kind; loaders/validators must not assume types 3..6 only.
+ * importEdges also carries row-8 astro edges beyond the import kinds, both
+ * additive — loaders/validators must not assume types 3..6 only:
+ *   - Renders (EdgeType 13, specifier `<Tag>`): template component tags
+ *     resolved through the frontmatter import bindings;
+ *   - AstroGlob (EdgeType 15, specifier the raw glob pattern): `Astro.glob('…')`
+ *     frontmatter calls expanded into one module edge per matched file.
  * Ranges/offsets follow docs/code-index-schema.ts (1-based lines, 0-based chars).
  * `stats.stageMs` is deliberately omitted: wall-clock timings would break the
  * byte-for-byte determinism consumers rely on to hash/cache documents.
@@ -122,7 +125,8 @@ export interface DumpImportEdge {
   from: number;
   /** Target file idx, or a module id (`ext:…` / `asset:…` / `unresolved:…`). */
   to: number | string;
-  /** EdgeType constant (imports / importsType / importsDynamic / reExports). */
+  /** EdgeType constant (imports / importsType / importsDynamic / reExports,
+   * plus the additive astro kinds Renders / AstroGlob). */
   type: number;
   specifier: string;
   /** Per-binding chase data: local binding names introduced by this import

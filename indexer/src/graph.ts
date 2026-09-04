@@ -10,13 +10,18 @@
  * - Astro template tags (row 8): a capitalized `<Tag>` whose local name is
  *   bound by a frontmatter import emits a Renders module edge to that
  *   target; an unbound tag becomes an unresolved record (`template-component`).
+ * - Astro.glob calls (row-8 remainder): each frontmatter `Astro.glob('…')`
+ *   expands against the indexed inventory into one AstroGlob module edge per
+ *   matched file (the raw pattern is the specifier); a pattern that matches
+ *   no indexed file becomes an unresolved record (`astro-glob-no-match`).
  * - `resolvedImports` / `resolvedReexports` — parse-phase records with the
  *   Phase-2 resolution attached (a graph-owned copy; parse records are never
  *   mutated). Phase 4 binding chases imports and re-export sites through these.
  */
 
 import { type EdgeType, type FileIdx, EdgeType as EdgeTypeV, ImportKind, type ModuleId, type UnresolvedReason } from '../../docs/code-index-schema.js';
-import type { ExportRecord, RawImportRecord } from './parse.js';
+import { matchAstroGlobFiles } from './astroGlob.js';
+import type { AstroGlobCall, ExportRecord, RawImportRecord } from './parse.js';
 import type { ResolvedTarget, Resolver } from './resolve.js';
 
 export interface ResolvedImportRecord extends RawImportRecord {
@@ -66,6 +71,13 @@ interface GraphInput {
   exportsByFile: Map<FileIdx, ExportRecord[]>;
   /** Astro template component tags per file (scanAstroTemplateTags output). */
   templateTagsByFile?: Map<FileIdx, string[]>;
+  /** Indexed file inventory (repo-relative path + ordinal) — required to
+   * expand Astro.glob patterns into module edges. */
+  files?: ReadonlyArray<{ path: string; idx: FileIdx }>;
+  /** Astro `Astro.glob('…')` frontmatter calls per file (parse output). Each
+   * call emits one AstroGlob module edge per matched file; a pattern with no
+   * indexed match becomes an unresolved record. Requires `files`. */
+  astroGlobsByFile?: Map<FileIdx, AstroGlobCall[]>;
   filePathOf: (idx: FileIdx) => string;
   resolver: Resolver;
 }
@@ -143,6 +155,28 @@ export function buildModuleGraph(input: GraphInput): ModuleGraph {
       push(fromIdx, toId(target, rec.from), EdgeTypeV.ReExports, rec.from, rec.exportName === '*' ? [] : [rec.exportName]);
     }
     resolvedReexports.set(fromIdx, reexports);
+  }
+
+  // Astro.glob expansion (row-8 remainder): a frontmatter glob call is a
+  // wildcard module dependency — one module edge per matched file, resolved
+  // against the indexed inventory (the raw pattern is the specifier, so the
+  // wildcard stays visible to consumers). A pattern that matches no indexed
+  // file surfaces as an unresolved record — a dead or out-of-universe
+  // dependency is a real health signal, never a silent no-op. Edges carry no
+  // bindings: a glob imports whole modules, not names, so the binding chase
+  // can never claim a symbol through one of these edges.
+  if (input.astroGlobsByFile && input.files) {
+    for (const [fromIdx, calls] of input.astroGlobsByFile) {
+      const importerPath = input.filePathOf(fromIdx);
+      for (const call of calls) {
+        const hits = matchAstroGlobFiles(call.pattern, importerPath, input.files);
+        if (hits.length === 0) {
+          unresolved.push({ from: fromIdx, specifier: call.pattern, reason: 'astro-glob-no-match' });
+          continue;
+        }
+        for (const to of hits) push(fromIdx, to, EdgeTypeV.AstroGlob, call.pattern, [], []);
+      }
+    }
   }
 
   return { edges, outgoing, revDeps, unresolved, resolvedImports, resolvedReexports };

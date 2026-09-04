@@ -106,4 +106,14 @@ describe('full build', () => {
     expect(renders2.length).toBe(renders.length);
   });
 
+  it('Astro.glob expansion: zero usage on this tree (row-8 remainder)', () => {
+    // No real astro frontmatter calls Astro.glob today, so the expansion
+    // adds zero AstroGlob edges and zero astro-glob-no-match unresolveds —
+    // the feature is fixture-covered (astroGlob.test.ts), and this guards the
+    // real tree against accidental drift.
+    const r = built();
+    expect(r.graph.edges.filter((e) => e.type === 15 && typeof e.to === 'number')).toHaveLength(0);
+    expect(r.graph.unresolved.filter((u) => u.reason === 'astro-glob-no-match')).toHaveLength(0);
+  });
+
 });

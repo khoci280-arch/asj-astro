@@ -1144,10 +1144,13 @@ export interface ViolationsView {
   violations: BoundaryViolation[];
 }
 
-/** schema EdgeType (3..6, 13) → depcruise dependencyType, the kinds this index expresses. */
-const EDGE_DEP_TYPE: Record<number, string> = { 3: 'import', 4: 'type-only', 5: 'dynamic-import', 6: 'reexport' };
+/** schema EdgeType (3..6, 13, 15) → depcruise dependencyType, the kinds this
+ * index expresses. AstroGlob edges are runtime module loads resolved at build
+ * time (Vite import.meta.glob family) — the closest depcruise analogue is the
+ * dynamic-import kind. */
+const EDGE_DEP_TYPE: Record<number, string> = { 3: 'import', 4: 'type-only', 5: 'dynamic-import', 6: 'reexport', 15: 'dynamic-import' };
 /** schema EdgeType → short kind word for the violation record. */
-const EDGE_KIND: Record<number, string> = { 3: 'import', 4: 'type', 5: 'dynamic', 6: 'reexport', 13: 'renders' };
+const EDGE_KIND: Record<number, string> = { 3: 'import', 4: 'type', 5: 'dynamic', 6: 'reexport', 13: 'renders', 15: 'astro-glob' };
 
 /** Compile one rule side into a matcher: path (any-match) and pathNot (any-match = excluded). */
 function ruleSideMatcher(side: ForbidRulePath): (path: string) => boolean {

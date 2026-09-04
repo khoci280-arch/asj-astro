@@ -331,3 +331,32 @@ describe('astro template scope emission (parse level)', () => {
     expect(p.occurrences).toHaveLength(0);
   });
 });
+
+describe('Astro.glob frontmatter detection (row-8 remainder)', () => {
+  it('records string-literal Astro.glob patterns with the literal range', () => {
+    const content = "---\nconst pages = await Astro.glob('../pages/*.astro');\nconst posts = await Astro.glob('../posts/**/*.md');\n---\n<div></div>";
+    const p = parseInline(content, 'test/glob.astro', 'astro');
+    expect(p.astroGlobs?.map((g) => g.pattern)).toEqual(['../pages/*.astro', '../posts/**/*.md']);
+    const first = p.astroGlobs![0]!;
+    const litStart = content.indexOf("'../pages/*.astro'"); // the opening quote
+    expect(first.range.start).toBe(litStart);
+    expect(first.range.end).toBe(litStart + 2 + '../pages/*.astro'.length); // +2 for the quotes
+    expect(first.range.endLine).toBeGreaterThanOrEqual(first.range.startLine);
+  });
+
+  it('ignores non-literal arguments, other receivers, and non-astro files', () => {
+    const p = parseInline(
+      "---\nconst a = Astro.glob(someVar);\nconst b = Astro['glob']('../x/*.astro');\nconst c = Foo.glob('../x/*.astro');\n---\n<div></div>",
+      'test/glob-neg.astro',
+      'astro',
+    );
+    expect(p.astroGlobs).toEqual([]);
+    const t = parseInline("const a = Astro.glob('../x/*.astro');", 'test/glob.ts', 'ts');
+    expect(t.astroGlobs ?? []).toEqual([]);
+  });
+
+  it('real tree: BaseLayout frontmatter has no Astro.glob calls', () => {
+    const p = parseReal('src/layouts/BaseLayout.astro', 'astro');
+    expect(p.astroGlobs).toEqual([]);
+  });
+});

@@ -9,8 +9,11 @@
  * function, arrow, block, for, catch, switch, objectLiteral, enumBody, plus
  * the AstroTemplate scope (row 8 remainder — template interpolations resolve
  * against the frontmatter module scope).
- * Deferred (documented in CODE_INDEX_DESIGN.md §13): TypeParams scopes,
- * Astro.glob expansion, CJS export symbols beyond the export record.
+ * Deferred (documented in CODE_INDEX_DESIGN.md §13): TypeParams scopes, CJS
+ * export symbols beyond the export record. Astro.glob expansion ships with
+ * this pass: the frontmatter walk records `Astro.glob('…')` string-literal
+ * calls (AstroGlobCall) and graph.ts expands each pattern against the file
+ * inventory into AstroGlob module edges (§13).
  */
 
 import ts from 'typescript';
@@ -72,6 +75,20 @@ export type InitType =
   | { k: 'id'; t: string }
   | { k: 'cast'; t: string };
 
+/**
+ * One `Astro.glob('…')` call in an astro frontmatter (row-8 remainder —
+ * wildcard module dependencies). The string-literal argument is the pattern;
+ * graph.ts expands it against the file inventory into one module edge per
+ * matched file (an unresolved record when nothing matches). Non-literal
+ * arguments are never recorded — Astro requires a static string here.
+ */
+export interface AstroGlobCall {
+  /** The glob pattern exactly as written (relative to this file, or root when leading `/`). */
+  pattern: string;
+  /** The string-literal argument, for diagnostics/site rendering. */
+  range: Range;
+}
+
 export interface ParsedFile {
   fileIdx: FileIdx;
   path: string;
@@ -86,6 +103,8 @@ export interface ParsedFile {
   typeScopes: Array<{ scopeKey: number; symKey: SymKey }>;
   /** Astro only: capitalized component tags used in the template (builtins excluded, deduped). */
   templateTags?: string[];
+  /** Astro only: `Astro.glob('…')` frontmatter calls (expanded in graph.ts). */
+  astroGlobs?: AstroGlobCall[];
   declHash: Hash;
   exportHash: Hash;
   poisoned?: string;
@@ -140,6 +159,8 @@ interface BinderCtx {
   occurrences: Occurrence[];
   imports: RawImportRecord[];
   exports: ExportRecord[];
+  /** Astro frontmatter `Astro.glob('…')` calls (recorded in walkCall). */
+  astroGlobs: AstroGlobCall[];
   initTypes: Array<{ key: SymKey; types: InitType[] }>;
   typeScopes: Array<{ scopeKey: number; symKey: SymKey }>;
   scopeStack: ScopeFrame[];
@@ -923,6 +944,28 @@ function classifyInitializer(ctx: BinderCtx, n: ts.Expression): InitType[] {
 }
 
 function walkCall(ctx: BinderCtx, n: ts.CallExpression): void {
+  // Astro.glob('../pages/*.astro') — a wildcard module dependency over the
+  // indexed files (row-8 remainder): record the pattern here; graph.ts
+  // expands it into module edges. Only the frontmatter form counts (the Astro
+  // global exists per component), and only a static string literal is a
+  // pattern — Astro rejects dynamic arguments at compile time. The generic
+  // walk below still runs, so the `Astro` base keeps its normal occurrence
+  // (it graduates to astro's AstroGlobal through the lib tier).
+  if (
+    ctx.lang === 'astro' &&
+    n.arguments.length >= 1 &&
+    n.arguments[0].kind === ts.SyntaxKind.StringLiteral &&
+    ts.isPropertyAccessExpression(n.expression) &&
+    ts.isIdentifier(n.expression.expression) &&
+    n.expression.expression.text === 'Astro' &&
+    n.expression.name.text === 'glob'
+  ) {
+    const lit = n.arguments[0] as ts.StringLiteral;
+    ctx.astroGlobs.push({
+      pattern: lit.text,
+      range: makeRange(ctx.lineIndex, ctx.offset + lit.getStart(ctx.sf), ctx.offset + lit.getEnd()),
+    });
+  }
   // Dynamic import(...)
   if (n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments.length === 1 && n.arguments[0].kind === ts.SyntaxKind.StringLiteral) {
     const spec = (n.arguments[0] as ts.StringLiteral).text;
@@ -1332,6 +1375,7 @@ function newCtx(input: ParseFileInput, sf: ts.SourceFile, offset: number, lineIn
     occurrences: [],
     imports: [],
     exports: [],
+    astroGlobs: [],
     initTypes: [],
     typeScopes: [],
     scopeStack: [],
@@ -1881,7 +1925,7 @@ export function parseFile(input: ParseFileInput): ParsedFile {
       if (!fm) {
         const ctx = newCtx(input, ts.createSourceFile(input.path, '', ts.ScriptTarget.Latest, true, ts.ScriptKind.TS), 0, buildLineIndex(input.content));
         const hashes = finishHashes(ctx);
-        return { fileIdx: input.fileIdx, path: input.path, symbols: [], scopes: [], occurrences: [], imports: [], exports: [], initTypes: [], typeScopes: [], templateTags: scanAstroTemplateTags(input.content, 0), ...hashes };
+        return { fileIdx: input.fileIdx, path: input.path, symbols: [], scopes: [], occurrences: [], imports: [], exports: [], astroGlobs: [], initTypes: [], typeScopes: [], templateTags: scanAstroTemplateTags(input.content, 0), ...hashes };
       }
       sf = ts.createSourceFile(`${input.path}.ts`, fm.text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
       offset = fm.offset;
@@ -1904,7 +1948,12 @@ export function parseFile(input: ParseFileInput): ParsedFile {
       exports: ctx.exports,
       initTypes: ctx.initTypes,
       typeScopes: ctx.typeScopes,
-      ...(input.lang === 'astro' ? { templateTags: scanAstroTemplateTags(input.content, offset) } : {}),
+      ...(input.lang === 'astro'
+        ? {
+            templateTags: scanAstroTemplateTags(input.content, offset),
+            astroGlobs: ctx.astroGlobs,
+          }
+        : {}),
       ...hashes,
     };
   } catch (e) {

@@ -101,6 +101,10 @@ export const EdgeType = {
   Instantiates: 12,
   Renders: 13,
   References: 14,
+  /** Module edge only: `Astro.glob('…')` frontmatter calls expanded at index
+   * time into one edge per matched file (a wildcard dependency, additive
+   * like Renders — loaders must not assume types 3..6 only). */
+  AstroGlob: 15,
 } as const;
 export type EdgeType = (typeof EdgeType)[keyof typeof EdgeType];
 
@@ -264,7 +268,8 @@ export type UnresolvedReason =
   | 'export-star-ambiguous'
   | 'module-not-found'
   | 'lib-not-loaded'
-  | 'template-component';
+  | 'template-component'
+  | 'astro-glob-no-match'; // Astro.glob pattern matched no indexed file
 
 export interface UnresolvedReference {
   fileIdx: FileIdx;

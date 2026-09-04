@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import type { FileNode, IndexStats, Occurrence, ScopeNode, SymbolNode } from '../../docs/code-index-schema.js';
 import { discoverFiles, isDeniedDir, parseGitignore } from './discover.js';
-import type { ExportRecord, RawImportRecord } from './parse.js';
+import type { AstroGlobCall, ExportRecord, RawImportRecord } from './parse.js';
 import { parseFile } from './parse.js';
 import { createResolver } from './resolve.js';
 import type { ModuleGraph } from './graph.js';
@@ -87,6 +87,7 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
   const importsByFile = new Map<FileNode['idx'], RawImportRecord[]>();
   const exportsByFile = new Map<FileNode['idx'], ExportRecord[]>();
   const templateTagsByFile = new Map<FileNode['idx'], string[]>();
+  const astroGlobsByFile = new Map<FileNode['idx'], AstroGlobCall[]>();
   const initTypes = new Map<SymKey, InitType[]>();
   const typeScopes = new Map<FileIdx, Map<number, SymKey>>();
   for (const d of discovered) {
@@ -103,6 +104,7 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     exports.push(...parsed.exports);
     importsByFile.set(idx, parsed.imports);
     exportsByFile.set(idx, parsed.exports);
+    if (parsed.astroGlobs) astroGlobsByFile.set(idx, parsed.astroGlobs);
     if (parsed.templateTags) templateTagsByFile.set(idx, parsed.templateTags);
     for (const it of parsed.initTypes) {
       let arr = initTypes.get(it.key);
@@ -121,6 +123,8 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     importsByFile,
     exportsByFile,
     templateTagsByFile,
+    astroGlobsByFile,
+    files: files.map((f) => ({ path: f.path, idx: f.idx })),
     filePathOf: (idx) => files[idx as unknown as number].path,
     resolver,
   });
