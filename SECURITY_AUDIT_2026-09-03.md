@@ -106,9 +106,42 @@ Only these operations use service-role (bypassing RLS):
 | Issue | Severity | Status |
 |-------|----------|--------|
 | C3: Unauthenticated PII endpoints | HIGH | NOT FIXED |
-| C4: Missing auth on some endpoints | HIGH | NOT FIXED |
-| C5: IDOR on candidate data | MEDIUM | Partially mitigated by RLS |
-| C6: Unprotected file uploads | HIGH | NOT FIXED |
+| C4: Missing auth on some endpoints | HIGH | Partially fixed (2026-09-04 pass — see below) |
+| C5: IDOR on candidate data | MEDIUM | Mostly fixed (2026-09-04 pass — see below) |
+| C6: Unprotected file uploads | HIGH | Fixed (2026-09-04 pass — URL allow-list, see below) |
+
+**Post-audit pass (2026-09-04) — auth hardening on candidate-PII handlers:** the
+all-registrants roster (`getDaftarSiswaBaru`) is now admin-only (a kandidat
+session could previously enumerate every registrant's name/address); the
+legacy/AI bridge minters (`generateLegacyMasterBridge`,
+`generateAiFormBridge`) now require an admin session (they embed a
+candidate's WA + nama — the public `generateFormBridge` apply prefill stays
+public); the draft-CV answer (`getDrafCvMaster`) now verifies the session and
+enforces owner-or-admin BEFORE the DB read (the anonymous "limited identity"
+fallback — nama/tgl-lahir for any guessed WA — is removed); and smart
+ingestion (`processUploadDoc`) rejects a kandidat whose document names another
+WA (payload `wa` pre-download AND extracted `no_wa` post-extraction), closing
+a cross-candidate master-row write. Regression tests:
+`netlify/functions/contexts/service-auth.test.ts`. C3 (remaining public
+endpoints) stays open.
+
+**Post-audit pass 2 (2026-09-04) — C6 upload URL allow-listing:** every
+client-supplied document URL is now validated through ONE exported gate
+`_lib/storage.isAllowedDocumentUrl` (https-only + host allow-list: Supabase
+storage subdomains, Cloudinary, GCS, plus the SUPABASE_URL host and env
+`ALLOWED_DOCUMENT_HOSTS` for ops). It was already applied at the master-data
+write path (`resolveFileUrl`); it is now enforced at every other acceptance
+point: public apply (`handleSubmitApply` — photo/CV/JFT/SSW + extraFiles),
+admin candidate-save (`handleSimpanKandidatDanUpload`), berkas-tahapan
+(`handleSimpanBerkasTahapan`), revisi upload (`handleSimpanRevisiKandidat` —
+which also gained a session-WA ownership check it was missing), smart
+ingestion (`processUploadDoc` — previously only scheme-checked, so arbitrary
+https hosts incl. internal networks were downloadable), and the admin ZIP
+export (`download.ts` only fetches allow-listed stored URLs). Rejections fire
+before any DB write/download; placeholder values ('-') still pass. Tests:
+`_lib/storage.test.ts` (unit allow-list) + `contexts/service-auth.test.ts`
+(DB-free handler regressions). Legacy rows on unlisted hosts are skipped by
+the ZIP export like fetch failures.
 
 ---
 
@@ -116,7 +149,7 @@ Only these operations use service-role (bypassing RLS):
 
 ### Immediate (Before Production)
 
-1. **Fix C3/C4/C6** — Add authentication to all endpoints that access PII
+1. **Fix C3** — Add authentication to the remaining public endpoints that access PII
 2. **Add authorization checks** — Verify user identity matches requested data
 3. **Audit RLS policies** — Ensure policies properly restrict by user identity
 4. **Enable CORS restrictions** — Restrict to known domains only

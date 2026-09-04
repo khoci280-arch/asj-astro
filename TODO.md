@@ -9,7 +9,7 @@
 
 ### Security
 - [x] Audit Supabase RLS policies — ✅ Semua 15 tabel protected, anon access blocked
-- [ ] Fix IDOR vulnerabilities (CODE_REVIEW C3-C6) — endpoint tanpa auth bisa akses PII (HIGH priority)
+- [ ] Fix IDOR vulnerabilities (CODE_REVIEW C3-C6) — endpoint tanpa auth bisa akses PII (HIGH priority) — C4/C5/C6 tertutup pass 2026-09-04 (roster siswa admin-only, bridge legacy/AI admin-only, draft CV owner-or-admin, ingestion cross-WA ditolak, revisi upload scoped ke sesi, upload URL allow-list https-only di storage/documents/ingestion/download); C3 (public PII endpoints tersisa) masih terbuka
 - [ ] Rotate SESSION_SECRET jika sudah dipakai di produksi
 - [ ] Rate limiting test — pasti fungsi di Netlify multi-instance
 - [ ] CORS headers check — pastikan hanya domain yang diizinkan
@@ -94,6 +94,10 @@
 - [x] Retry + jitter + bulkhead
 - [x] Structured logging infrastructure
 - [x] Frontend architecture — 9 pages, 12 modals
+
+### 2026-09-04 Session
+- [x] Auth hardening pass (C4/C5) — roster admin-only, bridge legacy/AI admin-only, draft CV owner-or-admin, ingestion cross-WA ditolak
+- [x] C6 upload gap — https-only + storage-host allow-list (`isAllowedDocumentUrl`) di semua titik terima URL dokumen + guard WA revisi upload + download ZIP allow-list
 
 ### 2026-09-03 Session
 - [x] Fix getPath() deep traversal bug — [object Object] di CV

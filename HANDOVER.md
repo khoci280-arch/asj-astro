@@ -456,3 +456,132 @@ di-commit terpisah via hunk selection; (2) row 6 §6.2 — per-file parse reuse 
 - Commit row 6 §6.2 (file di atas) — kalau mau, review dulu: ini mengubah inti build path (walaupun additive-optional).
 - Verifikasi cepat saat iterasi fitur: jalankan HANYA test terdampak (`npx vitest run --project indexer indexer/src/<file>.test.ts`) + typecheck (~2 dtk); suite penuh 46 dtk cukup pra-commit; CI jalan `ci:quality` penuh.
 - Row 6 sisa: dirty-set bind/resolve impact half (perlu hanya kalau repo tumbuh jauh) + WS push; §8 tail opsional.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 — Backend auth endpoint hardening (audit C4/C5)
+
+**Branch:** `dev` (9 commit ahead of origin/dev) · Pivot dari roadmap indexer ke backend
+(atas permintaan user: "lanjutin backend saja, kelamaan mapping index"). Thread dipilih user:
+tutup celah auth endpoint (audit) — verifikasi dulu, fix yang benar-benar terbuka.
+
+## Hasil verifikasi
+
+Sebagian besar item CODE_REVIEW 2026-09-01 (B1-B10, S1-S11) & audit SECURITY_AUDIT 2026-09-03
+sudah tertutup refactor boundary + pass berikutnya — kode memuat komentar fix eksplisit
+("B8 fix" verifyToken di userClient, "B9 fix" log.error, "S2 fix" exp token, "S3 fix" tanpa
+fallback password, "S9 fix" CORS allow-list, "S10 fix" batas 10 MB, dll). Yang MASIH terbuka
+di jalur PII kandidat & diperbaiki di pass ini:
+
+## Perubahan (5 file, BELUM di-commit)
+
+- `contexts/registration/service.ts` — `handleGetDaftarSiswaBaru` (roster SEMUA pendaftar)
+  kini **admin-only** (sebelumnya kandidat terautentikasi bisa enumerasi PII nama/alamat
+  pendaftar lain); `handleGenerateLegacyMasterBridge` + `handleGenerateAiFormBridge` (mencetak
+  link berisi WA+nama kandidat) kini **wajib sesi admin**; `generateFormBridge` (prefill apply
+  publik dari LokerTable) tetap publik.
+- `surfaces/register.ts` — teruskan sessionToken ke dua bridge di atas.
+- `contexts/master-data/service.ts` — `handleGetDrafCvMaster` verifikasi sesi + owner-or-admin
+  SEBELUM baca DB; cabang anonim "limited identity" (nama/tgl-lahir utk WA tebakan) dihapus.
+- `contexts/ingestion/service.ts` — `handleProcessUploadDoc`: kandidat hanya boleh ingest WA
+  sendiri — cek payload `wa` sebelum download DAN cek `no_wa` hasil ekstraksi AI sebelum
+  upsert master_database_candidate (menutup tulis lintas kandidat).
+- `contexts/service-auth.test.ts` (baru) — 8 test regresi, semua rejection terjadi sebelum
+  DB/network (jalan tanpa env).
+
+## Verifikasi
+
+- `npm run typecheck` (root, termasuk netlify/functions) — bersih
+- Suite backend — **21 file / 202 test hijau** (+8 dari test baru)
+- Tidak menyentuh indexer/frontend. `.netlify-built/*` (artefak build lama ter-commit) TIDAK
+  dibangun ulang — deploy akan regenerate.
+
+## Masih terbuka (bukan scope pass ini)
+
+- C3 (audit endpoint publik PII tersisa), C6/upload URL allow-list, XSS S1/S4, S5 arbitrary
+  URL, S11 API key di query string — catat di TODO/SECURITY_AUDIT sbg NOT FIXED.
+- Prod: set SESSION_SECRET & SUPABASE_JWT_SECRET di dashboard Netlify; audit RLS produksi.
+
+## Next setelah sesi ini
+
+- Commit 5 file pass ini (`feat(backend): auth hardening ...`) atas izin; jangan push.
+- Lanjut C3/C6 atau fitur HIGH lain (notifikasi WA admin, reminder jadwal) — lihat TODO.md.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (2) — C6: upload URL allow-list + https-only
+
+**Branch:** `dev` · Sesi kedua hari yang sama, sesuai permintaan: "Close the remaining
+C6/upload gap — storage-host allow-list + https-only di setiap URL dokumen yang diterima
+di jalur documents/ingestion/storage, dengan regression tests."
+
+## Perubahan (6 file, BELUM di-commit — menumpuk dengan pass auth C4/C5 di atas)
+
+- `_lib/storage.ts` — S5 diangkat jadi C6: validator tunggal **`isAllowedDocumentUrl`**
+  diekspor (https-only + host allow-list: `supabase.co` + subdomainnya, cloudinary,
+  `storage.googleapis.com`; diperluas otomatis dengan host `SUPABASE_URL` custom domain dan
+  env `ALLOWED_DOCUMENT_HOSTS` comma-separated untuk ops). `resolveFileUrl` (jalur
+  master-data) memakainya; nilai placeholder `-` tetap lolos.
+- `contexts/documents/service.ts` — helper `badDocumentUrls` + penegakan di 4 titik terima
+  URL: `handleSubmitApply` (PAS_PHOTO/CV/JFT/SSW + extraFiles — sebelum lookup job/DB),
+  `handleSimpanKandidatDanUpload` (admin, URL string langsung), `handleSimpanBerkasTahapan`
+  (directUrl), `handleSimpanRevisiKandidat` (directUrl) — plus **guard IDOR** yang selama ini
+  hilang: payload[0] = WA target, jadi kandidat hanya boleh revisi WA sendiri (pola sama dgn
+  berkas-tahapan).
+- `contexts/ingestion/service.ts` — cek skema longgar (`startsWith http`) diganti
+  `isAllowedDocumentUrl` → SSRF ke host https arbitrer / jaringan internal tertutup.
+- `contexts/documents/download.ts` — ZIP admin hanya me-fetch URL yang lolos allow-list;
+  baris legacy di luar list di-skip seperti fetch gagal.
+- Test: `_lib/storage.test.ts` (+5 unit validator), `contexts/service-auth.test.ts` (+5
+  regresi DB-free: apply publik, berkas admin, revisi WA-scope + host, ingestion scheme &
+  host). Semua rejection sebelum DB/network.
+
+## Verifikasi
+
+- `npm run typecheck` (root) — bersih
+- Suite backend — **21 file / 212 test hijau** (+10 dari pass ini)
+- CRLF file layanan dipertahankan (0 stray LF); tidak menyentuh indexer/frontend.
+
+## Catatan
+
+- `firebasestorage.googleapis.com` **tidak** lolos otomatis (bukan subdomain
+  `storage.googleapis.com`). Kalau legacy masih menyimpan file di Firebase Storage, set
+  `ALLOWED_DOCUMENT_HOSTS=firebasestorage.googleapis.com` di env.
+- C3 (endpoint publik PII tersisa) tetap terbuka — tercatat NOT FIXED.
+- Tree saat ini menumpuk **12 file** dua pass backend (C4/C5 + C6) + 3 dokumen yang memuat
+  teks keduanya; belum ada commit backend sejak pivot dari indexer.
+
+## Next setelah sesi ini
+
+- Commit dua pass backend sebagai 1–2 commit (`feat(backend): auth hardening C4/C5` dan
+  `feat(backend): C6 upload URL allow-list`) atas izin; jangan push.
+- Lanjut C3 atau fitur HIGH lain (notifikasi WA/email, reminder jadwal) — lihat TODO.md.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (3) — Canonical pipeline reference in-repo
+
+**Branch:** `dev` · Menindaklanjuti path eksternal yang dikirim user
+(`~/.gemini/antigravity-ide/brain/<id>/ASTRO_PIPELINE_REFERENCE.md`): referensi migrasi
+Legacy → Astro v2 (Surfaces/Contexts/Kernel, Preact islands, nanostores, apiClient).
+
+## Aksi
+
+- Salinan kanonik dibuat di **`docs/ASTRO_PIPELINE_REFERENCE.md`** (LF), dengan **banner
+  status sync 2026-09-04** dan bagian Prioritas 1 diselaraskan ke keadaan kode: C4/C5/C6
+  **SELESAI** (pass auth hardening + URL allow-list 2026-09-04), **C3 masih terbuka**
+  (audit endpoint publik PII — `surfaces/public.ts`, `surfaces/docs.ts`, guard di
+  `contexts/*/service.ts`).
+- Semua path file yang dirujuk referensi (TabMail/TabJadwal/TabConfig/RirekishoBuilder,
+  apiClient, surfaces mail/schedule/config/public/docs) terverifikasi ada.
+
+## Catatan
+
+- Docs-only change — tanpa typecheck/test (tidak menyentuh kode). Belum di-commit.
+- Prioritas 2 (wiring Tab Mail/Jadwal/Config) dan Prioritas 3 (multi-template CV /
+  RirekishoBuilder dinamis) tetap jadi kandidat kerja berikutnya dari referensi ini.
+
+## Next setelah sesi ini
+
+- Commit pass backend C4/C5 + C6 (12 file) + doc ini sebagai 2–3 commit atas izin.
+- Kerjakan Prioritas 2 atau 3 dari referensi, atau C3 (audit endpoint publik).
