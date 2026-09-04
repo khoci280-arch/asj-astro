@@ -133,6 +133,14 @@ for (const file of walk(SRC)) {
   // 1. legacy classes and `icon: 'fa-foo'` data arrays
   for (const m of text.matchAll(/\bfa-([a-z0-9][a-z0-9-]*)/g)) add(m[1]);
 
+  // 1b. Hyperscript calls: h(Icon, { name: "foo", ... }) — object-literal
+  //     prop (UndanganKelasModal & legacy-style modals without JSX). Scoped
+  //     to an `Icon, { name:` pair so data objects with `name:` keys are not
+  //     mis-collected.
+  for (const m of text.matchAll(/\bIcon\s*,\s*\{\s*name:\s*(?:"([^"]*)"|'([^']*)')/g)) {
+    add((m[1] ?? m[2]).trim());
+  }
+
   // 2. <Icon name="foo" />
   for (const m of text.matchAll(/<Icon\b[^>]*?\bname=(?:"([^"]*)"|'([^']*)')/g)) {
     add((m[1] ?? m[2]).trim());

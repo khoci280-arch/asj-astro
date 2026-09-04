@@ -24,7 +24,9 @@
  *   New job types should be added to the HANDLERS map below.
  */
 
-import { claimJob, completeJob, failJob, cleanupIdempotencyKeys } from './_lib/kernel/job-queue';
+import {
+  claimJob, completeJob, failJob, recordJobResult, cleanupIdempotencyKeys,
+} from './_lib/kernel/job-queue';
 import { log } from './_lib/kernel/log';
 import type { Job } from './_lib/kernel/job-queue';
 
@@ -63,7 +65,16 @@ async function processJob(job: Job): Promise<void> {
     throw new Error(`No handler registered for job type: ${job.type}`);
   }
   log.info('sweep.processing', { jobId: job.id, type: job.type, attempt: job.attempts });
-  await handler(job.payload);
+  const result = await handler(job.payload);
+  // A06: simpan hasil handler (mis. rincian per-penerima broadcast WA) ke
+  // payload job supaya getJobStatus bisa menampilkan ringkasan akhir ke UI.
+  if (result !== undefined) {
+    try {
+      await recordJobResult(job.id, job.payload, result);
+    } catch (err) {
+      log.error('sweep.record-result-failed', { jobId: job.id, err: String(err) });
+    }
+  }
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────

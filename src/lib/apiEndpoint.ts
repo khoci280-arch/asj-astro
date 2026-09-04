@@ -69,6 +69,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   hapusWaTemplate: '/.netlify/functions/notify',
   kirimSatuPesanFonnte: '/.netlify/functions/notify',
   kirimTawaranMassal: '/.netlify/functions/notify',
+  getJobStatus: '/.netlify/functions/notify',
 
   // AI
   processAIChat: '/.netlify/functions/ai-chat',

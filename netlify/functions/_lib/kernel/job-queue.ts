@@ -127,6 +127,33 @@ export async function completeJob(jobId: string): Promise<void> {
 }
 
 /**
+ * Simpan hasil eksekusi handler ke payload job (A06 parity: undangan kelas /
+ * broadcast massal di-queue, jadi UI butuh ringkasan akhir per penerima).
+ * completeJob hanya menandai status; tanpa ini getJobStatus tidak pernah
+ * bisa menampilkan hasil kirim. Best-effort: kegagalan simpan tidak menggagalkan
+ * penyelesaian job.
+ */
+export async function recordJobResult(
+  jobId: string,
+  existingPayload: Record<string, unknown>,
+  result: unknown,
+): Promise<void> {
+  try {
+    await supabaseJson('PATCH', TABLE, {
+      query: { id: 'eq.' + jobId },
+      body: {
+        payload: { ...(existingPayload || {}), result },
+        last_error: null,
+      },
+      headers: { Prefer: 'return=minimal' },
+    });
+    log.info('job.result-recorded', { jobId });
+  } catch (err) {
+    log.error('job.result-save-failed', { jobId, err: String(err) });
+  }
+}
+
+/**
  * Mark a job as failed. If max_attempts exceeded, auto-promotes to 'dead'.
  */
 export async function failJob(jobId: string, error: unknown): Promise<void> {

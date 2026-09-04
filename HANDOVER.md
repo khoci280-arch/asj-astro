@@ -818,3 +818,40 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
 ## Next
 - A06 UndanganKelasModal → lanjut A07... urut checklist `docs/PARITY_CHECKLIST.md`.
 
+## 🔄 Sesi 2026-09-04 — Parity A06: UndanganKelasModal root-fixed
+- Crosscheck vs legacy partials/modals-shared.html `#modal-undangan-kelas` +
+  js/admin_ops/candidates.ts (bukaModalUndanganKelas / previewUndanganKelas /
+  kirimUndanganKelas; reuse di js/08_wa_pintar).
+- Temuan akar: (1) parseDaftarOrtu Astro hanya menerima nomor 628…; baris
+  08xx/8xx (valid di legacy via window.normalizeWaInput → 62xx) dihitung
+  invalid & dibuang diam-diam (daftar ortu berkurang tanpa info); (2) legacy
+  kirimUndanganKelas mengirim action kirimTawaranMassal SINKRON (results
+  per penerima langsung di respons) — di rebuild surface notify men-queue ke
+  job `wa.broadcast` lalu balas {status:'accepted', jobId} → modal lama baca
+  res.results kosong → toast "Berhasil memproses 0 undangan" menyesatkan &
+  tutup, padahal kiriman belum terjadi; (3) hasil handler broadcast TIDAK
+  pernah tersimpan (completeJob hanya set status; getJobStatus tak bisa
+  kasih ringkasan); (4) placeholder & beberapa kunci i18n hilang; (5) ikon
+  header link/stopwatch/comment-dots tidak dirender — sprite builder hanya
+  men-scan `<Icon name="…"/>` JSX, bukan hyperscript `h(Icon,{name:"…"})`;
+  (6) action getJobStatus tidak ada mapping di apiEndpoint.ts → polling
+  mustahil.
+- Fix: parseDaftarOrtu (+parseVarianPesan di-export) kini normalisasi via
+  shared/wa-rules normalizeWa (08xx/8xx/6208-typo, gate 628 12-13 digit) —
+  parity legacy; job-queue + `recordJobResult` (simpan hasil handler ke
+  payload job, best-effort) & sweep-queue processJob mencatat hasil non-
+  undefined sebelum completeJob; UndanganKelasModal queue-aware: accepted →
+  toast antrean {n}+job id, polling getJobStatus tiap 6 dtk (cap ±9 mnt,
+  berhenti saat modal ditutup/unmount), done → ringkasan ok (hasil final
+  dibaca dari payload.result.results) + close; jalur sinkron tetap didukung;
+  i18n: +ui.sending/ui.start_invite/ui.waiting_result/ui.group_link_placeholder/
+  ui.toast_invites_queued + toast_invalid_rows_n disinkron teks legacy;
+  placeholder pakai t(); build-icon-sprite + pola 1b `h(Icon,{name:…})` &
+  sprite di-regenerate (link/stopwatch/comment-dots kini ada); apiEndpoint +
+  getJobStatus → /.netlify/functions/notify (sudah di allow-list notify.js).
+- Verifikasi: typecheck exit 0; frontend 9 file / 66 test (+1 file, +8),
+  backend 25 file / 232 test; EOL konsisten per file; sprite-map/sprite.svg
+  regenerated (catatan: `npm run icons` exit 1 karena false-positive lama
+  token 'fa-…' dari string fixture Icon.test.ts — bukan regresi A06).
+  Belum di-commit (menumpuk Sesi 6/7 + A01..A05).
+
