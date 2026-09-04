@@ -105,7 +105,7 @@ Only these operations use service-role (bypassing RLS):
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| C3: Unauthenticated PII endpoints | HIGH | NOT FIXED |
+| C3: Unauthenticated PII endpoints | HIGH | Fixed (2026-09-04 C3 sweep — see below) |
 | C4: Missing auth on some endpoints | HIGH | Partially fixed (2026-09-04 pass — see below) |
 | C5: IDOR on candidate data | MEDIUM | Mostly fixed (2026-09-04 pass — see below) |
 | C6: Unprotected file uploads | HIGH | Fixed (2026-09-04 pass — URL allow-list, see below) |
@@ -122,8 +122,24 @@ fallback — nama/tgl-lahir for any guessed WA — is removed); and smart
 ingestion (`processUploadDoc`) rejects a kandidat whose document names another
 WA (payload `wa` pre-download AND extracted `no_wa` post-extraction), closing
 a cross-candidate master-row write. Regression tests:
-`netlify/functions/contexts/service-auth.test.ts`. C3 (remaining public
-endpoints) stays open.
+`netlify/functions/contexts/service-auth.test.ts`.
+
+**Post-audit pass 3 (2026-09-04) — C3 sweep (every exported `handle*`
+audited):** two live actions were reachable without a session and are now
+admin-gated before any DB/network call: configuration `getRincianPresets`
+(admin config presets; previously anonymous-read) and schedule
+`checkAndSendAgendaReminders` (reads schedule WA lists + FCM tokens and sends
+pushes — no legitimate non-admin caller; the Netlify cron runs `sweep-queue`,
+not this surface). Regressions: `contexts/service-c3.test.ts` (DB-free). The
+audit found NO other live PII gap: `handleShareData` (the public share-view
+feature that returns candidate rosters per job) is intentionally public by
+product design and is currently NOT wired in the modern pipeline —
+`surfaces/docs.ts` maps no `shareData` action and the GET `share-data`
+endpoint returns NOT_IMPLEMENTED, so it is not reachable today; re-audit it
+behind a per-job share token when `share.astro` gets wired. Public
+self-service writes (submitDaftarSiswa, submitApply, generateFormBridge,
+getLinkSiswaBaru) and telemetry (reportWebVital) stay public by design; all
+40 other exported handlers carry session/role guards.
 
 **Post-audit pass 2 (2026-09-04) — C6 upload URL allow-listing:** every
 client-supplied document URL is now validated through ONE exported gate
@@ -149,7 +165,7 @@ the ZIP export like fetch failures.
 
 ### Immediate (Before Production)
 
-1. **Fix C3** — Add authentication to the remaining public endpoints that access PII
+1. **C3 done (2026-09-04)** — remaining item is gating the future share-view wiring (`share.astro`) behind a per-job token
 2. **Add authorization checks** — Verify user identity matches requested data
 3. **Audit RLS policies** — Ensure policies properly restrict by user identity
 4. **Enable CORS restrictions** — Restrict to known domains only

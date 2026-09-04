@@ -32,7 +32,11 @@ export async function handleUpdateSysConfig(payload: any[], sessionToken?: strin
   }
 }
 
-export async function handleGetRincianPresets() {
+export async function handleGetRincianPresets(sessionToken?: string) {
+  // C3 fix (2026-09-04): rincian presets are admin configuration data served
+  // by the config surface — not readable anonymously or by kandidat sessions.
+  const guard = requireRole(sessionToken || '', 'admin');
+  if (guard.error) return guard.error;
   try {
     const rows = await getRincianPresetsRepo();
     const presets: Record<string, { id: string | number | undefined; item: string }[]> = {

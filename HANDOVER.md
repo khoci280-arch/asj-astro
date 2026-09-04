@@ -585,3 +585,49 @@ Legacy → Astro v2 (Surfaces/Contexts/Kernel, Preact islands, nanostores, apiCl
 
 - Commit pass backend C4/C5 + C6 (12 file) + doc ini sebagai 2–3 commit atas izin.
 - Kerjakan Prioritas 2 atau 3 dari referensi, atau C3 (audit endpoint publik).
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (4) — C3 sweep: audit semua handle* + tutup 2 gap
+
+**Branch:** `dev` · Sesuai permintaan: audit C3 — daftar setiap `handle*` yang diekspor di
+`netlify/functions/contexts` yang membaca PII kandidat tanpa guard, fix yang terbuka, + test DB-free.
+
+## Hasil audit (52 handler, 14 file service)
+
+Semua handler sudah ber-guard KECUALI yang berikut (guard=0). Klasifikasi:
+
+| Handler | Baca sensitif? | Verdict |
+|---|---|---|
+| `configuration.handleGetRincianPresets` | config admin (sys_config presets) | **DITUTUP: admin-only** (reachable via `config.js` tanpa auth) |
+| `scheduling.handleCheckAndSendAgendaReminders` | daftar WA jadwal + token FCM + kirim push | **DITUTUP: admin-only** (reachable via `schedule.js`; tidak ada caller non-admin sah; cron Netlify = `sweep-queue`, bukan surface ini) |
+| `catalog.handleShareData` | roster kandidat + URL dokumen per job | Publik by-design (viewer TSK) TAPI **belum ter-wire** di pipeline modern: `surfaces/docs.ts` tidak memetakan action `shareData`, endpoint GET `share-data` = NOT_IMPLEMENTED, tanpa caller client → **tidak live**. Wajib di-gate per-job token saat `share.astro` di-wire (follow-up) |
+| `diagnostics.handleReportWebVital` | tidak ada (telemetri) | publik OK |
+| `registration.handleSubmitDaftarSiswa`, `handleGetLinkSiswaBaru`, `handleGenerateFormBridge`, `documents.handleSubmitApply` | write/link publik self-service | publik by-design OK |
+| 40+ handler lain | — | semua ber-guard (requireAdmin/requireRole/verifyToken/isOwnerOrAdmin), diverifikasi mekanis per handler |
+
+## Perubahan (5 file, BELUM di-commit)
+
+- `contexts/configuration/service.ts` — `handleGetRincianPresets(sessionToken?)` + guard admin.
+- `surfaces/config.ts` — teruskan sessionToken ke action `getRincianPresets`.
+- `contexts/scheduling/service.ts` — `handleCheckAndSendAgendaReminders(sessionToken?)` + guard
+  admin (catatan: cron masa depan harus panggil context langsung, bukan lewat HTTP surface).
+- `surfaces/schedule.ts` — teruskan sessionToken ke action `checkAndSendAgendaReminders`.
+- `contexts/service-c3.test.ts` (baru) — 4 test DB-free (anon + kandidat ditolak sebelum DB/network).
+
+## Verifikasi
+
+- `npm run typecheck` (root) — bersih
+- Suite backend — **23 file / 216 test hijau** (+4 dari test baru)
+- EOL konsisten (config/scheduling CRLF, schedule.ts/service-c3 LF)
+
+## Catatan
+
+- Prioritas 1 (C3–C6) di referensi pipeline kini **SELESAI penuh**; sisa item keamanan =
+  gate wiring share view dengan per-job token saat diimplementasi (TODO.md).
+- Tree menumpuk 6 file pass ini (5 code/test + docs yang akan datang di commit).
+
+## Next setelah sesi ini
+
+- Commit C3 sweep (`feat(backend): C3 sweep ...`) atas izin; jangan push.
+- Lanjut Prioritas 2 (Tab Mail/Jadwal/Config wiring) atau fitur HIGH lain — lihat referensi.

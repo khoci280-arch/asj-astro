@@ -173,7 +173,12 @@ function parseWaList(raw: string): string[] {
     .filter(Boolean);
 }
 
-export async function handleCheckAndSendAgendaReminders() {
+export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
+  // C3 fix (2026-09-04): this reads schedule WA lists and sends FCM pushes —
+  // admin only. (If a server-side cron sweep ever needs it, call this context
+  // code directly from the scheduled function, not through the HTTP surface.)
+  const guard = requireRole(sessionToken || '', 'admin');
+  if (guard.error) return guard.error;
   let sent = 0;
   let errors = 0;
   try {

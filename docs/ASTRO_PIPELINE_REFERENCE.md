@@ -3,8 +3,10 @@
 > **Status sync 2026-09-04:** salinan kanonik dari referensi "brain" eksternal
 > (`~/.gemini/antigravity-ide/brain/<session>/ASTRO_PIPELINE_REFERENCE.md`), disimpan ke repo
 > agar sesi AI berikutnya selalu punya satu sumber. Bagian Prioritas 1 (C3–C6) diselaraskan
-> dengan keadaan aktual kode: **C4/C5/C6 sudah ditutup** oleh pass backend 2026-09-04; yang
-> tersisa hanya **C3**. Status keamanan terkini: `SECURITY_AUDIT_2026-09-03.md` + `TODO.md`.
+> dengan keadaan aktual kode: **C3–C6 sudah ditutup** oleh pass backend 2026-09-04 (C4/C5
+> auth hardening, C6 URL allow-list, C3 sweep semua handle*). Item residual: gate wiring
+> share view (`share.astro`) dgn per-job token saat diimplementasi. Status keamanan
+> terkini: `SECURITY_AUDIT_2026-09-03.md` + `TODO.md`.
 
 Dokumen ini adalah panduan teknis yang dipetakan dari pipeline data lama (Legacy ASJ) ke arsitektur **Domain-Driven Design (DDD)** di codebase baru (Astro + Netlify). Referensi ini dirancang khusus untuk memandu AI Developer dalam mengeksekusi sisa 20% fitur dan *hardening* sebelum produksi.
 
@@ -63,15 +65,18 @@ Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung b
     allow-list: Supabase storage + Cloudinary + GCS, diperluas env `ALLOWED_DOCUMENT_HOSTS`) —
     di apply publik, simpan kandidat admin, berkas-tahapan, revisi, ingestion (anti-SSRF),
     dan ZIP download (`documents/download.ts`).
-  - **C3 — MASIH TERBUKA**: audit sisa endpoint publik PII di `surfaces/public.ts`,
-    `surfaces/docs.ts`, dan `contexts/` lain yang membaca data sensitif tanpa validasi
-    `sessionToken`.
-- **Target File (sisa C3)**: cek ekspor `handle*` di `netlify/functions/contexts/*/service.ts`
-  yang tidak lewat guard (`requireRole`/`verifyToken`/`isOwnerOrAdmin` dari `contexts/identity`
-  atau `_lib/session`) sebelum kueri supabase.
-- **Aksi (sisa C3)**: pastikan setiap akses DB yang sensitif memanggil fungsi validasi sesi
-  dari `contexts/identity` sebelum melakukan kueri `supabase`; tambah regresi DB-free di
-  `contexts/service-auth.test.ts`.
+  - **C3 — SELESAI** (sweep 2026-09-04): audit SEMUA ekspor `handle*` di
+    `netlify/functions/contexts/*/service.ts` — dua action live tanpa guard ditutup
+    admin-only: `getRincianPresets` (config admin) dan `checkAndSendAgendaReminders` (baca
+    daftar WA jadwal + kirim FCM; cron Netlify = `sweep-queue`, bukan surface ini). Regresi:
+    `netlify/functions/contexts/service-c3.test.ts`.
+- **Hasil audit (tidak ada gap PII live tersisa):** `handleShareData` (roster kandidat per
+  job utk viewer TSK) publik by-design DAN **belum ter-wire** di pipeline modern —
+  `surfaces/docs.ts` tidak memetakan action `shareData` & endpoint GET `share-data`
+  NOT_IMPLEMENTED → tak ter-reach; wajib di-gate dgn per-job share token saat `share.astro`
+  diimplementasi. Write publik by design tetap publik (submitDaftarSiswa, submitApply,
+  generateFormBridge, getLinkSiswaBaru, reportWebVital). 40+ handler lain sudah
+  ber-guard (requireRole/verifyToken/isOwnerOrAdmin).
 
 ### 🟡 Prioritas 2: Melengkapi Tab Admin (Mail, Jadwal, Config)
 - **Tab Mail**:
