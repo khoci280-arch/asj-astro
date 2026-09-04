@@ -6,6 +6,7 @@
 import { cacheClear } from '../../_lib/cache';
 import { env } from '../../_lib/env';
 import * as session from '../../_lib/session';
+import { requireRole } from '../identity';
 import { getDaftarSiswaBaru, insertSiswaBaru, normalizeGender } from './repository';
 
 function siteBase(): string {
@@ -13,10 +14,12 @@ function siteBase(): string {
 }
 
 export async function handleGetDaftarSiswaBaru(payload: any[], sessionToken?: string) {
-  // C4 FIX: require authenticated session
+  // C4/C5 hardening (2026-09-04): the roster of ALL registrants (id, nama,
+  // alamat, kelamin) is admin-only — an authenticated kandidat must not be
+  // able to enumerate other candidates' PII.
   const t = session.verifyToken(sessionToken || '');
-  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
-    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  if (!t || t.role !== 'admin') {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid (khusus admin)' };
   }
   try {
     const rows = await getDaftarSiswaBaru();
@@ -84,7 +87,11 @@ export async function handleGenerateFormBridge(payload: any[]) {
   return { formUrl };
 }
 
-export async function handleGenerateLegacyMasterBridge(payload: any[]) {
+export async function handleGenerateLegacyMasterBridge(payload: any[], sessionToken?: string) {
+  // Auth hardening (2026-09-04): minting a pre-filled master bridge embeds a
+  // candidate's WA + nama — admin-only (legacy WA-link flow).
+  const guard = requireRole(sessionToken || '', 'admin');
+  if (guard.error) return guard.error;
   const wa = String((payload && payload[0]) || '');
   const nama = String((payload && payload[1]) || '');
   const formUrl =
@@ -92,7 +99,11 @@ export async function handleGenerateLegacyMasterBridge(payload: any[]) {
   return { formUrl };
 }
 
-export async function handleGenerateAiFormBridge(payload: any[]) {
+export async function handleGenerateAiFormBridge(payload: any[], sessionToken?: string) {
+  // Auth hardening (2026-09-04): minting a pre-filled AI-form bridge embeds a
+  // candidate's WA + nama — admin-only.
+  const guard = requireRole(sessionToken || '', 'admin');
+  if (guard.error) return guard.error;
   const flow = String((payload && payload[0]) || '');
   const job = String((payload && payload[1]) || '');
   const bidang = String((payload && payload[2]) || '');

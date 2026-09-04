@@ -154,6 +154,12 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
   const fileUrl = String(d.fileUrl || '').trim();
   const fileType = String(d.fileType || '').trim().toLowerCase().replace(/^\./, '');
   const wa = normalizeWa(String(d.wa || ''));
+  // Auth hardening (2026-09-04): a kandidat may only ingest documents for
+  // their OWN WA — the extracted no_wa upserts into master_database_candidate,
+  // so an unguarded cross-WA write would let one candidate patch another's row.
+  if (t.role === 'kandidat' && wa && wa !== normalizeWa(String(t.wa || ''))) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
   if (!fileUrl) return { success: false, error: 'fileUrl wajib diisi.' };
   if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
     return { success: false, error: 'fileUrl harus URL valid (http/https).' };
@@ -177,6 +183,11 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
       return { success: false, error: 'AI tidak bisa mengekstrak data dari dokumen ini.' };
     }
     const no_wa = normalizeWa(String(aiData.no_wa || wa || ''));
+    // Post-extraction gate: the document may name a WA other than the
+    // uploader's (someone else's CV) — a kandidat must not upsert into it.
+    if (t.role === 'kandidat' && no_wa && no_wa !== normalizeWa(String(t.wa || ''))) {
+      return { success: false, error: 'Akses ditolak: dokumen atas nama kandidat lain.' };
+    }
     const email = String(aiData.email || '').trim().toLowerCase();
     const nik = String(aiData.nik || '').trim();
     const nama = String(aiData.nama_lengkap || '').trim().toUpperCase();

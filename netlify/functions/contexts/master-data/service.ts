@@ -396,6 +396,17 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
 
 export async function handleGetDrafCvMaster(payload: any[], sessionToken?: string) {
   const wa = String((payload && payload[0]) || '');
+  // Auth hardening (2026-09-04): a draft CV is candidate PII. Require a
+  // verified session and owner-or-admin scope BEFORE touching the row — the
+  // old anonymous branch returned a limited identity subset (nama, tgl lahir)
+  // for any guessed WA.
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
   try {
     const row = await findMasterByWa(wa);
     if (!row) {
@@ -408,10 +419,8 @@ export async function handleGetDrafCvMaster(payload: any[], sessionToken?: strin
       return { error: 'Data Master belum ada' + (nama ? ' untuk ' + nama : '') + ' (' + wa + '). Isi Form Master dulu.' };
     }
     const nested = buildMasterNested(row);
-    const full = Object.assign(nested, { AIDATAJSON: row.ai_data_json || '', id_kandidat: row.id_kandidat || row.id || '' });
-    if (isOwnerOrAdmin(sessionToken, wa)) return full;
-    const i = nested.identitas || {};
-    return { identitas: { nama_lengkap: i.nama_lengkap || '', katakana: i.katakana || '', gender: i.gender || '', tempat_lahir: i.tempat_lahir || '', tgl_lahir: i.tgl_lahir || '', umur: i.umur || '' }, limited: true };
+    // Owner or admin already passed the pre-fetch gate — full draft only.
+    return Object.assign(nested, { AIDATAJSON: row.ai_data_json || '', id_kandidat: row.id_kandidat || row.id || '' });
   } catch (e: any) { return { error: e.message }; }
 }
 

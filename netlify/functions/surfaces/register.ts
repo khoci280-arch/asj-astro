@@ -7,6 +7,6 @@ export const REGISTER_ACTIONS: Record<string, (payload: unknown[], sessionToken?
   submitDaftarSiswa: (p) => registration.handleSubmitDaftarSiswa(p),
   getLinkSiswaBaru: () => registration.handleGetLinkSiswaBaru(),
   generateFormBridge: (p) => registration.handleGenerateFormBridge(p),
-  generateLegacyMasterBridge: (p) => registration.handleGenerateLegacyMasterBridge(p),
-  generateAiFormBridge: (p) => registration.handleGenerateAiFormBridge(p),
+  generateLegacyMasterBridge: (p, s) => registration.handleGenerateLegacyMasterBridge(p, s),
+  generateAiFormBridge: (p, s) => registration.handleGenerateAiFormBridge(p, s),
 };
