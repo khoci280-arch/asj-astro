@@ -855,3 +855,47 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
   token 'fa-…' dari string fixture Icon.test.ts — bukan regresi A06).
   Belum di-commit (menumpuk Sesi 6/7 + A01..A05).
 
+## 🔄 Sesi 2026-09-04 — Parity A07: TTD / E-Sign (EsignNaiteiModal) root-fixed
+- Crosscheck vs legacy partials/modals-shared.html `#modal-ttd` + `#modal-fs-canvas`
+  & js/12_esign_match.ts (bukaModalTtd / bukaLayarCanvas / saveFsCanvas /
+  submitDataEsignFull; saveSignature di api/candidates.ts).
+- Temuan akar: (1) rebuild lama cuma SATU area tanda tangan (ESignatureModal +
+  saveSignature → ttd1) sedangkan legacy punya 4 area — ttd1+nama1 (Pihak 1 /
+  Kandidat) dan ttd2+nama2 (Pihak 2 / Wali), tiap area digambar full-screen
+  (area Nama = kanvas lebar mode tulisan + hint rotate HP) dan disimpan sekali
+  lewat simpanDataTtdNaitei; (2) handler backend simpanDataTtdNaitei/saveSignature
+  hanya requireRole('kandidat') → sesi ADMIN ditolak padahal legacy mengizinkan
+  admin selalu; (3) handler hanya membaca payload OBJEK, padahal callAPI mengirim
+  ARRAY args → wa tak pernah ketemu lewat HTTP (jalan lama tidak pernah menyimpan
+  tanda tangan siapa pun); (4) tombol E-Sign di CandidateDash belum ada wiring
+  modal + tanpa gating tahapan (legacy: hanya terbuka saat tahapan sudah
+  LOLOS..NAITEI).
+- Fix: komponen baru `EsignNaiteiModal.tsx` — port penuh modal-ttd: 4 area
+  (2 pihak × TTD+Nama), layar gambar penuh canvas (pointer capture, logical
+  resolution per jenis, white bg, clear/save), pratinjau per area + tombol
+  ulangi, submit sekali → simpanDataTtdNaitei {wa, ttd1, nama1, ttd2, nama2}
+  (base64 PNG), toast sukses/gagal + dispatch `candidates-changed`; `_lib/ai/cv.ts`:
+  guard diganti verifyToken kandidat-atau-admin (refresh token ditolak) +
+  unwrap `Array.isArray(payload) ? payload[0] : payload` (dua bentuk didukung),
+  scope owner-or-admin & penolakan sebelum DB dipertahankan; CandidateDash:
+  tombol E-Sign Naitei → modal (wa dari sesi) + gating `allowedTahapanEsign`
+  (regex legacy, di-export utk test); ~24 kunci i18n id baru (ui.sign1/name1/
+  sign2/name2, ui.party1/2, ui.esign_docs/hint, esign.clear/save, ui.rotate_phone,
+  toast area kosong dsb); sprite diperluas (file-signature/pen/users/eraser/…,
+  regenerate); komponen diedit agar tak memakai literal nama ikon di dalam
+  ekspresi (contoh `name={tone === "sky" …}` → nama via konstanta) sehingga
+  scanner sprite tak menangkap false positive (unresolved turun 2→1; sisa
+  `fa-…` = false-positive lama dari fixture Icon.test.ts, bukan regresi);
+  ESignatureModal.tsx lama kini orfan (tidak direferensikan; tidak dihapus —
+  committed).
+- Verifikasi: typecheck exit 0; backend 26 file / 238 test (+1 file
+  `service-a07.test.ts`, +6: guard anon/kandidat-lain, unwrap array vs objek,
+  IDOR), frontend 10 file / 74 test (+1 file, +8: parity tahapan regex, render
+  4 area, submit-blank/tanpa-wa diblokir, alur draw→save→submit payload
+  simpanDataTtdNaitei); EOL konsisten per file; `npm run icons` masih exit 1
+  tapi unresolved turun 2→1 (hanya false-positive lama 'fa-…' dari string
+  fixture Icon.test.ts — `fa-sky` dari ekspresi modal sudah beres, bukan regresi A07).
+  Belum di-commit (menumpuk Sesi 6/7 + A01..A06).
+
+## Next
+- A08 ChangePasswordModal → lanjut A09... urut checklist `docs/PARITY_CHECKLIST.md`.

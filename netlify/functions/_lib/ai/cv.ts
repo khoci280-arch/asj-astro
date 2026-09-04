@@ -1,5 +1,5 @@
 import { normalizeWa, pick, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
-import { requireRole, isOwnerOrAdmin } from '../../contexts/identity';
+import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
@@ -528,9 +528,14 @@ async function simpanEsignature(wa: string, data: Record<string, unknown>) {
  * Hanya kandidat yang bersangkutan (atau admin) yang boleh menulis.
  */
 async function handleSimpanDataTtdNaitei(payload: unknown, sessionToken?: string) {
-  const guard = requireRole(sessionToken as string, 'kandidat');
-  if (guard.error) return guard.error;
-  const d = (payload || {}) as Record<string, any>;
+  // A07 (2026-09-04): kandidat (self) maupun admin boleh menandatangani.
+  const t = verifyToken(sessionToken || '');
+  if (!t || (t.role !== 'kandidat' && t.role !== 'admin') || t.kind === 'refresh') {
+    return { success: false, sessionInvalid: true, message: 'Sesi kandidat/admin tidak valid' };
+  }
+  // callAPI mengirim ARRAY (args), legacy GAS mengirim objek langsung — terima dua-duanya.
+  const raw = Array.isArray(payload) ? (payload[0] || {}) : payload || {};
+  const d = raw as Record<string, any>;
   const wa = normalizeWa(String(d.wa || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   // Cegah IDOR: kandidat hanya boleh menandatangani atas nama dirinya sendiri.
@@ -561,8 +566,11 @@ async function handleSimpanDataTtdNaitei(payload: unknown, sessionToken?: string
  * simpanDataTtdNaitei, lengkap dengan pengecekan kepemilikan.
  */
 async function handleSaveSignature(payload: unknown, sessionToken?: string) {
-  const guard = requireRole(sessionToken as string, 'kandidat');
-  if (guard.error) return guard.error;
+  // A07: kandidat (self) maupun admin boleh; scope tetap owner-or-admin di bawah.
+  const t = verifyToken(sessionToken || '');
+  if (!t || (t.role !== 'kandidat' && t.role !== 'admin') || t.kind === 'refresh') {
+    return { success: false, sessionInvalid: true, message: 'Sesi kandidat/admin tidak valid' };
+  }
   const arr = Array.isArray(payload) ? payload : [];
   const wa = normalizeWa(String(arr[0] || ''));
   const dataUrl = String(arr[1] || '');

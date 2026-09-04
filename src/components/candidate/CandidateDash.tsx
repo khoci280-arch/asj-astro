@@ -11,7 +11,7 @@ import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import WAPintarModal from '../WAPintarModal';
-import ESignatureModal from '../ESignatureModal';
+import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import { showToast } from "../Toast";
@@ -169,19 +169,15 @@ export default function CandidateDash() {
   }
 
   if (loading) return <div class="text-center py-12"><Icon spin name="spinner" class="text-3xl text-emerald-400 mb-4" /><p class="text-slate-400">{t('ui.loading')}</p></div>;
-    async function handleSaveSignature(dataUrl: string) {
-    try {
-      const res = await fetch(getEndpoint('saveSignature'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'saveSignature', args: [user?.wa, dataUrl] }),
-      });
-      const r = await res.json();
-      if (r.success) { showToast('Tanda tangan tersimpan!', 'success'); }
-      else { showToast(r.error || 'Gagal menyimpan', 'error'); }
-    } catch { showToast('Error menyimpan tanda tangan', 'error'); }
-    setShowESign(false);
-  }
+    function openEsign() {
+      // A07 parity bukaModalTtd: kandidat hanya boleh saat tahapan masuk
+      // Lolos/Pemberkasan..Naitei; admin selalu bisa (guard tetap backend).
+      if (user.role !== 'admin' && !allowedTahapanEsign(data?.tahapan)) {
+        showToast(t('ui.toast_naitei_locked'), 'error');
+        return;
+      }
+      setShowESign(true);
+    }
 
 if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
 
@@ -353,7 +349,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
               <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition text-center"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</a>
-              <button onClick={() => setShowESign(true)} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
+              <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> AI CV Master Assistant</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
@@ -407,8 +403,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
       {showDocPreview && <DocumentPreviewModal url={docPreviewUrl} title={docPreviewTitle} previewOnly={true} onClose={() => setShowDocPreview(false)} />}
-      {showESign && <ESignatureModal onSave={handleSaveSignature} onClose={() => setShowESign(false)} />}
-      {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} />}
+      {showESign && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} />}
+      {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
     </div>
   );
 }
