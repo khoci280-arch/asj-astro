@@ -35,6 +35,7 @@ import type { BoundRef } from './bind.js';
 import { splitAstroFrontmatter } from './parse.js';
 import {
   OccurrenceRole,
+  ScopeKind,
   type FileIdx,
   type FileNode,
   type Occurrence,
@@ -305,6 +306,7 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     libRefFramework: 0,
     skippedNonBindable: 0,
     skippedJsxIntrinsic: 0,
+    skippedAstroTemplate: 0,
     offsetMismatch: 0,
     disagreeBoundNoCompiler: 0,
     disagreeNameMismatch: 0,
@@ -322,6 +324,18 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   // branch (which would read them as indexer-unresolved vs compiler-bound).
   const libRefByStart = new Map(r.libRefs.map((z) => [`${z.fileIdx}:${z.range.start}`, z]));
   const libRefStart = new Set(libRefByStart.keys());
+
+  // Astro template interpolations (parse.ts emitAstroTemplateScope) bind
+  // against the frontmatter module scope by construction — the template is a
+  // child scope of the module (§2.4). The compiler program only receives the
+  // frontmatter-stripped source for .astro files, so a template position
+  // carries no compiler identifier; these occurrences are scope-resolved and
+  // excluded from the differential checks like the other deliberate
+  // exclusions below.
+  const astroTplScopes = new Set<string>();
+  for (const sc of r.scopes) {
+    if (sc.kind === ScopeKind.AstroTemplate) astroTplScopes.add(`${sc.fileIdx}:${sc.key}`);
+  }
 
   const lineOf = (f: FileNode, start: number): number => {
     // Binary search the line index for the greatest line whose offset <= start.
@@ -384,6 +398,11 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
           counts.libRefDisagree++;
           disagreements.push({ path: rel, line: lineOf(f, o.range.start), name: o.name, role: ROLE_NAME[o.role], reason: 'lib-ref', indexer: `lib-ref:${o.name}`, compiler: compilerName ?? '<none>' });
         }
+        continue;
+      }
+      if (astroTplScopes.has(`${f.idx}:${o.scopeKey}`)) {
+        counts.skippedAstroTemplate++;
+        fileAgg.skipped++;
         continue;
       }
       // Tier 2: member accesses the binder resolved through types (or a
@@ -499,6 +518,7 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   }
   lines.push(`  non-bindable roles:                    ${counts.skippedNonBindable}`);
   lines.push(`  lowercase JSX intrinsics:              ${counts.skippedJsxIntrinsic}`);
+  lines.push(`  astro template interpolations:         ${counts.skippedAstroTemplate}`);
   lines.push('disagreements:');
   lines.push(`  indexer bound, compiler none:          ${counts.disagreeBoundNoCompiler}`);
   lines.push(`  indexer bound, name mismatch:          ${counts.disagreeNameMismatch}`);

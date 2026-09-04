@@ -237,3 +237,81 @@ Settings page — lengkapi dengan:
 - **Repo:** https://github.com/khoci280-arch/asj-astro
 - **Branch:** `dev` (active development)
 - **Legacy repo:** https://github.com/khoci921-hub/khoci921
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 — Astro template scope (indexer) + asesmen produksi
+
+**Branch:** `dev` · **HEAD:** `d83f3b8` · **Catatan:** bagian di bawah ini ADALAH sesi hari ini;
+bagian atas (2026-09-03) tetap dipertahankan untuk konteks kerja app.
+
+## ⚠️ Hal pertama saat lanjut
+
+**7 file fitur BELUM di-commit** dan tidak ikut `git push`. Commit dulu sebelum pindah/push:
+
+```bash
+git add docs/CODE_INDEX_DESIGN.md indexer/src/deep-tier.test.ts indexer/src/parse.test.ts \
+        indexer/src/parse.ts indexer/src/validate.test.ts indexer/src/validate.ts \
+        indexer/validate-report.json HANDOVER.md
+
+git commit -m "feat(indexer): astro template scope — symbol-level interpolations
+
+{expr} reads in .astro templates (text + attr values, recursing into
+JSX-in-expression) emit Read occurrences in an AstroTemplate scope child of the
+frontmatter module scope, so lang in lang={lang} binds to the destructured
+frontmatter const — def/hover at a template position answers with the
+frontmatter declaration and idx refs on those consts lists the template sites
+(5 on this tree). Template positions carry no compiler identifier (validate
+receives frontmatter-stripped sources) and are excluded from differential
+checks; full run stays 22,495/22,495, 0 disagreements. Scanner is conservative:
+script/style bodies, comments, quoted attrs, backtick literals opaque; member
+names/object keys/arrow params/keywords never emitted. Docs synced; 172
+indexer tests (+9)."
+```
+
+## Fitur yang selesai sesi ini (terverifikasi, belum commit)
+
+**Astro template scope — symbol-level interpolations** (roadmap row 8 §13):
+- `indexer/src/parse.ts` (+~490 baris): scanner `scanAstroTemplateReads` + `emitAstroTemplateScope`
+  (scope `AstroTemplate` anak module scope frontmatter; occurrence `Read` per identifier interpolasi)
+- `indexer/src/validate.ts`: occurrence berscope template di-skip dari universe compiler
+  (program hanya terima frontmatter) → bucket deviasi `skippedAstroTemplate`
+- Test: `parse.test.ts` +6, `deep-tier.test.ts` +2 (fixture .astro + real-tree BaseLayout),
+  `validate.test.ts` +1 → suite indexer **13 file / 172 test hijau**
+
+**Angka terverifikasi:** refs 22.500 (light 21.451 + deep 1.049, +5 = interpolasi BaseLayout),
+full validate **22.495/22.495 (100%), 0 disagreements**, sample 3.482/3.482 (lib 1.133),
+`idx:gate` 4/4, `boundary` 0, typecheck app+indexer bersih.
+
+## Asesmen produksi (ringkas)
+
+Kode siap **±85–88%**; sisanya operasional bukan kode:
+- Terbukti: `npm run build` hijau (9 halaman ~18 dtk), unit app 26 file/241 hijau,
+  pipeline rilis lengkap (CI 8 gate, staging `develop`, prod tag `v*`, smoke + auto-rollback).
+- Yang menahan: e2e Playwright belum jalan utk kondisi ini; `verify:env`/`verify:db` butuh env asli;
+  keputusan SSR menggantung (`output:'server'`/`adapter:netlify()` masih komentar di
+  `astro.config.mjs` — berjalan statis+functions, konsisten dgn `netlify.toml`);
+  branch `dev` tidak auto-deploy (rilis lewat `develop`/tag).
+- Catatan: `.env.lokal` BUKAN sampah — itu file env lokal sesungguhnya (lihat tabel credentials di atas).
+
+## Next steps
+
+1. Commit 7 file + HANDOVER.md (perintah §1 atas).
+2. Roadmap indexer tersisa: **Astro.glob expansion** (row 8); row-9 remainder = rendering
+   detail/merged-site di UI serve/hover (bukan CLI).
+3. Pra-rilis app: `npm run ci:quality` penuh; finalisasi keputusan SSR; e2e + verify DB di staging.
+
+## Command reference (dari root repo)
+
+```bash
+npm run typecheck:indexer
+npm run idx:build   # wajib sebelum jalankan dist
+npx vitest run --project indexer          # suite indexer (≈2 mnt; deep tier ~6,4 dtk/build)
+node indexer/dist/indexer/src/validate.js --sample     # sample + tulis ulang validate-report.json
+node indexer/dist/indexer/src/validate.js              # full-run (≈2 mnt)
+npm run idx:gate && npm run boundary
+npx tsc --noEmit && npm run test:frontend && npm run test:backend && npm run build
+```
+
+**Catatan lingkungan:** root lokal sesi ini `E:/astro` (docs header menulis `F:\astro` — beda mesin,
+jangan dipakai untuk perintah). Windows + Git Bash; dump index ~10,6 MiB deterministic.

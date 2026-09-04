@@ -6,9 +6,11 @@
  * body-excluded `declHash` and export-table `exportHash` (§6.1).
  *
  * Scope kinds emitted in this phase: module, namespace, class, interface,
- * function, arrow, block, for, catch, switch, objectLiteral, enumBody.
+ * function, arrow, block, for, catch, switch, objectLiteral, enumBody, plus
+ * the AstroTemplate scope (row 8 remainder — template interpolations resolve
+ * against the frontmatter module scope).
  * Deferred (documented in CODE_INDEX_DESIGN.md §13): TypeParams scopes,
- * Astro template-scope analysis, CJS export symbols beyond the export record.
+ * Astro.glob expansion, CJS export symbols beyond the export record.
  */
 
 import ts from 'typescript';
@@ -1391,12 +1393,491 @@ export function scanAstroTemplateTags(content: string, frontmatterEndOffset: num
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Astro template expressions (row-8 open remainder — template SCOPE,
+// symbol-level interpolations).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A template identifier read at its absolute position in the real file:
+ * `lang` in `lang={lang}` inside BaseLayout's template, for example. parseFile
+ * turns each read into a Read occurrence whose scope is the file's
+ * AstroTemplate scope, so the binder resolves it against the frontmatter
+ * module scope exactly like a module-level reference (§2.4: the template is a
+ * child scope of the frontmatter module).
+ */
+export interface AstroTemplateRead {
+  /** Absolute offset in the real file of the identifier's first char. */
+  start: number;
+  /** Absolute offset just past the identifier. */
+  end: number;
+  name: string;
+}
+
+/**
+ * Lightweight character scan of the TEMPLATE portion (past the closing `---`
+ * fence) for identifier reads inside expression positions — `{expr}` text
+ * interpolations and `attr={expr}` attribute values, recursing into JSX
+ * embedded in an expression (`{cond && <Card title={t} />}`) and into nested
+ * braces — returning every identifier READ at its absolute offset.
+ *
+ * Conservative by design (a scan, never a guess): markup it does not
+ * recognize is skipped whole — raw `<script>`/`<style>` bodies are client-side
+ * code and never scanned, HTML comments and quoted attribute values are
+ * opaque, and backtick template literals lose their inner `${x}` reads.
+ * Identifiers that cannot bind at module scope are never emitted: member names
+ * (`a.b` → only `a`), object keys (`{ a: v }` → only `v`), arrow params
+ * (`(a) => a.n` — the param list AND body references to the tracked param
+ * names are skipped for the rest of the enclosing expression; a same-named
+ * outer read later in the SAME expression is lost, a documented Tier-1
+ * conservatism), and the JS keywords. Standard-library globals ARE emitted:
+ * they bind nothing at module scope and surface as `lib-not-loaded`, exactly
+ * like module-level code (the deep tier cannot graduate template positions —
+ * the compiler program only receives frontmatter text — so validation excludes
+ * them, see validate.ts). ASCII identifiers only.
+ */
+const ASTRO_TEMPLATE_SKIP = new Set([
+  'async', 'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
+  'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export', 'extends',
+  'false', 'finally', 'for', 'function', 'get', 'if', 'import', 'in',
+  'instanceof', 'let', 'new', 'null', 'of', 'return', 'set', 'static',
+  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
+  'while', 'with', 'yield',
+]);
+
+function isAstroIdentStart(c: string): boolean {
+  return /[A-Za-z_$]/.test(c);
+}
+
+function isAstroIdentPart(c: string): boolean {
+  return /[A-Za-z0-9_$]/.test(c);
+}
+
+/** Top-level param names of an arrow `(…) => …` param list [from, to) — the
+ * identifiers the list BINDS (x in `(x)`, `(x = z)` — z is a default VALUE
+ * read, not a binding; `(a, b)`) — so body references to them are skipped.
+ * Destructured patterns (`({ a })`) are nested and not tracked (documented). */
+function astroParamNames(content: string, from: number, to: number): string[] {
+  const out: string[] = [];
+  let k = from;
+  let depth = 0;
+  while (k < to) {
+    const c = content[k];
+    if (c === '"' || c === "'") {
+      k = skipAstroQuoted(content, k);
+      continue;
+    }
+    if (c === '`') {
+      k = skipAstroTemplate(content, k);
+      continue;
+    }
+    if (c === '(' || c === '{' || c === '[') depth++;
+    else if (c === ')' || c === '}' || c === ']') depth--;
+    else if (depth === 0 && isAstroIdentStart(c)) {
+      const e = readAstroIdent(content, k);
+      const name = content.slice(k, e);
+      const prev = prevSig(content, k);
+      const next = nextSig(content, e);
+      // `x` in `(x)`, `(x = z)` — z is a default VALUE (prev '='), not a binding.
+      if ((prev === '(' || prev === ',') && next !== ':' && !ASTRO_TEMPLATE_SKIP.has(name)) out.push(name);
+      k = e;
+      continue;
+    }
+    k++;
+  }
+  return out;
+}
+
+/** Index just past the ASCII identifier starting at i. */
+function readAstroIdent(content: string, i: number): number {
+  let j = i + 1;
+  while (j < content.length && isAstroIdentPart(content[j])) j++;
+  return j;
+}
+
+/** Advance past a '…' / "…" string (or quoted attribute value) starting at i. */
+function skipAstroQuoted(content: string, i: number): number {
+  const q = content[i];
+  let j = i + 1;
+  while (j < content.length) {
+    const c = content[j];
+    if (c === '\\') {
+      j += 2;
+      continue;
+    }
+    if (c === q) return j + 1;
+    j++;
+  }
+  return j;
+}
+
+/** Advance past a `…` template literal — opaque (inner ${x} reads are lost). */
+function skipAstroTemplate(content: string, i: number): number {
+  let j = i + 1;
+  while (j < content.length) {
+    const c = content[j];
+    if (c === '\\') {
+      j += 2;
+      continue;
+    }
+    if (c === '`') return j + 1;
+    j++;
+  }
+  return j;
+}
+
+/** Nearest non-whitespace char before `at` ('' at text start). */
+function prevSig(content: string, at: number): string {
+  let j = at - 1;
+  while (j >= 0 && /\s/.test(content[j])) j--;
+  return j >= 0 ? content[j] : '';
+}
+
+/** Nearest non-whitespace char at/after `at` ('' at text end). */
+function nextSig(content: string, at: number): string {
+  let j = at;
+  while (j < content.length && /\s/.test(content[j])) j++;
+  return j < content.length ? content[j] : '';
+}
+
+/** Index just past the ')' matching the '(' at i (strings/comments skipped), or -1. */
+function matchAstroParen(content: string, i: number): number {
+  let depth = 0;
+  let j = i;
+  while (j < content.length) {
+    const c = content[j];
+    if (c === '"' || c === "'") {
+      j = skipAstroQuoted(content, j);
+      continue;
+    }
+    if (content.startsWith('//', j)) {
+      const e = content.indexOf('\n', j + 2);
+      j = e < 0 ? content.length : e + 1;
+      continue;
+    }
+    if (content.startsWith('/*', j)) {
+      const e = content.indexOf('*/', j + 2);
+      j = e < 0 ? content.length : e + 2;
+      continue;
+    }
+    if (c === '(') depth++;
+    else if (c === ')') {
+      depth--;
+      if (depth === 0) return j + 1;
+    }
+    j++;
+  }
+  return -1;
+}
+
+/**
+ * Identifier reads inside one `{…}` expression whose opening brace is at i;
+ * returns the reads and the index just past the MATCHING `}`. Nested braces
+ * (object literals), JSX elements, strings/comments/backticks, arrow param
+ * lists, member accesses and object keys are handled per the module docs.
+ */
+function scanAstroExpr(
+  content: string,
+  i: number,
+  shadowed: Set<string> = new Set(),
+): { reads: AstroTemplateRead[]; next: number } {
+  const reads: AstroTemplateRead[] = [];
+  const len = content.length;
+  let depth = 1;
+  let j = i + 1;
+  while (j < len && depth > 0) {
+    const c = content[j];
+    if (c === '"' || c === "'") {
+      j = skipAstroQuoted(content, j);
+      continue;
+    }
+    if (c === '`') {
+      j = skipAstroTemplate(content, j);
+      continue;
+    }
+    if (content.startsWith('//', j)) {
+      const e = content.indexOf('\n', j + 2);
+      j = e < 0 ? len : e + 1;
+      continue;
+    }
+    if (content.startsWith('/*', j)) {
+      const e = content.indexOf('*/', j + 2);
+      j = e < 0 ? len : e + 2;
+      continue;
+    }
+    if (c === '{') {
+      const inner = scanAstroExpr(content, j, shadowed);
+      reads.push(...inner.reads);
+      j = inner.next;
+      continue;
+    }
+    if (c === '}') {
+      depth--;
+      j++;
+      continue;
+    }
+    if (c === '<') {
+      const jsx = scanAstroJsx(content, j);
+      reads.push(...jsx.reads);
+      j = jsx.next;
+      continue;
+    }
+    if (c === '(') {
+      // Arrow param list? `(a, b) => …` — params are arrow-local names, never
+      // module-scope bindings: track their names (shadowed for the rest of this
+      // expression) and skip the list — defaults included.
+      const close = matchAstroParen(content, j);
+      if (close >= 0 && /^\s*=>/.test(content.slice(close))) {
+        for (const p of astroParamNames(content, j + 1, close)) shadowed.add(p);
+        const m = /^\s*=>/.exec(content.slice(close))!;
+        j = close + m[0].length;
+        continue;
+      }
+      j++;
+      continue;
+    }
+    if (isAstroIdentStart(c)) {
+      const e = readAstroIdent(content, j);
+      const name = content.slice(j, e);
+      const prev = prevSig(content, j);
+      if (prev !== '.') {
+        const next = nextSig(content, e);
+        const isKey = next === ':' && (prev === '{' || prev === ',');
+        const isBareParam = /^\s*=>/.test(content.slice(e)); // `x => …`
+        if (isBareParam) shadowed.add(name);
+        else if (!isKey && !shadowed.has(name) && !ASTRO_TEMPLATE_SKIP.has(name)) {
+          reads.push({ start: j, end: e, name });
+        }
+      }
+      j = e;
+      continue;
+    }
+    j++;
+  }
+  return { reads, next: j };
+}
+
+/**
+ * One JSX element inside an expression, starting at the '<' at i: scans the
+ * open tag (quoted attrs opaque, `attr={expr}` values recursed), then children
+ * text (`{expr}` interpolations + nested elements) to the matching close tag.
+ * Raw `<script>`/`<style>` bodies are skipped whole; a fragment `<> … </>` is
+ * scanned to its `</>`.
+ */
+function scanAstroJsx(content: string, i: number): { reads: AstroTemplateRead[]; next: number } {
+  const reads: AstroTemplateRead[] = [];
+  const len = content.length;
+  if (content.startsWith('<>', i)) return scanAstroJsxChildren(content, i + 2, '', reads);
+  let j = i + 1;
+  let name = '';
+  while (j < len && /[A-Za-z0-9_.:$-]/.test(content[j])) {
+    name += content[j];
+    j++;
+  }
+  const rawText = name.toLowerCase() === 'script' || name.toLowerCase() === 'style';
+  // Attributes until '>' (a `/>` self-closes the element).
+  let selfClosing = false;
+  let done = false;
+  while (j < len && !done) {
+    const c = content[j];
+    if (/\s/.test(c)) {
+      j++;
+      continue;
+    }
+    if (c === '/' && content[j + 1] === '>') {
+      selfClosing = true;
+      j += 2;
+      done = true;
+      break;
+    }
+    if (c === '>') {
+      j++;
+      done = true;
+      break;
+    }
+    if (c === '"' || c === "'") {
+      j = skipAstroQuoted(content, j);
+      continue;
+    }
+    if (c === '{') {
+      const inner = scanAstroExpr(content, j);
+      reads.push(...inner.reads);
+      j = inner.next;
+      continue;
+    }
+    j++;
+  }
+  if (selfClosing) return { reads, next: j };
+  if (rawText) {
+    const close = content.toLowerCase().indexOf(`</${name.toLowerCase()}`, j);
+    if (close < 0) return { reads, next: len };
+    const gt = content.indexOf('>', close);
+    return { reads, next: gt < 0 ? len : gt + 1 };
+  }
+  return scanAstroJsxChildren(content, j, name, reads);
+}
+
+/** Children of the JSX element `name` ('' for fragments): text, `{expr}`,
+ * nested elements — until the matching `</name>`. Nested elements recurse
+ * whole (scanAstroJsx consumes through their own close tag), so same-name
+ * nesting needs no element stack. */
+function scanAstroJsxChildren(
+  content: string,
+  j: number,
+  name: string,
+  reads: AstroTemplateRead[],
+): { reads: AstroTemplateRead[]; next: number } {
+  const len = content.length;
+  while (j < len) {
+    const c = content[j];
+    if (content.startsWith('<!--', j)) {
+      const e = content.indexOf('-->', j + 4);
+      j = e < 0 ? len : e + 3;
+      continue;
+    }
+    if (c === '{') {
+      const inner = scanAstroExpr(content, j);
+      reads.push(...inner.reads);
+      j = inner.next;
+      continue;
+    }
+    if (c === '<') {
+      if (content.startsWith('</', j)) {
+        let k = j + 2;
+        while (k < len && /[A-Za-z0-9_.:$-]/.test(content[k])) k++;
+        const closeName = content.slice(j + 2, k);
+        const gt = content.indexOf('>', k);
+        if (closeName === name) return { reads, next: gt < 0 ? len : gt + 1 };
+        j = gt < 0 ? len : gt + 1; // mismatched close: skip past and keep scanning
+        continue;
+      }
+      const inner = scanAstroJsx(content, j);
+      reads.push(...inner.reads);
+      j = inner.next;
+      continue;
+    }
+    j++;
+  }
+  return { reads, next: j }; // unterminated element: consume the rest
+}
+
+/** Advance past a markup `<tag …>` / `</tag>` at j (quoted values and unquoted
+ * text skipped; `attr={expr}` values scanned). Children and raw-text elements
+ * are handled by the caller's main loop. */
+function scanAstroMarkupTag(content: string, j: number, reads: AstroTemplateRead[]): number {
+  const len = content.length;
+  let i = j + 1;
+  if (content[i] === '/') i++; // closing tag: skip straight to '>'
+  while (i < len) {
+    const c = content[i];
+    if (c === '>') return i + 1;
+    if (c === '"' || c === "'") {
+      i = skipAstroQuoted(content, i);
+      continue;
+    }
+    if (c === '{') {
+      const inner = scanAstroExpr(content, i);
+      reads.push(...inner.reads);
+      i = inner.next;
+      continue;
+    }
+    i++;
+  }
+  return i;
+}
+
+/**
+ * Identifier reads across the template portion of an astro file (starting at
+ * the index just past the closing `---` fence): text interpolations, markup
+ * attribute expressions, JSX-in-expression regions — raw `<script>`/`<style>`
+ * bodies, HTML comments, and quoted attribute values are never scanned.
+ */
+export function scanAstroTemplateReads(content: string, templateStart: number): AstroTemplateRead[] {
+  const reads: AstroTemplateRead[] = [];
+  const len = content.length;
+  let j = templateStart;
+  while (j < len) {
+    const c = content[j];
+    if (content.startsWith('<!--', j)) {
+      const e = content.indexOf('-->', j + 4);
+      j = e < 0 ? len : e + 3;
+      continue;
+    }
+    if (c === '{') {
+      const inner = scanAstroExpr(content, j);
+      reads.push(...inner.reads);
+      j = inner.next;
+      continue;
+    }
+    if (c === '<') {
+      // Raw-text elements: `<script …>…</script>` / `<style …>…</style>` bodies
+      // are client-side code — never scanned for module-scope reads.
+      const m = /^<([A-Za-z][A-Za-z0-9-]*)/.exec(content.slice(j));
+      if (m && (m[1].toLowerCase() === 'script' || m[1].toLowerCase() === 'style')) {
+        const openGt = content.indexOf('>', j);
+        if (openGt < 0) break;
+        const close = content.toLowerCase().indexOf(`</${m[1].toLowerCase()}`, openGt + 1);
+        if (close < 0) break;
+        const gt = content.indexOf('>', close);
+        j = gt < 0 ? len : gt + 1;
+        continue;
+      }
+      j = scanAstroMarkupTag(content, j, reads);
+      continue;
+    }
+    j++;
+  }
+  return reads;
+}
+
+/**
+ * Row-8 remainder (template SCOPE): after the frontmatter walk, create the
+ * file's AstroTemplate scope — child of the module scope the walk opened — and
+ * emit a Read occurrence per template identifier, so the binder's scope chain
+ * resolves `lang` in `lang={lang}` to the frontmatter const. parseFile calls
+ * this for every .astro file with a frontmatter fence; files without one have
+ * no module scope to resolve against and are left untouched.
+ */
+function emitAstroTemplateScope(ctx: BinderCtx, content: string, fm: { text: string; offset: number }): void {
+  const after = content.slice(fm.offset + fm.text.length);
+  const fence = /^\r?\n---(?:\r?\n|$)/.exec(after);
+  if (!fence) return;
+  const tplStart = fm.offset + fm.text.length + fence[0].length;
+  const moduleScope = ctx.scopes[0]; // the SourceFile walk always opens the module scope first
+  const key = ctx.scopeKey++;
+  const scopePath = 'template';
+  const pathCount = (ctx.scopePathCounts.get(scopePath) ?? 0) + 1;
+  ctx.scopePathCounts.set(scopePath, pathCount);
+  const idPath = pathCount > 1 ? `${scopePath}~${pathCount}` : scopePath;
+  const scope: ScopeNode = {
+    id: `scope:${ctx.path}#${idPath}`,
+    key,
+    kind: ScopeKind.AstroTemplate,
+    parentKey: moduleScope?.key,
+    fileIdx: ctx.fileIdx,
+    range: makeRange(ctx.lineIndex, tplStart, content.length),
+    name: 'template',
+    symbolKeys: [],
+  };
+  ctx.scopes.push(scope);
+  for (const rd of scanAstroTemplateReads(content, tplStart)) {
+    ctx.occurrences.push({
+      fileIdx: ctx.fileIdx,
+      range: makeRange(ctx.lineIndex, rd.start, rd.end),
+      name: rd.name,
+      scopeKey: key,
+      role: OccurrenceRole.Read,
+    });
+  }
+}
+
 export function parseFile(input: ParseFileInput): ParsedFile {
   try {
     let sf: ts.SourceFile;
     let offset = 0;
+    let fm: { text: string; offset: number } | null = null;
     if (input.lang === 'astro') {
-      const fm = splitAstroFrontmatter(input.content);
+      fm = splitAstroFrontmatter(input.content);
       if (!fm) {
         const ctx = newCtx(input, ts.createSourceFile(input.path, '', ts.ScriptTarget.Latest, true, ts.ScriptKind.TS), 0, buildLineIndex(input.content));
         const hashes = finishHashes(ctx);
@@ -1409,6 +1890,9 @@ export function parseFile(input: ParseFileInput): ParsedFile {
     }
     const ctx = newCtx(input, sf, offset, buildLineIndex(input.content));
     walk(sf, ctx);
+    // Row-8 remainder: template interpolations resolve in an AstroTemplate
+    // scope child of the frontmatter module scope (scope key 0).
+    if (fm) emitAstroTemplateScope(ctx, input.content, fm);
     const hashes = finishHashes(ctx);
     return {
       fileIdx: input.fileIdx,

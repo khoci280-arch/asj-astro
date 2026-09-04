@@ -32,6 +32,17 @@ describe('differential validation (sample)', () => {
     expect(r.disagreements).toHaveLength(0);
   });
 
+  it('astro template interpolations are scope-resolved and excluded from compiler checks', { timeout: TIMEOUT }, () => {
+    const r = runValidation(ROOT, { sampleOnly: true });
+    // The compiler program receives frontmatter-stripped .astro sources, so
+    // template positions (the BaseLayout interpolation reads of
+    // lang/description/sprite/showFooter/showBottomNav) carry no compiler
+    // identifier — they bind against the module scope and are excluded here.
+    expect(r.counts.skippedAstroTemplate).toBeGreaterThanOrEqual(4);
+    expect(r.counts.disagreeFalsePositive).toBe(0);
+    expect(r.disagreements).toHaveLength(0);
+  });
+
   it('graduates lib globals and CJS/framework intrinsics; the residual bucket is empty', { timeout: TIMEOUT }, () => {
     const r = runValidation(ROOT, { sampleOnly: true });
     // The lib tier emitted checker-confirmed lib refs for the bucket. Every

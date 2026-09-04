@@ -15,8 +15,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildIndex } from './build.js';
 import { dumpDoc, loadSnapshot } from './dump.js';
-import { impactReport, indexFromDoc, libTargetsOf, refsOfLib, resolveAt } from './query.js';
-import { OccurrenceRole, type Occurrence } from '../../docs/code-index-schema.js';
+import { impactReport, indexFromDoc, libTargetsOf, refsOf, refsOfLib, resolveAt } from './query.js';
+import { OccurrenceRole, ScopeKind, SymbolKind, type Occurrence } from '../../docs/code-index-schema.js';
 
 const ROOT = process.cwd().replace(/\\/g, '/');
 
@@ -282,4 +282,82 @@ describe('deep tier (checker-backed member bind)', () => {
     expect(degraded.refs.filter((z) => z.deep).length).toBe(0);
     expect(degraded.refs.length).toBe(off.refs.length);
   });
+});
+
+describe('astro template scope (row-8 remainder — symbol-level interpolations)', () => {
+  const FX = `---
+const greeting = 'halo';
+const count = 2;
+const show = true;
+---
+<div title={greeting} data-n={count}>
+  <span>{greeting}</span>
+  {show && <em note={greeting}>x</em>}
+</div>
+<script>const client = greeting;</script>`;
+
+  it('fixture: template interpolations bind to frontmatter consts (template = child scope)', () => {
+    const fx = mkdtempSync(join(tmpdir(), 'idx-astro-tpl-'));
+    writeFileSync(join(fx, '.gitignore'), 'node_modules/\n', 'utf8');
+    mkdirSync(join(fx, 'src', 'pages'), { recursive: true });
+    writeFileSync(join(fx, 'src', 'pages', 'page.astro'), FX, 'utf8');
+    const mk = () => buildIndex(fx);
+    const a = mk();
+    const f = a.files.find((x) => x.path === 'src/pages/page.astro')!;
+    const fi = f.idx as unknown as number;
+    const tplScope = a.scopes.find((s) => s.fileIdx === fi && s.kind === ScopeKind.AstroTemplate)!;
+    expect(tplScope).toBeDefined();
+    const occs = a.occurrences.filter((o) => o.fileIdx === fi && o.scopeKey === tplScope.key);
+    expect(occs.map((o) => o.name)).toEqual(['greeting', 'count', 'greeting', 'show', 'greeting']);
+    // Every template read is a scope-bound ref onto the frontmatter const, and
+    // none of it leaks into the unresolved buckets (script bodies untouched).
+    const consts = new Map(a.symbols.filter((s) => s.fileIdx === fi && s.kind === SymbolKind.Constant).map((s) => [s.name, s]));
+    expect(consts.has('greeting')).toBe(true);
+    for (const o of occs) {
+      const ref = a.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
+      expect(ref).toBeDefined();
+      expect(ref!.resolvedVia).toBe('scope');
+      const target = a.symbols.find((s) => s.key === ref!.symKey)!;
+      expect(target.fileIdx).toBe(fi);
+      expect(target.name).toBe(o.name);
+      expect(target.kind).toBe(SymbolKind.Constant);
+      expect(target.decls[0].start).toBeLessThan(tplScope.range.start); // declaration in the frontmatter
+    }
+    expect(a.unresolvedRefs.filter((u) => u.fileIdx === fi)).toHaveLength(0);
+    // def/hover at a template position answers with the frontmatter declaration.
+    const q = indexFromDoc(dumpDoc(a));
+    const greetingOcc = occs.find((o) => o.name === 'greeting')!;
+    const v = resolveAt(q, 'src/pages/page.astro', greetingOcc.range.startLine, greetingOcc.range.startChar);
+    expect(v.resolved).not.toBeNull();
+    expect(v.resolved!.decls).toHaveLength(1);
+    expect(v.resolved!.decls[0].uri).toBe('src/pages/page.astro');
+    expect(v.resolved!.decls[0].l).toBeLessThan(tplScope.range.startLine); // points into the frontmatter
+    // refs of the frontmatter `greeting` const include every template site.
+    const refView = refsOf(q, consts.get('greeting')!.id);
+    const tplRefs = refView.references.filter((z) => z.file === 'src/pages/page.astro' && z.line >= tplScope.range.startLine);
+    expect(tplRefs).toHaveLength(3); // title attr + span text + <em> attr
+    // Deterministic across builds.
+    const b = mk();
+    const key = (r: typeof a) => r.occurrences.filter((o) => o.fileIdx === fi && o.scopeKey === r.scopes.find((s) => s.fileIdx === fi && s.kind === ScopeKind.AstroTemplate)!.key).map((o) => o.range.start + ':' + o.name).sort();
+    expect(key(a)).toEqual(key(b));
+  }, 120000);
+
+  it('real tree: BaseLayout template reads bind to frontmatter consts and imports', () => {
+    const r = buildIndex(ROOT);
+    const f = r.files.find((x) => x.path === 'src/layouts/BaseLayout.astro')!;
+    const fi = f.idx as unknown as number;
+    const tplScope = r.scopes.find((s) => s.fileIdx === fi && s.kind === ScopeKind.AstroTemplate)!;
+    expect(tplScope).toBeDefined();
+    const occs = r.occurrences.filter((o) => o.fileIdx === fi && o.scopeKey === tplScope.key);
+    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite']);
+    for (const o of occs) {
+      const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
+      expect(ref).toBeDefined();
+      expect(ref!.resolvedVia).toBe('scope');
+      const target = r.symbols.find((s) => s.key === ref!.symKey)!;
+      expect(target.name).toBe(o.name);
+      expect(target.decls[0].start).toBeLessThan(tplScope.range.start); // frontmatter decl, not a template name
+    }
+    expect(r.unresolvedRefs.filter((u) => u.fileIdx === fi && u.range.start >= tplScope.range.start)).toHaveLength(0);
+  }, 120000);
 });

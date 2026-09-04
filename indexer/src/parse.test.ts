@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ImportKind, OccurrenceRole, ScopeKind, SymbolKind } from '../../docs/code-index-schema.js';
-import { parseFile, scanAstroTemplateTags } from './parse.js';
+import { parseFile, scanAstroTemplateReads, scanAstroTemplateTags } from './parse.js';
 import { fileIdx, type Lang } from './util.js';
 
 const ROOT = process.cwd().replace(/\\/g, '/');
@@ -265,5 +265,69 @@ describe('scanAstroTemplateTags', () => {
     const content = '---\nconst x = 1;\n---\n';
     const tags = scanAstroTemplateTags(content, content.indexOf('\n---') + 4);
     expect(tags).toEqual([]);
+  });
+});
+
+describe('scanAstroTemplateReads (template scope — row-8 remainder)', () => {
+  const names = (tpl: string): string[] => scanAstroTemplateReads(tpl, 0).map((r) => r.name);
+
+  it('text interpolations + attribute expressions emit identifier reads in order', () => {
+    const tpl = '<div title={greeting} data-n={count + 1} class={show ? "a" : "b"}>{greeting} done</div>';
+    expect(names(tpl)).toEqual(['greeting', 'count', 'show', 'greeting']);
+  });
+
+  it('recurses into JSX inside an expression and into nested braces; reads stay head-only', () => {
+    const tpl = '<p>{show && <em note={greeting}>x</em>}</p><p>{ { k: v, s } }</p>';
+    expect(names(tpl)).toEqual(['show', 'greeting', 'v', 's']); // k is an object key, not a read
+  });
+
+  it('never emits member names, keywords, or arrow params (incl. body references)', () => {
+    expect(names('<div>{a.b}</div>')).toEqual(['a']);
+    expect(names('<div>{items.map((x) => x.n + min)}</div>')).toEqual(['items', 'min']); // x: param decl + body ref
+    expect(names('<div>{items.map(x => x.n)}</div>')).toEqual(['items']); // bare single-param arrow
+    expect(names('<div>{true && this.w}</div>')).toEqual([]);
+  });
+
+  it('skips raw script/style bodies, HTML comments, strings and template literals', () => {
+    const tpl =
+      '<script>const c = greeting;</script><style>.a{ color: red }</style><!-- {hidden} --><div>{"s{notARead}"} {`t${alsoNotARead}`} {"a" + y}</div>';
+    expect(names(tpl)).toEqual(['y']);
+  });
+});
+
+describe('astro template scope emission (parse level)', () => {
+  const CONTENT = [
+    '---',
+    "const greeting = 'halo';",
+    'const count = 2;',
+    'const show = true;',
+    '---',
+    '<div title={greeting} data-n={count}>{show && <em>{greeting}</em>}</div>',
+    '<script>const client = greeting;</script>',
+    '',
+  ].join('\n');
+
+  it('emits an AstroTemplate scope (child of the module scope) + Read occurrences', () => {
+    const p = parseInline(CONTENT, 'test/page.astro', 'astro');
+    const moduleScope = p.scopes.find((s) => s.kind === ScopeKind.Module)!;
+    expect(moduleScope).toBeDefined();
+    const tpl = p.scopes.find((s) => s.kind === ScopeKind.AstroTemplate)!;
+    expect(tpl).toBeDefined();
+    expect(tpl.name).toBe('template');
+    expect(tpl.parentKey).toBe(moduleScope.key);
+    const occs = p.occurrences.filter((o) => o.scopeKey === tpl.key);
+    expect(occs.map((o) => o.name)).toEqual(['greeting', 'count', 'show', 'greeting']);
+    expect(occs.every((o) => o.role === OccurrenceRole.Read)).toBe(true);
+    // Script bodies are client-side code — never module-scope reads.
+    expect(occs.some((o) => o.name === 'client')).toBe(false);
+    // Offsets land inside the real template text (past the closing fence).
+    const fmEnd = CONTENT.indexOf('---\n', 4) + 4;
+    expect(occs.every((o) => o.range.start > fmEnd)).toBe(true);
+  });
+
+  it('no frontmatter fence means no module scope and no template occurrences', () => {
+    const p = parseInline('<div>hi {x}</div>', 'test/nofm.astro', 'astro');
+    expect(p.scopes.filter((s) => s.kind === ScopeKind.AstroTemplate)).toHaveLength(0);
+    expect(p.occurrences).toHaveLength(0);
   });
 });

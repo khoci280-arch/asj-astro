@@ -44,6 +44,7 @@
     "libRefFramework": 3,
     "skippedNonBindable": 1793,
     "skippedJsxIntrinsic": 54,
+    "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
     "disagreeNameMismatch": 0,
@@ -153,7 +154,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 1,
-      "skipped": 5,
+      "skipped": 10,
       "disagree": 0
     },
     {

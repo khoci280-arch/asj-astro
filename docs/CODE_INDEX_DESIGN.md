@@ -1,6 +1,6 @@
 # Code Indexing & Symbol Resolution — Design
 
-**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); the §8 surface beyond the shipped subset, row 6’s §6.2 incremental engine + WS push, phase 7 (SQLite), and row 8’s astro template *scope* (symbol-level) + Astro.glob expansion are designed, not built · **Date:** 2026-09-03
+**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); the §8 surface beyond the shipped subset, row 6’s §6.2 incremental engine + WS push, phase 7 (SQLite), and row 8’s Astro.glob expansion are designed, not built (the astro template scope — symbol-level template interpolations — ships with this pass, §13) · **Date:** 2026-09-04
 
 This document specifies a semantic index ("the index") over the repository: how files are
 discovered and parsed, how symbols are stored, how a name written in one file is resolved to the
@@ -784,13 +784,13 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
 | 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; every such ref records its sibling declaration keys and def/hover shows ALL declaration sites across the files; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
-| 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
+| 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Template SCOPE shipped (2026-09-04): `{expr}` interpolations (text + `attr={expr}`, recursing into JSX-in-expression) emit Read occurrences in an `AstroTemplate` scope that is a child of the frontmatter module scope, so `lang={lang}` in BaseLayout binds to the destructured frontmatter const — def/hover at a template position answers with the frontmatter declaration and `idx refs` on those consts lists the template sites (5 interpolation reads on this tree; `<script>` bodies stay client-side and unindexed; the compiler program receives frontmatter-stripped .astro sources, so template positions are scope-resolved and excluded from differential validation). Open: Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
 **2 → 3 → 4** is done — those phases were validated against the compiler before
 the read side shipped, precisely because this repo's 540 `../` hops, 15 barrels,
 and aliased re-exports are where a naive indexer silently produces wrong answers.
-Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 open remainder (cross-file declaration merging and `detail`/hover strings — lib binding is shipped), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
+Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (Astro.glob expansion), the row-9 open remainder (cross-file declaration merging and `detail`/hover strings — lib binding is shipped), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
 
 ---
 
@@ -841,11 +841,12 @@ module graph, `idx build|stats|unresolved` CLI), third vitest project
 5. **Type params** are declared with kind `parameter` (the schema has no
    `typeParam` kind) so type positions can bind in Phase 4.
 
-Deferred to later phases: TypeParams scopes, Astro template SCOPE
-(symbol-level — frontmatter and template component tags parse since row 8,
-interpolations/props do not), Astro.glob expansion, CJS export *symbols*
-(export records exist), Tier 2 checker work (cross-file declaration merging,
-`detail`/hover strings).
+Deferred to later phases: TypeParams scopes, Astro.glob expansion, CJS export
+*symbols* (export records exist), Tier 2 checker work (cross-file declaration
+merging, `detail`/hover strings). Astro template SCOPE (symbol-level
+interpolations) is no longer deferred — it ships with this pass (an
+`AstroTemplate` scope under the frontmatter module scope binds `{expr}` reads
+to frontmatter consts/imports, §2.4, row 8, §13).
 
 ### Phase exit criteria — status
 
@@ -1004,17 +1005,20 @@ Scope note: comparison is **name-level** — it proves the compiler binds *a*
 symbol with the same name at the offset, which is blind to same-name shadowing
 (binder picking a different declaration of the same name). Declaration-identity
 comparison (decl file + offset) is the natural hardening next step.
-`validate.test.ts` (2 tests) locks the sample-mode harness at zero
-disagreements — 163 indexer tests total (13 files, incl. the 9-test
-deep-tier suite that pins the lib tier: real-tree lib refs, determinism,
+`validate.test.ts` (3 tests) locks the sample-mode harness at zero
+disagreements — 172 indexer tests total (13 files): the 11-test deep-tier
+suite pins the lib tier + template scope — real-tree lib refs, determinism,
 dump round-trip, a tsconfig'd fixture binding `String`/`JSON`/`console`/
 `document.createElement`, the def/hover answer resolving to the lib
 declaration file + line, a cross-file declaration-merging fixture
 (interface+interface overload members across two files join ONE
 deterministic symbol whose ref carries the sibling key and whose def/hover
 lists both declaration files), merged-site def showing every declaration
-site on the real tree, lib-name refs/impact over the libRefs table, and
-`detail` on lib refs + symbols).
+site on the real tree, lib-name refs/impact over the libRefs table,
+`detail` on lib refs + symbols, and the astro template-scope suite
+(scanner units + an .astro fixture binding template interpolations to
+frontmatter consts with def/refs at template positions + the real-tree
+BaseLayout reads), and the validator's astro-template exclusion).
 
 ### Phase 5 shipped — read side: `idx dump` + `idx serve` + query layer (2026-09-03)
 
@@ -1088,10 +1092,13 @@ match the pipeline's one coordinate space (§8 note): line 1-based, char a
   live-build `serve` to listening: **~7 s** with the default deep tier
   (light ~0.6 s + deep ~5.9 s — the pass now scans bound Property rows too
   for merged-declaration discovery; `idx watch` generations stay light-only);
-- 247 files · 9,263 symbols · 22,495 bound refs (21,446 light + 1,049 deep) ·
-  10,919 symbol edges · 1,005 import edges (incl. 49 astro Renders);
-  2 unresolved total (both import-level — the `https://` dynamic imports in
-  `fcm.ts`; the ref-level bucket is exactly zero); dump ~10.6 MB compact
+- 247 files · 9,263 symbols · 22,500 bound refs (21,451 light + 1,049 deep;
+  the +5 over the previous pass are the BaseLayout template interpolation
+  reads — `lang`/`description`/`sprite`/`showFooter`/`showBottomNav` — bound
+  in the file's AstroTemplate scope) · 10,919 symbol edges · 1,005 import
+  edges (incl. 49 astro Renders); 2 unresolved total (both import-level — the
+  `https://` dynamic imports in `fcm.ts`; the ref-level bucket is exactly
+  zero); dump ~10.6 MB compact
   (8,123 lib refs across 54 lib files, each row carrying the scanned decl
   position inside the lib file + `detail` + `role`; all 9,263 symbols carry
   `detail`), byte-identical across runs, zero dangling joins (lib refs carry
@@ -1230,7 +1237,8 @@ tag scan), and `npm run boundary` has been swapped to the index (the depcruise
 `--exit-code` flag that 18.x removed never gated; the index gate is real).
 Still open and recorded: depcruise dependencyTypes beyond the four import kinds,
 `via`/`viaNot`, `reachable`, config files outside the indexed universe, and —
-within astro — template SCOPE (symbol-level) and Astro.glob expansion.
+within astro — Astro.glob expansion (the template SCOPE — symbol-level
+interpolations — ships with the 2026-09-04 pass, see below).
 **Superseded by the drift-fix pass (2026-09-04, §13):** the 11 violations are
 gone — the master-data cycle was broken and characterisation.test.ts left
 `_lib/kernel` — so the remaining 8 were warnings. **Superseded by the warning
@@ -1611,9 +1619,24 @@ notes loaders must not assume types 3..6); an unbound tag is an unresolved
 record with the new `template-component` reason (an Astro compile error — a
 health signal, not noise). On this tree: **49 Renders edges**, zero unbound
 tags; depcruise has NO astro support at all, so these edges are index-only by
-construction. Still designed, not built: astro template SCOPE (symbol-level
-interpolations/props) and Astro.glob expansion (zero `Astro.glob` usage on this
-tree).
+construction. The template SCOPE remainder shipped 2026-09-04: a lightweight
+synchronous expression scan (conservative by design — raw `<script>`/`<style>`
+bodies, HTML comments, quoted attribute values and backtick literals are
+opaque; member names, object keys, arrow params and the JS keywords are never
+emitted as reads) finds every identifier in `{expr}` text interpolations and
+`attr={expr}` attribute values — recursing into JSX inside an expression
+(`{cond && <Card note={greeting} />}`) — and parse emits each as a Read
+occurrence in a per-file `AstroTemplate` scope (schema `ScopeKind.AstroTemplate`,
+child of the frontmatter module scope). The binder's normal scope chain then
+resolves `lang` in `lang={lang}` to the destructured frontmatter const exactly
+like a module-level reference: def/hover at a template position answers with the
+frontmatter declaration and `idx refs` on those consts lists the template usage
+sites. The compiler program only receives frontmatter-stripped .astro sources,
+so template positions carry no compiler identifier — validation classifies them
+(`astro template interpolations` deviation bucket) instead of checking them;
+the full run stays 22,495/22,495, 0 disagreements. On this tree: 5 interpolation
+reads (BaseLayout), every one scope-bound. Still designed, not built: Astro.glob
+expansion (zero `Astro.glob` usage on this tree).
 
 The SCC machinery surfaced as a read endpoint the same day:
 `GET /deps/cycles[?file=]` (serve.ts) lists the non-trivial module cycles via
@@ -1687,8 +1710,9 @@ ref **only** when the compiler's declaration maps 1:1 onto an indexed symbol
 refs carry `resolvedVia: 'type'` + the additive `deep: true` flag (legacy
 snapshots load unchanged; dump round-trip pinned in deep-tier.test.ts).
 
-Real effect on this tree: **1,049 deep refs** (total refs 22,495 = 21,446
-light + 1,049 deep) — the interface-field read families the light tier could
+Real effect on this tree: **1,049 deep refs** (total refs 22,500 = 21,451
+light + 1,049 deep, the +5 light being BaseLayout's template-interpolation
+reads) — the interface-field read families the light tier could
 not reach when the receiver's static type arrives through untraced paths:
 `SessionPayload.role` ×26, `FormRawRow.id` ×26, `AuthState.sessionToken` ×19,
 `AI_ACTIONS` ×16, `Job.code` ×13, `Kandidat.wa` ×11, `ImportMeta.env` ×10
@@ -1930,4 +1954,4 @@ Ownership rules that hold today:
 - ResolvedSymbol describes the resolved symbol: `file`/`decls[].uri` are the
   symbol's home file, never the file the query pointed at.
 
-Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail` strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
+Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket; row 8 now includes the astro template scope — template interpolations bind to frontmatter consts; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail` strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
