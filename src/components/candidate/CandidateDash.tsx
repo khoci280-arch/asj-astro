@@ -17,6 +17,7 @@ import { uploadToCloudinary } from "../../lib/cloudinary";
 import { showToast } from "../Toast";
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
+import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -27,10 +28,21 @@ type CandidateData = {
   jadwal: { id: string; nama: string; waktu: string; lokasi: string; link: string; }[];
   catatan: string; catatanExt?: string;
   berkasProgress: number; berkasTotal: number;
-  berkasList: { name: string; done: boolean; }[];
+  berkasList: { label: string; done: boolean; }[];
+  /** Map pendek berkas (kunci pemberkasan_checklist/master) utk prefill modal. */
+  berkas?: Record<string, string>;
+  /** Map pendek biodata (kunci c.bio) utk prefill modal. */
+  bio?: Record<string, string>;
   needRevision: boolean; revisionNote: string;
   applications?: { code: string; cv: string; status: string; tahapan: string; }[];
 };
+
+// Hasil getAppData('kandidat') di backend = { candidates: [row],
+// kandidatRiwayat, mySchedules } — row sudah di-dekorasi attachBerkasBio
+// (berkas/bio) + attachApplications. Dashboard lama membaca `kandidatData`
+// (kontrak GAS legacy) yang tidak pernah dikembalikan rebuild → semua field
+// kosong & progres pemberkasan palsu 0/x. Adapter A05 (2026-09-04).
+type KandidatApi = Record<string, any>;
 
 function statusBadgeClass(status: string) {
   const s = (status || '').toUpperCase();
@@ -95,6 +107,14 @@ export default function CandidateDash() {
 
   useEffect(() => { loadDashboard(); }, []);
 
+  // Refresh setelah aksi modal (upload berkas / simpan biodata) men-dispatch
+  // candidates-changed — supaya progres & prefill tidak basi (A05).
+  useEffect(() => {
+    const h = () => { loadDashboard(); };
+    window.addEventListener('candidates-changed', h);
+    return () => window.removeEventListener('candidates-changed', h);
+  }, []);
+
   async function loadDashboard() {
     try {
       const wa = user.wa || JSON.parse(localStorage.getItem('asj_kandidat_session') || '{}').wa;
@@ -104,20 +124,44 @@ export default function CandidateDash() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getAppData', args: ['kandidat'], sessionToken: token }),
       });
-      const result = await res.json();
+      const result: KandidatApi = await res.json();
       if (result.success) {
-        const d = result.kandidatData || {};
+        const row: any = (Array.isArray(result.candidates) && result.candidates[0]) || null;
+        const legacyD = result.kandidatData || {};
+        const catatanInt = row?.catatanInt || row?.catatan || '';
+        const berkasMap: Record<string, string> = row?.berkas || legacyD.berkas || {};
+        const kelasMatch = /\[KELAS\s*([A-Z0-9]+)\]/i.exec(String(catatanInt));
+        const berkasList = ALL_BERKAS.map((def) => ({
+          label: def.label,
+          done: hasBerkasUrl(berkasMap[def.key]),
+        }));
         setData({
-          nama: d.nama || user.name || 'Kandidat', wa,
-          job: d.job || '-', tahapan: d.tahapan || '-', status: d.status || '-',
-          isVIP: d.isVIP || false, isSiswaASJ: d.isSiswaASJ || false, kelas: d.kelas || '', idKandidat: d.idKandidat || '',
-          cvMiniProgress: d.cvMiniProgress || 0, cvMasterProgress: d.cvMasterProgress || 0,
-          riwayat: d.riwayat || [], jadwal: d.jadwal || [],
-          catatan: d.catatan || '', catatanExt: d.catatanExt || '',
-          berkasProgress: d.berkasProgress || 0, berkasTotal: d.berkasTotal || 17,
-          berkasList: d.berkasList || [],
-          needRevision: d.needRevision || false, revisionNote: d.revisionNote || '',
-          applications: d.applications || [],
+          nama: row?.nama || legacyD.nama || user.name || 'Kandidat', wa,
+          job: row?.idLoker || legacyD.job || '-', tahapan: row?.tahapan || legacyD.tahapan || '-',
+          status: row?.status || legacyD.status || '-',
+          isVIP: /\[VIP\]/i.test(catatanInt) || !!legacyD.isVIP,
+          isSiswaASJ: !!row?.isSiswaASJ || !!legacyD.isSiswaASJ,
+          kelas: (kelasMatch && kelasMatch[1]) || legacyD.kelas || '',
+          idKandidat: row?.idKandidat || legacyD.idKandidat || '',
+          cvMiniProgress: legacyD.cvMiniProgress || 0, cvMasterProgress: legacyD.cvMasterProgress || 0,
+          riwayat: (result.kandidatRiwayat || legacyD.riwayat || []).map((a: any) => ({
+            jobCode: a.code || a.jobCode || '-', tahapan: a.tahapan || '-',
+            status: a.status || '-', tanggal: a.timestamp || a.tanggal || '',
+            kategori: a.kategori || '', cv: a.cv || '',
+          })),
+          jadwal: (result.mySchedules || legacyD.jadwal || []).map((s: any) => ({
+            id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
+            lokasi: s.lokasi || '', link: s.link || '',
+          })),
+          catatan: row?.catatan || legacyD.catatan || '',
+          catatanExt: row?.catatanExt || legacyD.catatanExt || '',
+          berkasProgress: berkasList.filter((b) => b.done).length,
+          berkasTotal: berkasList.length,
+          berkasList,
+          berkas: berkasMap,
+          bio: row?.bio || legacyD.bio || {},
+          needRevision: !!legacyD.needRevision, revisionNote: legacyD.revisionNote || '',
+          applications: row?.applications || legacyD.applications || [],
         });
       }
     } catch (e) { console.error('[CandidateDash]', e); }
@@ -344,7 +388,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
                 {data.berkasList.map((b, i) => (
                   <div key={i} class={`flex items-center gap-2 text-xs px-2 py-1 rounded ${b.done ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <Icon name={b.done ? 'check-circle' : 'circle'} /> {b.name}
+                    <Icon name={b.done ? 'check-circle' : 'circle'} /> {t(b.label)}
                   </div>
                 ))}
               </div>

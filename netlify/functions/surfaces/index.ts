@@ -126,7 +126,7 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   isJobRequiresCv:              () => import('./docs').then(m => m.DOCS_ACTIONS),
   submitApply:                  () => import('./docs').then(m => m.DOCS_ACTIONS),
   getExistingCandidateJsonByWa: () => import('./docs').then(m => m.DOCS_ACTIONS),
-  simpanBiodataLengkap:         () => import('./docs').then(m => m.DOCS_ACTIONS),
+  simpanBiodataLengkap:         () => import('./master').then(m => m.MASTER_ACTIONS),
   simpanKandidatDanUpload:      () => import('./docs').then(m => m.DOCS_ACTIONS),
   simpanBerkasTahapan:          () => import('./docs').then(m => m.DOCS_ACTIONS),
   simpanRevisiKandidat:         () => import('./docs').then(m => m.DOCS_ACTIONS),

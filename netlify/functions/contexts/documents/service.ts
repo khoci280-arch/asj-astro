@@ -34,7 +34,9 @@ function pickPrefill(data: any) {
   return safe;
 }
 
-const FILE_LABEL_COLUMNS: Record<string, { cand: string | null; master: string | null; pemberkasan: string | null }> = {
+// Exported for DB-free parity tests (A05): the modal sends these canonical
+// tokens; legacy clients send the long-label aliases further down.
+export const FILE_LABEL_COLUMNS: Record<string, { cand: string | null; master: string | null; pemberkasan: string | null }> = {
   PAS_PHOTO: { cand: 'pas_photo', master: 'pas_photo', pemberkasan: null },
   CV: { cand: 'file_cv', master: 'file_cv', pemberkasan: null },
   CV_REVISI: { cand: 'file_cv', master: 'file_cv', pemberkasan: null },
@@ -60,6 +62,18 @@ const FILE_LABEL_COLUMNS: Record<string, { cand: string | null; master: string |
   'SURAT SEHAT': { cand: null, master: null, pemberkasan: 'sehat_url' },
   BPJS: { cand: null, master: null, pemberkasan: 'bpjs_url' },
   PSIKOTES: { cand: null, master: null, pemberkasan: 'psikotes_url' },
+  // Aliases — canonical label strings used by the LIVE legacy client
+  // (js/03_candidate.ts prosesUploadPemberkasan & modal-pemberkasan). The
+  // rebuild modal now sends the canonical keys above, but rows/robots that
+  // still speak legacy labels must map to the same columns instead of being
+  // silently dropped (A05 parity fix, 2026-09-04).
+  'CERTIFICATE JAPAN': { cand: null, master: null, pemberkasan: 'cert_url' },
+  'PAS FOTO STUDIO': { cand: null, master: null, pemberkasan: 'foto2_url' },
+  'SURAT IJIN ORTU': { cand: null, master: null, pemberkasan: 'ijinortu_url' },
+  'STATUS PERKAWINAN': { cand: null, master: null, pemberkasan: 'kawin_url' },
+  'SURAT SEHAT PUSKESMAS': { cand: null, master: null, pemberkasan: 'sehat_url' },
+  'HASIL PSIKOTES': { cand: null, master: null, pemberkasan: 'psikotes_url' },
+  'IJAZAH UNIVERSITAS': { cand: null, master: 'univ_url', pemberkasan: 'univ_url' },
 };
 
 function fileLabelKey(label: string): string | null {

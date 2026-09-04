@@ -8,6 +8,8 @@ export {
   handleGetMasterDataByWa,
   handleSubmitMasterForm,
   handleGetDrafCvMaster,
+  handleSimpanBiodataLengkap,
+  buildBioPatch,
   buildMasterNested,
   MASTER_COLUMN_MISSING,
   buildAiOverflow,

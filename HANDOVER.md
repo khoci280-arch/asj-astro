@@ -783,3 +783,38 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
 ## Next
 - A05 PemberkasanModal → lanjut A06... urut checklist `docs/PARITY_CHECKLIST.md`.
 
+## 🔄 Sesi 2026-09-04 — Parity A05: PemberkasanModal root-fixed
+- Crosscheck vs legacy partials/modals-shared.html `#modal-pemberkasan` + js/03_candidate.ts
+  (bukaModalPemberkasan / prosesUploadPemberkasan / prosesSimpanBiodataLengkap).
+- Temuan akar: (1) modal mengirim `jenisBerkas: id.toUpperCase()` ('SD','UNIV','CERT',
+  'FOTO2','IJINORTU','KAWIN','SEHAT',...) — token TIDAK ada di FILE_LABEL_COLUMNS backend,
+  jadi mayoritas dokumen ter-upload ke Cloudinary lalu di-ignore backend (toast sukses bohong);
+  (2) action simpanBiodataLengkap NOT_IMPL di surfaces/docs.ts & tak ada handler → tombol
+  Simpan Biodata mati; (3) tanpa prefill apa pun: checklist Sudah/Belum, auto-fill biodata
+  c.bio, gating panel per tahapan, konfirmasi timpa file lama — semua hilang; (4) upload
+  paralel tanpa retry; (5) CandidateDash membaca `kandidatData` yang TIDAK pernah
+  dikembalikan backend (bentuk asli getAppData kandidat = `candidates[0]` ter-dekorasi
+  attachBerkasBio) → dashboard & progres pemberkasan kosong; banyak label i18n modal hilang.
+- Fix: `src/lib/berkasCatalog.ts` (baru) = satu sumber daftar berkas (T1 12 + T2 6) dgn
+  token kanonik FILE_LABEL_COLUMNS — dipakai modal & dashboard; backend FILE_LABEL_COLUMNS
+  + alias label legacy live ('CERTIFICATE JAPAN','PAS FOTO STUDIO','SURAT IJIN ORTU',
+  'STATUS PERKAWINAN','SURAT SEHAT PUSKESMAS','HASIL PSIKOTES','IJAZAH UNIVERSITAS') +
+  `FILE_LABEL_COLUMNS` di-export utk test; master-data + `handleSimpanBiodataLengkap` +
+  pure `buildBioPatch` (guard session + owner-or-admin SEBELUM DB; patch master row 18 kolom
+  payload legacy + sinkron 5 kolom ke database_candidate) → surface MASTER_ACTIONS +
+  surfaces/index re-route (keluar dari docs surface); PemberkasanModal ditulis ulang (JSX):
+  jenis kanonik, status ✓ Lihat/Belum per dokumen, auto-fill biodata (short→long, tgl
+  DD/MM/YYYY→ISO), gating T1/T2/bio per tahapan (regex legacy) + notice terkunci, konfirmasi
+  timpa, upload serial retry 3x backoff, dispatch `candidates-changed`; CandidateDash:
+  adapter ke `candidates[0]` (nama/tahapan/status/isVIP/kelas/riwayat/jadwal/berkas/bio/
+  progres) + listener candidates-changed + pass ctx ke modal; CandidateProfileModal kirim
+  row di detail openPemberkasan; AdminPanel terima candidate + isAdmin; + ~30 kunci i18n id
+  (ui.saving/uploading/save_biodata/uploaded_view/not_yet/upload_locked + label bio/keluarga/
+  perusahaan/dll).
+- Verifikasi: typecheck exit 0; backend 25 file / 232 test (+1 file, +7), frontend 8 file /
+  58 test (+1 file, +4); EOL konsisten per file. Belum di-commit (menumpuk Sesi 6/7 +
+  A01..A04).
+
+## Next
+- A06 UndanganKelasModal → lanjut A07... urut checklist `docs/PARITY_CHECKLIST.md`.
+

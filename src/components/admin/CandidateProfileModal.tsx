@@ -352,7 +352,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 3b. Pemberkasan & Biodata */}
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('openPemberkasan', { detail: { wa: data.wa, nama: data.nama } }));
+                window.dispatchEvent(new CustomEvent('openPemberkasan', { detail: { wa: data.wa, nama: data.nama, candidate: data } }));
               }}
               class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >

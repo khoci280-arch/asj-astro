@@ -103,7 +103,7 @@ export default function AdminPanel() {
   }, []);
   const undangan = useModal();
   const aiCopilot = useModal<{wa: string; nama: string}>();
-  const pemberkasan = useModal<{wa: string; nama: string}>();
+  const pemberkasan = useModal<{wa: string; nama: string; candidate?: Record<string, any> | null}>();
   const profile = useModal<{wa: string; nama: string; candidate?: Record<string, any> | null}>();
   const editModal = useModal<any>();
   const matchmaking = useModal<{job: any; candidates: any[]}>();
@@ -195,7 +195,7 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {pemberkasan.isOpen && <PemberkasanModal isOpen={pemberkasan.isOpen} onClose={pemberkasan.hide} waTarget={pemberkasan.target?.wa || ''} namaTarget={pemberkasan.target?.nama || ''} />}
+      {pemberkasan.isOpen && <PemberkasanModal isOpen={pemberkasan.isOpen} onClose={pemberkasan.hide} waTarget={pemberkasan.target?.wa || ''} namaTarget={pemberkasan.target?.nama || ''} candidate={pemberkasan.target?.candidate || null} isAdmin />}
       {undangan.isOpen && <UndanganKelasModal isOpen={undangan.isOpen} onClose={undangan.hide} />}
       {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.nama} onClose={aiCopilot.hide} />}
       {profile.isOpen && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} candidate={profile.target?.candidate} isOpen={profile.isOpen} onClose={profile.hide} />}

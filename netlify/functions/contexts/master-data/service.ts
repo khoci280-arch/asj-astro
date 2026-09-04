@@ -12,8 +12,9 @@ import { nextCandidateId } from '../../_lib/candidate-helpers';
 import { cacheClear } from '../../_lib/cache';
 import { resolveFileUrl } from '../../_lib/storage';
 import {
-  findMasterByWa, patchMaster, upsertMaster, normalizeWa as nw,
-  normalizeWa, pick, supabaseJson, supabaseUpsert, toText, APPLY_WA_COLS,
+  findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
+  normalizeWa as nw, normalizeWa, pick, supabaseJson, supabaseUpsert,
+  toText, APPLY_WA_COLS,
 } from './repository';
 
 // --- Constants (moved from actions-master.ts) ---
@@ -537,6 +538,91 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     try { if (changedLabels.length) await syncBiodataKeMail(wa, nama, changedLabels); } catch { /* non-fatal */ }
     return { success: true };
   } catch (e: any) { return { success: false, error: 'Gagal simpan Master: ' + e.message }; }
+}
+
+// ---------------------------------------------------------------------------
+// A05 parity (2026-09-04): simpanBiodataLengkap — form biodata pemberkasan
+// (KTKLN & Visa) dari modal "Pusat Pemberkasan". Legacy
+// js/03_candidate.ts prosesSimpanBiodataLengkap mengirim satu payload datar;
+// kolomnya tinggal di master_database_candidate (sumber auto-fill c.bio di
+// attachBerkasBio) + kolom yang tumpang-tindih di database_candidate.
+// ---------------------------------------------------------------------------
+const BIO_LENGKAP_MASTER_COLS: ReadonlyArray<readonly [string, string]> = [
+  ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
+  ['alamat_lengkap', 'alamat_lengkap'], ['nama_ayah', 'nama_ayah'], ['ttl_ayah', 'ttl_ayah'],
+  ['nama_ibu', 'nama_ibu'], ['ttl_ibu', 'ttl_ibu'], ['no_pasport', 'no_pasport'],
+  ['no_coe', 'no_coe'], ['kota_pasport', 'kota_pasport'], ['tgl_pasport', 'tgl_pasport'],
+  ['exp_pasport', 'exp_pasport'], ['nama_perusahaan', 'nama_perusahaan'],
+  ['nama_shacou', 'nama_shacou'], ['telp_perusahaan', 'telp_perusahaan'],
+  ['web_perusahaan', 'web_perusahaan'], ['alamat_perusahaan', 'alamat_perusahaan'],
+] as const;
+
+// Kolom biodata yang juga dibaca mapCandidate dari database_candidate.
+const BIO_LENGKAP_CAND_SYNC: ReadonlyArray<readonly [string, string]> = [
+  ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
+  ['alamat_lengkap', 'alamat_lengkap'], ['no_pasport', 'no_pasport'],
+] as const;
+
+/** Pure builder (DB-free testable) — payload datar → patch body master. */
+export function buildBioPatch(payload: any): { master: Record<string, string> } {
+  const d = (payload && payload[0]) || {};
+  const master: Record<string, string> = {};
+  for (const [from] of BIO_LENGKAP_MASTER_COLS) {
+    const v = d[from];
+    if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') {
+      master[from] = String(v).trim();
+    }
+  }
+  return { master };
+}
+
+export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: string) {
+  const d = (payload && payload[0]) || {};
+  const wa = nw(String(d.wa || ''));
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'kandidat' && t.role !== 'admin')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  if (!wa) return { success: false, error: 'Nomor WA wajib diisi.' };
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
+  }
+  cacheClear();
+  const { master } = buildBioPatch(payload);
+  if (!Object.keys(master).length) {
+    return { success: false, error: 'Tidak ada data biodata untuk disimpan.' };
+  }
+  try {
+    const now = new Date().toISOString();
+    const row = await findMasterByWa(wa);
+    const body = Object.assign({ no_wa: wa, updated_at: now }, master);
+    if (row && row.id !== undefined) {
+      await patchMaster(row.id, body);
+    } else {
+      await upsertMaster(Object.assign(
+        { created_at: now, nama_lengkap: String(d.nama || 'KANDIDAT').trim().toUpperCase() },
+        body,
+      ));
+    }
+    // Sinkron kolom tumpang-tindih ke database_candidate (non-fatal).
+    try {
+      const c = await findCandidateRow(wa);
+      const candPatch: Record<string, string> = {};
+      for (const [from, to] of BIO_LENGKAP_CAND_SYNC) {
+        if (master[from]) candPatch[to] = master[from];
+      }
+      if (c && c.id !== undefined && Object.keys(candPatch).length) {
+        await supabaseJson('PATCH', 'database_candidate', {
+          query: { id: 'eq.' + c.id },
+          body: Object.assign({}, candPatch, { updated_at: now }),
+          headers: { Prefer: 'return=minimal' },
+        });
+      }
+    } catch { /* non-fatal */ }
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: 'Gagal menyimpan biodata: ' + e.message };
+  }
 }
 
 export { MASTER_COLUMN_MISSING, buildAiOverflow, mergeAiOverflow, findMasterByWa };

@@ -28,6 +28,7 @@ export const DOCS_ACTIONS: Record<string, (payload: unknown[], sessionToken?: st
   // share-token gate):
   isJobRequiresCv: async () => NOT_IMPL,
   submitFormPelamar: async () => NOT_IMPL,
-  simpanBiodataLengkap: async () => NOT_IMPL,
+  // simpanBiodataLengkap (A05): routed to ./master (MASTER_ACTIONS) — the
+  // biodata row is owned by contexts/master-data.
   shareData: async () => NOT_IMPL,
 };
