@@ -853,7 +853,7 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
   backend 25 file / 232 test; EOL konsisten per file; sprite-map/sprite.svg
   regenerated (catatan: `npm run icons` exit 1 karena false-positive lama
   token 'fa-…' dari string fixture Icon.test.ts — bukan regresi A06).
-  Belum di-commit (menumpuk Sesi 6/7 + A01..A05).
+  Sudah di-commit (Sesi 6 = `dce50df`; A01..A05 = `3802ace`..`abb0342`) — lihat entry “Commit parity 10 fokus” di bawah.
 
 ## 🔄 Sesi 2026-09-04 — Parity A07: TTD / E-Sign (EsignNaiteiModal) root-fixed
 - Crosscheck vs legacy partials/modals-shared.html `#modal-ttd` + `#modal-fs-canvas`
@@ -895,7 +895,112 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
   simpanDataTtdNaitei); EOL konsisten per file; `npm run icons` masih exit 1
   tapi unresolved turun 2→1 (hanya false-positive lama 'fa-…' dari string
   fixture Icon.test.ts — `fa-sky` dari ekspresi modal sudah beres, bukan regresi A07).
-  Belum di-commit (menumpuk Sesi 6/7 + A01..A06).
+  Sudah di-commit (A01..A06 = `3802ace`..`fb01075`; A07 ini = `0cf3b1e`) — lihat entry “Commit parity 10 fokus” di bawah.
 
 ## Next
 - A08 ChangePasswordModal → lanjut A09... urut checklist `docs/PARITY_CHECKLIST.md`.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 — Commit parity menumpuk: 10 commit fokus (hunk selection)
+
+**Branch:** `dev`. Seluruh tumpukan parity (Sesi 5–7 QA + A01–A07 + dokumen) dikunci sebagai
+10 commit fokus terpisah via hunk selection. Working tree bersih + typecheck exit 0 sesudahnya.
+
+| Hash | Commit | Isi inti |
+|---|---|---|
+| `8def667` | docs: legacy↔Astro parity reference + handover log (Sesi 5) | `LEGACY_PARITY_REFERENCE.md` + HANDOVER sesi-5 |
+| `dce50df` | fix(forms): Sesi 6 QA wiring | docs actions live, register normalization, apply submit (`docs.ts`, `register.ts`, `ApplyFullForm.tsx`, `PARITY_QA_2026-09-04.md`) |
+| `3802ace` | fix(admin): A01 CekSiswaModal | `getDaftarSiswaBaru` source + 1:1 legacy table |
+| `880bd2c` | fix(admin): A02 CandidateProfileModal | decorated-row seed, live catatan/VIP save |
+| `be09fee` | fix(admin): A03 EditCandidateModal/InputManualModal | JSON submit + super-edit patch |
+| `ddcf9c0` | fix(admin): A04 ListKandidatModal | full candidate set + WA-broadcast worker live |
+| `abb0342` | fix(admin): A05 PemberkasanModal | canonical `jenisBerkas` + `simpanBiodataLengkap` live |
+| `fb01075` | fix(admin): A06 UndanganKelasModal | queue-aware broadcast + persisted job results |
+| `0cf3b1e` | fix(esign): A07 EsignNaiteiModal | 4-area TTD/name + admin & array-args guard |
+| `2b5486c` | docs: PARITY_CHECKLIST tracker | status A01–A07 + delta C01–C06 |
+
+**Teknik hunk selection** — file yang disentuh beberapa unit dipecah dengan reverse-apply diff
+hunk per unit (parser-driven, tiap state antara diverifikasi byte-exact, staging via blob
+injection — worktree tak pernah diganggu): `registry/service.ts` (A02‖A03), `sweep-queue.ts`
+(A04‖A06), `CandidateProfileModal.tsx`/`AdminPanel.tsx` (A02‖A05), `adminStore.ts` (A03‖A04),
+`TabPelamar.tsx` + test (A02‖A03‖A04), `CandidateDash.tsx`/`i18n.ts` (A05‖A06‖A07),
+`docs.ts` (Sesi6‖A05), `service-a02.test.ts` (di-commit bentuk era-A02 dulu, lalu diperluas A03).
+
+**Dua judgment call:** sprite files (`sprite-map.ts`/`sprite.svg`) = output generator yang
+mengurut-ulang baris tiap `npm run icons` → tidak bisa direkonstruksi per unit; masuk sekali
+di commit A07 `0cf3b1e` sebagai regenerasi final. `PARITY_CHECKLIST.md` diedit in-place per
+sesi (row flip + status) → di-commit sekali `2b5486c` dalam state final yang jujur (bukan
+menyusun ulang sejarah). HANDOVER di-slice per unit — append-only, tiap commit membawa
+section-nya sendiri; slice a07 == file penuh (diverifikasi).
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-05 — Playtest UX pass (stray island text, apply prefill, i18n, Toast)
+
+Playtest via preview live (localhost:4321): landing → detail loker → Lamar Sekarang → apply,
+termasuk versi ceroboh (submit kosong, reload, ulang klik). 10 file berubah, BELUM di-commit.
+
+- **Stray text `showBottomNav &&` di semua halaman** — Astro 5.12 codegen salah compile JS
+  `&&`/ternary yang membungkus island `client:only` → ekspresinya diterbitkan sebagai teks
+  kasat mata, dan bottom-nav portal ikut bocor ke landing publik. Fix: gating dipindah ke
+  dalam komponen via prop `show` — `BaseLayout.astro` selalu render
+  `<BottomNav show={showBottomNav}>`, komponen return null saat `!show || !auth.isLoggedIn`.
+  (Ternyata bentuk ternary pun ikut salah-compile; pola wrapper-element juga gagal.)
+- **Kunci i18n mentah di UI id** — scan statis: 52 kunci terpakai tak ada di dictionary id,
+  26 di antaranya blok `apply.*` yang terlihat rusak di halaman apply (`apply.nama_label` dll
+  dirender mentah). Ditambahkan 27 kunci id (`apply.wa_ph`..`apply.loading_hint`).
+- **CTA apply kehilangan job** — “Lamar Sekarang” di detail loker menunjuk `/apply` polos
+  → field Lowongan/Bidang kosong. Kini `/apply?job=<kode>`; terverifikasi live ter-prefill
+  (`TG658ASJ` / Tukang Gypsum).
+- **Toast dobel** — `Toast` ter-mount di 6 dari 9 halaman + sekali di BaseLayout → toast
+  ganda tiap aksi. Mount per-halaman dihapus; satu mount di BaseLayout (komentar di layout
+  menjelaskan alasannya).
+- **Byte korup em-dash** — 4 halaman (`admin`/`candidate`/`index`/`public`) menyimpan byte
+  invalid 0x97 (em-dash cp1252, hasil round-trip codepage saat edit dedupe) → direstorasi
+  ke UTF-8 `E2 80 94`; seluruh file tersentuh valid UTF-8 lagi (CRLF worktree normal di bawah
+  core.autocrlf=true, bukan perubahan isi).
+- **Residual yang tetap terbuka:** error guest “Cek Data” masih “Gagal memuat data” polos
+  (butuh keputusan produk, tidak diubah); `npm run icons` exit 1 = false-positive lama `fa-…`
+  dari fixture Icon.test.ts (bukan regresi); `ESignatureModal.tsx` lama orfan (tidak dihapus).
+- Verifikasi: typecheck exit 0; frontend **10 file / 74 test** hijau; konsol bersih (hanya
+  noise dev-overlay Astro). File: `BottomNav.tsx`, `LokerDetailModal.tsx`, `BaseLayout.astro`,
+  6 halaman (admin/apply/candidate/index/public/siswa-baru), `i18n.ts` (+35/−16).
+---
+
+# 🔄 HANDOVER Sesi 2026-09-05 — i18n: audit cakupan + terjemahan JP lengkap + guard test
+
+Pass i18n tiga lapis (saat ditulis: BELUM di-commit; dikunci sesi ini sebagai commit
+`fix(i18n)` + commit docs HANDOVER):
+
+- **Audit cakupan otomatis** — scan semua key terpakai di src (literal `t('...')`, atribut
+  `data-lang`, dan string berbentuk key pada struktur data yang diteruskan ke `t()`: label
+  MasterFullForm / berkasCatalog / area E-Sign): **518 key unik**. Gap: **29 key hilang dari
+  dict `id`** (dirender mentah sebagai teks kunci, mis. `ai.sug_analyze`, `login.nama_ph`,
+  `ui.checking`, `toast.link_copied`) dan **133 key hilang dari dict `jp`** (pengguna JP jatuh
+  ke fallback teks Indonesia). Semua ditambahkan — id: blok `ai.*`, `footer.*`, `toast.*`,
+  `login.nama_ph`, `master.ketik_bidang2`, `form.mf_alkohol/anak/ssw2`, `ui.*`; jp: label
+  biodata & dokumen pemberkasan (`candidate.bio_*`, `candidate.form_*`, `ui.doc*` — sesi A05),
+  E-Sign/Naitei (`ui.sign1/2`, `ui.name1/2`, `ui.party1/2`, `ui.esign_*` — A07), Undangan Kelas
+  (`ui.invite_*`, `ui.paste_*`, `ui.message_*` + toast — A06), plus `ai.*`, `footer.*`, toast
+  umum. Placeholder `{n}` / `{id}` dipertahankan.
+- **Blok `form.mf_*` di i18n-jp.ts ternyata salinan verbatim Indonesia** — 162 dari 164 key
+  (hanya `mf_password` & `mf_ssw2` sudah JP). Diterjemahkan penuh ke Jepang: label field,
+  placeholder (gaya `例：` / `…してください`), alert, tombol, label unggah dokumen;
+  pertanyaan medis/pribadi ya-tidak memakai gaya `～の有無`; contoh nilai disesuaikan
+  (`Misal: 300 Juta` → `例：3億`). Dict `id` tidak tersentuh.
+- **Sweep sisa non-`mf_*`** — 1 nilai nyata tersisa: `apply.email_ph` (masih memuat kata
+  Indonesia “nama”) → `例: mail@example.com`. 12 nilai tanpa aksara Jepang yang sah
+  dibiarkan (format file, brand, teks legal, akronim, URL). Hasil akhir: **0 teks Indonesia
+  tersisa** di i18n-jp.ts — sisa latin hanyalah kode/nama diri/format.
+- **Guard regresi baru** `src/store/i18n.keys.test.ts` (project frontend, 4 test): scan ulang
+  pemakaian key + parse kedua dictionary sebagai teks (tanpa import store) → gagal bila ada
+  key terpakai hilang dari dict id/jp, plus cek key duplikat & sanity jumlah key (>400).
+  Positif & negatif (probe key tak dikenal → gagal dengan daftar) terverifikasi; probe
+  dihapus. Catatan: interpolasi alternation namespace sempat menangkap kata telanjang (butuh
+  wrapper `(?:)` di regex) — sudah diperbaiki. Limitasi didokumentasikan: key dinamis rakitan
+  (`t('option.' + x)`) tidak terdeteksi statis.
+- Verifikasi: `npm run typecheck` exit 0; frontend **11 file / 78 test** (+1 file, +4); file
+  valid UTF-8; EOL konsisten (i18n.ts CRLF, i18n-jp.ts LF sesuai blob HEAD).
+- Sisa uncommitted di luar pass ini: file playtest UX (10 file, sesi 2026-09-05 sebelumnya) —
+  belum dikunci, menunggu commit terpisah.
