@@ -5,11 +5,15 @@
  */
 import { useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { inputModalOpen, closeInputModal, addKandidat } from '../../store/adminStore';
+import { inputModalOpen, closeInputModal } from '../../store/adminStore';
 // t() dipakai di baris ~146 tetapi tidak diimpor → ReferenceError saat render.
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { getEndpoint } from '../../lib/apiEndpoint';
+import { authStore } from '../../store/authReactive';
+import { showToast } from '../Toast';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
@@ -86,50 +90,84 @@ export default function InputManualModal() {
     setExtraDocs(updated);
   }
 
+  // Parity legacy prosesUploadKandidat (js/api/candidates.ts): file utama
+  // diupload ke Cloudinary → payload JSON action simpanKandidatDanUpload
+  // (dulu raw FormData tanpa `action` → dispatcher menolak & jadi no-op
+  // "pong" HTTP 200 — false success), lalu dokumen lain via
+  // simpanBerkasTahapan.
   async function handleSubmit(e: Event) {
     e.preventDefault();
     if (!nama.trim() || !wa.trim()) return;
     setSaving(true);
+    const sessionToken = authStore.get().sessionToken || '';
     try {
-      const session = JSON.parse(localStorage.getItem('asj_admin_session') || '{}');
-      const formData = new FormData();
-      formData.append('nama', nama.trim());
-      formData.append('wa', wa.trim());
-      formData.append('idLoker', loker.trim() || 'UMUM');
-      formData.append('gender', gender);
-      formData.append('usia', usia);
-      formData.append('tinggi', tinggi);
-      formData.append('berat', berat);
-      formData.append('pendidikan', pendidikan);
-      if (photo) formData.append('photo', photo);
-      if (cv) formData.append('cv', cv);
-      if (jft) formData.append('jft', jft);
-      if (ssw) formData.append('ssw', ssw);
-      extraDocs.forEach((d, i) => {
+      const files: { label: string; name: string; url: string }[] = [];
+      const mainDocs: { label: string; file: File | null }[] = [
+        { label: 'PAS_PHOTO', file: photo },
+        { label: 'CV', file: cv },
+        { label: 'JFT', file: jft },
+        { label: 'SSW', file: ssw },
+      ];
+      for (const d of mainDocs) {
         if (d.file) {
-          formData.append(`extra_${i}_type`, d.type);
-          formData.append(`extra_${i}_file`, d.file);
+          const url = await uploadToCloudinary(d.file);
+          if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
+          files.push({ label: d.label, name: d.file.name, url });
         }
-      });
-      formData.append('token', session.token || '');
-
-      const res = await fetch('/.netlify/functions/candidates', {
+      }
+      const payload = {
+        nama: nama.trim(),
+        wa: wa.trim(),
+        loker: loker.trim() || 'UMUM',
+        gender,
+        usia,
+        tb: tinggi,
+        bb: berat,
+        pendidikan,
+        files,
+      };
+      const res = await fetch(getEndpoint('simpanKandidatDanUpload'), {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'simpanKandidatDanUpload', args: [payload], sessionToken }),
       });
       const data = await res.json();
-      if (data.success) {
-        addKandidat(data.kandidat);
-        setNama(''); setWa(''); setLoker(''); setGender(''); setUsia('');
-        setTinggi(''); setBerat(''); setPendidikan('');
-        setPhoto(null); setCv(null); setJft(null); setSsw(null);
-        setExtraDocs([{ type: 'PAS PHOTO', file: null }]);
-        onClose();
-      } else {
-        alert(data.error || 'Gagal menyimpan kandidat.');
+      if (!data || !data.success) {
+        showToast((data && data.error) || 'Gagal menyimpan kandidat.', 'error');
+        return;
       }
+      const namaUpper = String(nama.trim()).toUpperCase();
+      for (const d of extraDocs) {
+        if (!d.file) continue;
+        try {
+          const url = await uploadToCloudinary(d.file);
+          if (!url) continue;
+          const lr = await fetch(getEndpoint('simpanBerkasTahapan'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'simpanBerkasTahapan',
+              args: [{ wa: wa.trim(), nama: namaUpper, jenisBerkas: d.type, fileUrl: url }],
+              sessionToken,
+            }),
+          });
+          const lj = await lr.json();
+          if (!(lj && lj.success)) {
+            showToast('Gagal simpan ' + d.type + ': ' + ((lj && lj.error) || 'respon tak dikenal'), 'error');
+          }
+        } catch (err) {
+          showToast('Gagal upload ' + d.type + '.', 'error');
+        }
+      }
+      showToast('Kandidat berhasil disimpan!', 'success');
+      window.dispatchEvent(new CustomEvent('candidates-changed', { detail: { wa: wa.trim() } }));
+      setNama(''); setWa(''); setLoker(''); setGender(''); setUsia('');
+      setTinggi(''); setBerat(''); setPendidikan('');
+      setPhoto(null); setCv(null); setJft(null); setSsw(null);
+      setExtraDocs([{ type: 'PAS PHOTO', file: null }]);
+      onClose();
     } catch (err) {
-      alert('Network error: ' + (err as Error).message);
+      showToast('Network error: ' + (err as Error).message, 'error');
     } finally {
       setSaving(false);
     }

@@ -10,36 +10,61 @@ interface Props {
   candidate: {
     wa: string;
     nama: string;
+    // Field mengikuti mapCandidate (row ter-dekorasi getCandidatesPage) +
+    // alias legacy — bukan nama lama (tmplahir/fisik) yang bikin prefill kosong.
     gender?: string;
     usia?: string;
-    tmplahir?: string;
-    tgllahir?: string;
-    fisik?: string;
+    tempatLahir?: string;
+    tglLahir?: string;
+    tb?: string;
     bb?: string;
     pendidikan?: string;
-    jft?: string;
-    ssw?: string;
+    jftText?: string;
+    sswText?: string;
     tahapan?: string;
     status?: string;
-    catatan?: string;
+    catatan?: string; // catatan_admin — fallback bila catatanExt kosong
+    catatanInt?: string; // catatan_internal — pemilik tag [VIP]/[KELAS]
+    catatanExt?: string; // catatan_external — catatan utk kandidat
     isVIP?: boolean;
+    isSiswaASJ?: boolean;
   };
   isOpen: boolean;
   onClose: () => void;
 }
 
 const GENDER_OPTIONS = ['', 'LAKI-LAKI', 'PEREMPUAN'];
-const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'D1', 'D2', 'D3', 'S1', 'S2', 'S3'];
+const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D1', 'D2', 'D3', 'S1', 'S2', 'S3'];
 const TAHAPAN_OPTIONS = ['', 'Baru', 'Pendaftaran', 'LIST', 'MCU PARPOR', 'Wawancara', 'LULUS'];
 const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
-const DOC_FIELDS = [
-  { key: 'pas_photo', label: 'Pas Photo', accept: 'image/*' },
-  { key: 'file_cv', label: 'CV / Rirekisho', accept: '.pdf,.doc,.docx,.xls,.xlsx,image/*' },
-  { key: 'jft', label: 'Sertif JFT', accept: '.pdf,image/*' },
-  { key: 'ssw', label: 'Sertif SSW', accept: '.pdf,image/*' },
-  { key: 'ktp', label: 'KTP', accept: '.pdf,image/*' },
-  { key: 'kk', label: 'KK', accept: '.pdf,image/*' },
+
+// Jenis berkas = token FILE_LABEL_COLUMNS backend (simpanBerkasTahapan),
+// bukan nama kolom — dulu tombol upload cuma nembak Cloudinary tanpa persist.
+const DOC_UPLOADS: { jenis: string; label: string; accept: string }[] = [
+  { jenis: 'PAS_PHOTO', label: 'Pas Photo', accept: 'image/*' },
+  { jenis: 'CV', label: 'CV / Rirekisho', accept: '.pdf,.doc,.docx,.xls,.xlsx,image/*' },
+  { jenis: 'JFT', label: 'Sertif JFT', accept: '.pdf,image/*' },
+  { jenis: 'SSW', label: 'Sertif SSW', accept: '.pdf,image/*' },
+  { jenis: 'KTP', label: 'KTP', accept: '.pdf,image/*' },
+  { jenis: 'KK', label: 'KK', accept: '.pdf,image/*' },
+  { jenis: 'IJAZAH SD', label: 'Ijazah SD', accept: '.pdf,image/*' },
+  { jenis: 'IJAZAH SMP', label: 'Ijazah SMP', accept: '.pdf,image/*' },
+  { jenis: 'IJAZAH SMA', label: 'Ijazah SMA', accept: '.pdf,image/*' },
+  { jenis: 'UNIVERSITAS', label: 'Ijazah Universitas', accept: '.pdf,image/*' },
 ];
+
+// Parity legacy bukaSuperEditKandidat: usia dihitung ulang dari tgl_lahir
+// (fallback: nilai tersimpan). Mengembalikan null kalau tanggal tidak valid.
+function computeAge(tglLahir: string): number | null {
+  if (!tglLahir || tglLahir === '-') return null;
+  const dob = new Date(tglLahir);
+  if (isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age > 0 ? age : null;
+}
 
 export default function EditCandidateModal({ candidate, isOpen, onClose }: Props) {
   const [saving, setSaving] = useState(false);
@@ -47,50 +72,58 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
   const [form, setForm] = useState({
     gender: candidate.gender || '',
     usia: candidate.usia || '',
-    tempatLahir: candidate.tmplahir || '',
-    tglLahir: candidate.tgllahir || '',
-    tb: candidate.fisik || '',
+    tempatLahir: candidate.tempatLahir || '',
+    tglLahir: candidate.tglLahir || '',
+    tb: candidate.tb || '',
     bb: candidate.bb || '',
     pendidikan: candidate.pendidikan || '',
-    jftText: candidate.jft || '',
-    sswText: candidate.ssw || '',
+    jftText: candidate.jftText || '',
+    sswText: candidate.sswText || '',
     tahapan: candidate.tahapan || '',
-    status: candidate.status || '',
-    catatan: candidate.catatan || '',
+    status: candidate.status || 'Aktif',
+    catatanExt: candidate.catatanExt ?? candidate.catatan ?? '',
   });
-  const [isVIP, setIsVIP] = useState(() => /\[(?:VIP|KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(candidate.catatan || ''));
+  // VIP = tag [VIP] di catatan INTERNAL (legacy bukaSuperEditKandidat membaca
+  // c.catatanInt) — bukan catatan_admin seperti rebuild lama.
+  const [isVIP, setIsVIP] = useState(() => /\[VIP\]/i.test(candidate.catatanInt || ''));
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   useEffect(() => {
     if (isOpen) {
-      setForm({
+      const prefill = {
         gender: candidate.gender || '',
         usia: candidate.usia || '',
-        tempatLahir: candidate.tmplahir || '',
-        tglLahir: candidate.tgllahir || '',
-        tb: candidate.fisik || '',
+        tempatLahir: candidate.tempatLahir || '',
+        tglLahir: candidate.tglLahir || '',
+        tb: candidate.tb || '',
         bb: candidate.bb || '',
         pendidikan: candidate.pendidikan || '',
-        jftText: candidate.jft || '',
-        sswText: candidate.ssw || '',
+        jftText: candidate.jftText || '',
+        sswText: candidate.sswText || '',
         tahapan: candidate.tahapan || '',
-        status: candidate.status || '',
-        catatan: candidate.catatan || '',
-      });
-      setIsVIP(/\[(?:VIP|KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(candidate.catatan || ''));
+        status: candidate.status || 'Aktif',
+        catatanExt: candidate.catatanExt ?? candidate.catatan ?? '',
+      };
+      const age = computeAge(prefill.tglLahir);
+      setForm({ ...prefill, usia: age !== null ? String(age) : prefill.usia });
+      setIsVIP(/\[VIP\]/i.test(candidate.catatanInt || ''));
     }
   }, [isOpen, candidate]);
 
-  const toggleVIP = () => {
-    const newVIP = !isVIP;
-    setIsVIP(newVIP);
-    let cat = form.catatan || '';
-    if (newVIP) { if (!/\[VIP\]/i.test(cat)) cat = '[VIP] ' + cat; }
-    else { cat = cat.replace(/\[VIP\]\s*/gi, ''); }
-    setField('catatan', cat);
+  const setField = (key: string, value: string) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      // Parity legacy: usia dihitung ulang saat tgl_lahir berubah (bisa
+      // di-override manual setelahnya lewat input Usia).
+      if (key === 'tglLahir') {
+        const age = computeAge(value);
+        if (age !== null) next.usia = String(age);
+      }
+      return next;
+    });
   };
 
-  const setField = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+  const toggleVIP = () => setIsVIP(!isVIP);
 
   const handleSave = async () => {
     setSaving(true);
@@ -109,28 +142,26 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
             tglLahir: form.tglLahir,
             tb: form.tb,
             bb: form.bb,
+            pendidikan: form.pendidikan,
             jftText: form.jftText,
             sswText: form.sswText,
             tahapan: form.tahapan,
             status: form.status,
+            // Parity legacy simpanSuperEditKandidat: catatan external +
+            // toggle VIP internal dikirim SEKALI di updateKandidatSuper.
+            catatanExt: form.catatanExt,
+            isVip: isVIP,
           }],
           sessionToken,
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        if (form.catatan !== (candidate.catatan || '')) {
-          try {
-            await fetch(getEndpoint('updateCatatanKandidat'), {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'updateCatatanKandidat', args: [{ wa: candidate.wa, catatan: form.catatan }], sessionToken }),
-            });
-          } catch { /* non-fatal */ }
-        }
+      if (data && data.success) {
         showToast('Data kandidat berhasil disimpan!', 'success');
+        window.dispatchEvent(new CustomEvent('candidates-changed', { detail: { wa: candidate.wa } }));
         onClose();
       } else {
-        showToast(data.error || 'Gagal menyimpan data.', 'error');
+        showToast((data && data.error) || 'Gagal menyimpan data.', 'error');
       }
     } catch (e) {
       showToast('Network error: ' + (e instanceof Error ? e.message : String(e)), 'error');
@@ -139,11 +170,36 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
     }
   };
 
-  const handleFileUpload = async (docKey: string, file: File) => {
-    setUploading(docKey);
-    try { await uploadToCloudinary(file); showToast(docKey + ' berhasil diupload!', 'success'); }
-    catch (e) { showToast('Gagal upload ' + docKey + ': ' + (e instanceof Error ? e.message : String(e)), 'error'); }
-    finally { setUploading(null); }
+  // Upload dokumen → Cloudinary lalu SIMPAN (simpanBerkasTahapan). Dulu hanya
+  // upload ke Cloudinary tanpa persist URL — tombol palsu.
+  const handleFileUpload = async (jenis: string, file: File) => {
+    setUploading(jenis);
+    try {
+      const url = await uploadToCloudinary(file);
+      if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
+      const sessionToken = authStore.get().sessionToken || '';
+      const res = await fetch(getEndpoint('simpanBerkasTahapan'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'simpanBerkasTahapan',
+          args: [{
+            wa: candidate.wa,
+            nama: String(candidate.nama || 'KANDIDAT').toUpperCase(),
+            jenisBerkas: jenis,
+            fileUrl: url,
+          }],
+          sessionToken,
+        }),
+      });
+      const data = await res.json();
+      if (data && data.success) showToast(jenis + ' tersimpan.', 'success');
+      else showToast((data && data.error) || 'Gagal menyimpan ' + jenis + '.', 'error');
+    } catch (e) {
+      showToast('Gagal upload ' + jenis + ': ' + (e instanceof Error ? e.message : String(e)), 'error');
+    } finally {
+      setUploading(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -242,10 +298,10 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
               </select>
             </div>
           </div>
-          {/* Catatan */}
+          {/* Catatan External (legacy: textarea super-edit = catatanExt) */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">Catatan</label>
-            <textarea value={form.catatan} onInput={e => setField('catatan', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder="Catatan admin tentang kandidat..." />
+            <label class="text-[10px] text-slate-500 uppercase font-bold">Catatan External (untuk kandidat)</label>
+            <textarea value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder="Feedback/catatan untuk kandidat..." />
           </div>
 
           {/* Document Upload */}
@@ -254,12 +310,12 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
               <Icon name="file-arrow-up" class="text-sky-400" /> Upload Dokumen
             </label>
             <div class="grid grid-cols-2 gap-2">
-              {DOC_FIELDS.map(doc => (
-                <label key={doc.key} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
+              {DOC_UPLOADS.map(doc => (
+                <label key={doc.jenis} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
                   <Icon name="upload" class="text-slate-500 text-xs" />
                   <span class="text-xs text-slate-400 truncate">{doc.label}</span>
-                  <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.key, f); }} />
-                  {uploading === doc.key && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
+                  <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.jenis, f); }} />
+                  {uploading === doc.jenis && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
                 </label>
               ))}
             </div>

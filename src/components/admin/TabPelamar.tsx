@@ -37,7 +37,7 @@ export default function TabPelamar() {
   const kandidat = useStore(kandidatList);
   const [rirekWa, setRirekWa] = useState("");
   const [showRirek, setShowRirek] = useState(false);
-  const allKandidat = useStore(allKandidatList);
+  const totalAll = useStore(kandidatTotal);
   const loading = useStore(kandidatLoading);
   const search = useStore(adminSearch);
   const filterGender = useStore(adminFilterGender);
@@ -64,7 +64,8 @@ export default function TabPelamar() {
 
   function exportCsv() {
     const headers = ['ID Kandidat', 'Nama Lengkap', 'WA', 'Job Dilamar', 'Tahapan', 'Status', 'Catatan'];
-    const rows = filtered.map(k => [k.id, k.nama, k.wa, k.idLoker, k.tahapan, k.status, k.catatan]);
+    // Kolom catatan mengikuti legacy (catatanExt || catatan_admin).
+    const rows = filtered.map(k => [k.id, k.nama, k.wa, k.idLoker, k.tahapan, k.status, k.catatanExt || k.catatan]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -161,7 +162,7 @@ te-800">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
                     <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
                   </td>
-                  <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatan || ''}>{k.catatan || '-'}</td>
+                  <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>

@@ -737,3 +737,27 @@ modal/button **1:1 sampai akar**, tidak buru-buru, improve bila memungkinkan.
 ## Next
 - A03 EditCandidateModal → lanjut A04... urut checklist `docs/PARITY_CHECKLIST.md`.
 
+## 🔄 Sesi 2026-09-04 — Parity A03: EditCandidateModal + InputManualModal root-fixed
+- Crosscheck vs legacy js/api/candidates.ts (prosesUploadKandidat, bukaSuperEditKandidat,
+  simpanSuperEditKandidat) + kolom catatan render (catatanExt||catatan).
+- Temuan akar: (1) InputManualModal kirim raw FormData tanpa `action` ke dispatcher JSON →
+  respon "pong" HTTP 200 (false success, tidak menyimpan apa pun); (2) EditCandidateModal baca
+  field lama (tmplahir/fisik/jft-URL/ssw-URL) padahal row mapCandidate = tempatLahir/tglLahir/
+  tb/bb/jftText/sswText → prefill kosong, nilai JFT/SSW = URL; (3) payload updateKandidatSuper
+  tidak pernah mengirim pendidikan/catatanExt/isVip & backend membuangnya (pendidikan tidak
+  pernah tersimpan; VIP dibajak ke catatan_admin); (4) upload dokumen hanya ke Cloudinary tanpa
+  persist URL (tombol palsu); (5) kolom Catatan tabel admin = catatan_admin (legacy: ext||admin).
+- Fix: InputManualModal → Cloudinary tiap file + JSON action simpanKandidatDanUpload
+  ({nama,wa,loker,gender,usia,tb,bb,pendidikan,files[]}) lalu dokumen lain via
+  simpanBerkasTahapan; EditCandidateModal → prefill field mapCandidate + usia auto dari
+  tgl_lahir (parity legacy), textarea = catatan external, VIP = tag [VIP] di catatan_internal
+  (checkbox sendiri); backend updateKandidatSuper: helper murni buildKandidatSuperPatch
+  persist pendidikan + catatan_external + toggle tag [VIP] internal (tag kelas dipertahankan);
+  upload dokumen kini persist via simpanBerkasTahapan (jenis = token FILE_LABEL_COLUMNS);
+  kolom Catatan + CSV = catatanExt||catatan; refresh daftar via `candidates-changed`.
+- Verifikasi: typecheck exit 0; backend 24 file / 225 test (+3), frontend 6 file / 49 test (+1);
+  CRLF konsisten. Belum di-commit (menumpuk dgn Sesi 6/7/A02).
+
+## Next
+- A04 ListKandidatModal → lanjut A05... urut checklist `docs/PARITY_CHECKLIST.md`.
+

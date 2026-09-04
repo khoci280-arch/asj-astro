@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { mapCandidate } from '../_lib/db/candidates';
 import { signToken } from '../_lib/session';
-import { handleUpdateCatatanKandidat } from './registry/service';
+import { handleUpdateCatatanKandidat, buildKandidatSuperPatch } from './registry/service';
 
 const kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
 
@@ -52,5 +52,31 @@ describe('registry — updateCatatanKandidat requires an admin session (A02)', (
   it('a kandidat session is rejected', async () => {
     const res = await asRecord(handleUpdateCatatanKandidat(['ASJ00159', 'catatan', ''], kandidatA));
     expect(res.sessionInvalid).toBe(true);
+  });
+});
+
+describe('registry — buildKandidatSuperPatch parity legacy super-edit (A03)', () => {
+  const row = { catatan_internal: '[KELAS G] Catatan internal', catatan_external: 'Ext lama', pendidikan: 'SMA' };
+
+  it('persists pendidikan + catatan external and turns the VIP tag on', () => {
+    const b = buildKandidatSuperPatch(row, { pendidikan: 'SMK', catatanExt: 'Ext baru', isVip: true });
+    expect(b.pendidikan).toBe('SMK');
+    expect(b.catatan_external).toBe('Ext baru');
+    expect(b.catatan_internal).toContain('[VIP]');
+    expect(b.catatan_internal).toContain('[KELAS G]');
+  });
+
+  it('removes the VIP tag when toggled off, preserving class tags', () => {
+    const b = buildKandidatSuperPatch(
+      { catatan_internal: '[VIP] [KELAS G] Catatan internal' },
+      { isVip: false },
+    );
+    expect(b.catatan_internal).toBe('[KELAS G] Catatan internal');
+  });
+
+  it('leaves notes untouched when neither isVip nor catatanExt is provided', () => {
+    const b = buildKandidatSuperPatch(row, { tahapan: 'LIST' });
+    expect(b.catatan_internal).toBeUndefined();
+    expect(b.catatan_external).toBeUndefined();
   });
 });

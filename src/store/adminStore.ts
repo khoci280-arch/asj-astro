@@ -21,6 +21,9 @@ export interface Kandidat {
   gender: string;
   usia: string;
   jft: string;
+  // Kolom catatan mengikuti legacy: tampilan = catatanExt || catatan_admin.
+  catatanExt?: string;
+  catatanInt?: string;
   isVIP?: boolean;
   isSiswaASJ?: boolean;
 }

@@ -72,13 +72,11 @@ export async function handleUpdateCatatanKandidat(payload: unknown[], sessionTok
   }
 }
 
-export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken?: string) {
-  const guard = requireAdmin(sessionToken || '');
-  if (guard.error) return guard.error;
-  cacheClear();
-  const data = ((payload && payload[0]) || {}) as Record<string, unknown>;
-  if (!data.wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
-  const updatedAt = data.updated_at as string | undefined;
+// Bangun body PATCH kandidat dari payload updateKandidatSuper (parity legacy
+// simpanSuperEditKandidat di khoci921/js/api/candidates.ts). Murni — dipakai
+// handler + test DB-free. VIP dikelola sbg tag [VIP] di catatan_internal;
+// catatanExt → catatan_external; pendidikan ikut tersimpan (dulu terbuang).
+export function buildKandidatSuperPatch(row: Record<string, any>, data: Record<string, unknown>): Record<string, any> {
   const body: Record<string, any> = {
     gender: data.gender !== undefined ? data.gender : undefined,
     usia: data.usia !== undefined ? data.usia : undefined,
@@ -86,6 +84,7 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     tgl_lahir: data.tglLahir !== undefined ? data.tglLahir : undefined,
     tb: data.tb !== undefined ? data.tb : undefined,
     bb: data.bb !== undefined ? data.bb : undefined,
+    pendidikan: data.pendidikan !== undefined ? data.pendidikan : undefined,
     nilai_jft_text: data.jftText !== undefined ? data.jftText : undefined,
     bidang_ssw_text: data.sswText !== undefined ? data.sswText : undefined,
     id_loker_pilihan: data.idLoker !== undefined && data.idLoker !== null ? String(data.idLoker).trim() : undefined,
@@ -93,9 +92,32 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     status_kandidat: data.status !== undefined ? data.status : undefined,
   };
   for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
+  if (data.isVip !== undefined || data.catatanExt !== undefined) {
+    const rawInt = row.catatan_internal !== undefined ? row.catatan_internal : row.catatan_int;
+    let internal = String(rawInt ?? '');
+    const vipOn = data.isVip === true || data.isVip === 'true';
+    if (vipOn) {
+      if (!/\[VIP\]/i.test(internal)) internal = internal.trim() ? '[VIP] ' + internal.trim() : '[VIP]';
+    } else {
+      internal = internal.replace(/\[VIP\]\s*/gi, '').trim();
+    }
+    body.catatan_internal = internal;
+    if (data.catatanExt !== undefined) body.catatan_external = String(data.catatanExt ?? '');
+  }
+  return body;
+}
+
+export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  cacheClear();
+  const data = ((payload && payload[0]) || {}) as Record<string, unknown>;
+  if (!data.wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
+  const updatedAt = data.updated_at as string | undefined;
   try {
     const row = await findCandidateByWa(data.wa as string);
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
+    const body = buildKandidatSuperPatch(row, data);
     const { normalizeWa } = await import('./repository');
     await patchCandidate(row.id, body, updatedAt, sessionToken);
 
