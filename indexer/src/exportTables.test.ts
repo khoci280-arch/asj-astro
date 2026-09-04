@@ -93,6 +93,8 @@ function bindFx(sources: Record<string, string>): {
     exportIndex: createExportIndex(surfaces),
     resolvedImports: graph.resolvedImports,
     resolvedReexports: graph.resolvedReexports,
+    initTypes: new Map(),
+    typeScopes: new Map(),
   });
   return { refs: bound.refs, edges: bound.edges, unresolved: bound.unresolved, symbols, files };
 }

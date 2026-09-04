@@ -15,6 +15,8 @@ import type { ModuleGraph } from './graph.js';
 import { buildModuleGraph } from './graph.js';
 import { buildExportSurfaces, createExportIndex, type ExportIndex, type ExportSurfaces } from './exportTables.js';
 import { bindIndex, type BindResult } from './bind.js';
+import type { InitType } from './parse.js';
+import type { FileIdx, SymKey } from '../../docs/code-index-schema.js';
 import { fileIdx } from './util.js';
 
 export interface BuildResult {
@@ -75,6 +77,8 @@ export function buildIndex(rootDirAbs: string): BuildResult {
   const importsByFile = new Map<FileNode['idx'], RawImportRecord[]>();
   const exportsByFile = new Map<FileNode['idx'], ExportRecord[]>();
   const templateTagsByFile = new Map<FileNode['idx'], string[]>();
+  const initTypes = new Map<SymKey, InitType[]>();
+  const typeScopes = new Map<FileIdx, Map<number, SymKey>>();
   for (const d of discovered) {
     const idx = idxByPath.get(d.path)!;
     const parsed = parseFile({ fileIdx: idx, path: d.path, lang: d.lang, content: d.content });
@@ -89,6 +93,13 @@ export function buildIndex(rootDirAbs: string): BuildResult {
     exports.push(...parsed.exports);
     importsByFile.set(idx, parsed.imports);
     exportsByFile.set(idx, parsed.exports);
+    if (parsed.templateTags) templateTagsByFile.set(idx, parsed.templateTags);
+    for (const it of parsed.initTypes) {
+      let arr = initTypes.get(it.key);
+      if (!arr) initTypes.set(it.key, (arr = []));
+      arr.push(...it.types);
+    }
+    if (parsed.typeScopes.length) typeScopes.set(idx, new Map(parsed.typeScopes.map((t) => [t.scopeKey, t.symKey])));
     if (parsed.templateTags) templateTagsByFile.set(idx, parsed.templateTags);
   }
   const parseMs = performance.now() - t2;
@@ -110,7 +121,7 @@ export function buildIndex(rootDirAbs: string): BuildResult {
   // Stage 4: bind occurrences → references (scope chain + import chase over
   // the graph's resolved records — parse-phase imports/exports stay untouched).
   const t4 = performance.now();
-  const bound = bindIndex({ symbols, scopes, occurrences, exportIndex, resolvedImports: graph.resolvedImports, resolvedReexports: graph.resolvedReexports });
+  const bound = bindIndex({ symbols, scopes, occurrences, exportIndex, resolvedImports: graph.resolvedImports, resolvedReexports: graph.resolvedReexports, initTypes, typeScopes });
   const bindMs = performance.now() - t4;
 
   const stats: IndexStats = {

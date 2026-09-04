@@ -10,8 +10,10 @@
  *
  * Deliberate deviations are classified, not forced to zero:
  *   - lib-not-loaded refs (standard-library globals; Tier 2's job, §9.1);
- *   - non-bindable roles (Property / ImportSpecifier / ObjectKey) — recorded,
- *     never scope-bound by design;
+ *   - non-bindable roles (ImportSpecifier / ObjectKey / UNBOUND Property) —
+ *     recorded, never scope-bound by design; BOUND Property refs (Tier 2
+ *     member binds + namespace-member chases, resolvedVia 'type'/'import')
+ *     join the universe and must agree with the compiler;
  *   - lowercase JSX intrinsics (`<div>` …) — intrinsic elements, not symbols;
  *   - .astro files — compiler gets the SAME frontmatter-stripped source as
  *     parse.ts, with a per-file base offset so positions line up.
@@ -394,7 +396,10 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     perFile.push(fileAgg);
 
     for (const o of occByFile.get(f.idx) ?? []) {
-      if (!BINDABLE_ROLES.has(o.role)) {
+      // Tier 2: member accesses the binder resolved through types (or a
+      // namespace import) are Property-role refs — check THOSE against the
+      // compiler too (the member name must bind at the same offset).
+      if (!BINDABLE_ROLES.has(o.role) && !(o.role === OccurrenceRole.Property && boundStart.has(`${f.idx}:${o.range.start}`))) {
         counts.skippedNonBindable++;
         fileAgg.skipped++;
         continue;

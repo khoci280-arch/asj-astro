@@ -56,6 +56,20 @@ export interface ExportRecord {
   range?: Range;
 }
 
+/**
+ * Tier 2 (parse-side, never serialized): how a variable/field initializer is
+ * shaped, for type-guided member resolution (`const svc = new Foo()` →
+ * `svc.method()` binds to Foo.method). `k` is the initializer form:
+ *   new → `new Foo(...)`; call → `foo(...)`; mcall → `foo.bar(...)`;
+ *   id → plain alias; cast → `expr as Foo` (type text).
+ */
+export type InitType =
+  | { k: 'new'; t: string }
+  | { k: 'call'; t: string }
+  | { k: 'mcall'; base: string; member: string }
+  | { k: 'id'; t: string }
+  | { k: 'cast'; t: string };
+
 export interface ParsedFile {
   fileIdx: FileIdx;
   path: string;
@@ -64,6 +78,10 @@ export interface ParsedFile {
   occurrences: Occurrence[];
   imports: RawImportRecord[];
   exports: ExportRecord[];
+  /** Tier 2: initializer shapes per variable/field symbol key (parse-side only). */
+  initTypes: Array<{ key: SymKey; types: InitType[] }>;
+  /** Tier 2: class/interface scope key → symbol key, for `this.member` resolution. */
+  typeScopes: Array<{ scopeKey: number; symKey: SymKey }>;
   /** Astro only: capitalized component tags used in the template (builtins excluded, deduped). */
   templateTags?: string[];
   declHash: Hash;
@@ -120,6 +138,8 @@ interface BinderCtx {
   occurrences: Occurrence[];
   imports: RawImportRecord[];
   exports: ExportRecord[];
+  initTypes: Array<{ key: SymKey; types: InitType[] }>;
+  typeScopes: Array<{ scopeKey: number; symKey: SymKey }>;
   scopeStack: ScopeFrame[];
   /** Namespaces/classes/enums/interfaces currently enclosing (for qualified names). */
   containerNames: string[];
@@ -465,6 +485,7 @@ function walkClass(ctx: BinderCtx, n: ts.ClassDeclaration | ts.ClassExpression):
     sig: `class|${qualified}|extends:${heritage}`,
   });
   const fr = openScope(ctx, ScopeKind.Class, name, n);
+  ctx.typeScopes.push({ scopeKey: fr.key, symKey: key });
   ctx.symStack.push(key);
   ctx.containerNames.push(name);
   n.typeParameters?.forEach((tp) => declareTypeParam(ctx, tp));
@@ -494,6 +515,7 @@ function walkInterface(ctx: BinderCtx, n: ts.InterfaceDeclaration): void {
     sig: `interface|${qualified}|extends:${heritage}`,
   });
   const fr = openScope(ctx, ScopeKind.Interface, name, n);
+  ctx.typeScopes.push({ scopeKey: fr.key, symKey: key });
   ctx.symStack.push(key);
   ctx.containerNames.push(name);
   n.typeParameters?.forEach((tp) => declareTypeParam(ctx, tp));
@@ -542,6 +564,8 @@ function walkEnum(ctx: BinderCtx, n: ts.EnumDeclaration): void {
     sig: `enum|${qualified}`,
   });
   const fr = openScope(ctx, ScopeKind.EnumBody, name, n);
+  ctx.typeScopes.push({ scopeKey: fr.key, symKey: key });
+  ctx.symStack.push(key);
   ctx.symStack.push(key);
   ctx.containerNames.push(name);
   n.members.forEach((m) => walk(m, ctx));
@@ -568,6 +592,8 @@ function walkNamespace(ctx: BinderCtx, n: ts.ModuleDeclaration): void {
   const body = n.body;
   if (body && ts.isModuleBlock(body)) {
     const fr = openScope(ctx, ScopeKind.Namespace, name, body);
+    ctx.typeScopes.push({ scopeKey: fr.key, symKey: key });
+    ctx.symStack.push(key);
     ctx.symStack.push(key);
     ctx.containerNames.push(name);
     ts.forEachChild(body, (c) => walk(c, ctx));
@@ -582,7 +608,7 @@ function walkPropertyDeclaration(ctx: BinderCtx, n: ts.PropertyDeclaration | ts.
   const qualified = [...ctx.containerNames, name].join('.');
   const isExport = hasModifier(n, ts.SyntaxKind.ExportKeyword);
   const isClass = ts.isClassLike(n.parent);
-  declareSymbol(ctx, {
+  const key = declareSymbol(ctx, {
     kind: SymbolKind.Property,
     name,
     qualified,
@@ -598,6 +624,10 @@ function walkPropertyDeclaration(ctx: BinderCtx, n: ts.PropertyDeclaration | ts.
     },
     sig: `prop|${qualified}|${n.type?.getText(ctx.sf) ?? ''}|class:${isClass}`,
   });
+  if ('initializer' in n && n.initializer) {
+    const types = classifyInitializer(ctx, n.initializer);
+    if (types.length) ctx.initTypes.push({ key, types });
+  }
   if (n.type) walk(n.type, ctx);
   if ('initializer' in n && n.initializer) walk(n.initializer, ctx);
 }
@@ -606,14 +636,14 @@ function declareBinding(
   ctx: BinderCtx,
   name: ts.BindingName,
   opts: { node: ts.Node; kind: SymbolKind; isExport: boolean; hoisted: boolean; tdz?: boolean; typeText?: string; fnInitializer: boolean },
-): void {
+): SymKey | undefined {
   if (ts.isIdentifier(name)) {
     const localName = name.getText(ctx.sf);
     const qualified = [...ctx.containerNames, localName].join('.');
     let kind = opts.kind;
     if ((ctx.lang === 'tsx' || ctx.lang === 'astro') && /^use[A-Z]/.test(localName)) kind = SymbolKind.Hook;
     else if ((ctx.lang === 'tsx' || ctx.lang === 'astro') && /^[A-Z]/.test(localName) && opts.fnInitializer) kind = SymbolKind.Component;
-    declareSymbol(ctx, {
+    const key = declareSymbol(ctx, {
       kind,
       name: localName,
       qualified,
@@ -626,7 +656,7 @@ function declareBinding(
       typeRef: opts.typeText,
       sig: `var|${kind}|${qualified}|${opts.typeText ?? ''}${opts.tdz ? '|tdz' : ''}`,
     });
-    return;
+    return key;
   }
   const elements = ts.isObjectBindingPattern(name) || ts.isArrayBindingPattern(name) ? name.elements : [];
   for (const el of elements) {
@@ -637,6 +667,7 @@ function declareBinding(
     declareBinding(ctx, el.name, { ...opts, node: el });
     if (el.initializer) walk(el.initializer, ctx);
   }
+  return undefined;
 }
 
 function walkVariableStatement(ctx: BinderCtx, n: ts.VariableStatement): void {
@@ -646,7 +677,7 @@ function walkVariableStatement(ctx: BinderCtx, n: ts.VariableStatement): void {
   const isLet = !isConst && (flags & ts.NodeFlags.Let) !== 0;
   for (const d of n.declarationList.declarations) {
     const fnInit = !!d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer));
-    declareBinding(ctx, d.name, {
+    const key = declareBinding(ctx, d.name, {
       node: d,
       kind: isConst ? SymbolKind.Constant : SymbolKind.Variable,
       isExport,
@@ -655,6 +686,10 @@ function walkVariableStatement(ctx: BinderCtx, n: ts.VariableStatement): void {
       typeText: d.type?.getText(ctx.sf),
       fnInitializer: fnInit,
     });
+    if (key !== undefined && d.initializer) {
+      const types = classifyInitializer(ctx, d.initializer);
+      if (types.length) ctx.initTypes.push({ key, types });
+    }
     if (d.initializer) walk(d.initializer, ctx);
   }
 }
@@ -820,6 +855,39 @@ function walkExportAssignment(ctx: BinderCtx, n: ts.ExportAssignment): void {
 // ─────────────────────────────────────────────────────────────────────────────
 // Expressions / statements
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Tier 2: classify an initializer expression into type sources. Unwraps
+ * parens, `as` casts (recording the cast type), `!` non-null, and `await`;
+ * then classifies the core: `new Foo()`, `foo()`, `foo.bar()`, a plain
+ * identifier alias, or nothing (literals/other → []).
+ */
+function classifyInitializer(ctx: BinderCtx, n: ts.Expression): InitType[] {
+  let expr = n;
+  let cast: string | undefined;
+  for (;;) {
+    if (ts.isParenthesizedExpression(expr)) expr = expr.expression;
+    else if (ts.isAsExpression(expr)) {
+      if (cast === undefined && expr.type) cast = expr.type.getText(ctx.sf);
+      expr = expr.expression;
+    } else if (ts.isNonNullExpression(expr)) expr = expr.expression;
+    else if (expr.kind === ts.SyntaxKind.AwaitExpression) expr = (expr as ts.AwaitExpression).expression;
+    else break;
+  }
+  const out: InitType[] = [];
+  if (cast !== undefined) out.push({ k: 'cast', t: cast });
+  if (ts.isNewExpression(expr) && ts.isIdentifier(expr.expression)) {
+    out.push({ k: 'new', t: expr.expression.text });
+  } else if (ts.isCallExpression(expr)) {
+    if (ts.isIdentifier(expr.expression)) out.push({ k: 'call', t: expr.expression.text });
+    else if (ts.isPropertyAccessExpression(expr.expression) && ts.isIdentifier(expr.expression.expression)) {
+      out.push({ k: 'mcall', base: expr.expression.expression.text, member: expr.expression.name.text });
+    }
+  } else if (ts.isIdentifier(expr)) {
+    out.push({ k: 'id', t: expr.text });
+  }
+  return out;
+}
 
 function walkCall(ctx: BinderCtx, n: ts.CallExpression): void {
   // Dynamic import(...)
@@ -1072,7 +1140,11 @@ function walk(node: ts.Node, ctx: BinderCtx): void {
         name: n.name.text,
         scopeKey: topScope(ctx).key,
         role: OccurrenceRole.Property,
-        ...(ts.isIdentifier(n.expression) ? { base: n.expression.text } : {}),
+        ...(ts.isIdentifier(n.expression)
+          ? { base: n.expression.text }
+          : n.expression.kind === ts.SyntaxKind.ThisKeyword
+            ? { base: 'this' }
+            : {}),
       });
       return;
     }
@@ -1214,6 +1286,8 @@ function newCtx(input: ParseFileInput, sf: ts.SourceFile, offset: number, lineIn
     occurrences: [],
     imports: [],
     exports: [],
+    initTypes: [],
+    typeScopes: [],
     scopeStack: [],
     containerNames: [],
     symStack: [],
@@ -1282,7 +1356,7 @@ export function parseFile(input: ParseFileInput): ParsedFile {
       if (!fm) {
         const ctx = newCtx(input, ts.createSourceFile(input.path, '', ts.ScriptTarget.Latest, true, ts.ScriptKind.TS), 0, buildLineIndex(input.content));
         const hashes = finishHashes(ctx);
-        return { fileIdx: input.fileIdx, path: input.path, symbols: [], scopes: [], occurrences: [], imports: [], exports: [], templateTags: scanAstroTemplateTags(input.content, 0), ...hashes };
+        return { fileIdx: input.fileIdx, path: input.path, symbols: [], scopes: [], occurrences: [], imports: [], exports: [], initTypes: [], typeScopes: [], templateTags: scanAstroTemplateTags(input.content, 0), ...hashes };
       }
       sf = ts.createSourceFile(`${input.path}.ts`, fm.text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
       offset = fm.offset;
@@ -1300,6 +1374,8 @@ export function parseFile(input: ParseFileInput): ParsedFile {
       occurrences: ctx.occurrences,
       imports: ctx.imports,
       exports: ctx.exports,
+      initTypes: ctx.initTypes,
+      typeScopes: ctx.typeScopes,
       ...(input.lang === 'astro' ? { templateTags: scanAstroTemplateTags(input.content, offset) } : {}),
       ...hashes,
     };
@@ -1312,6 +1388,8 @@ export function parseFile(input: ParseFileInput): ParsedFile {
       occurrences: [],
       imports: [],
       exports: [],
+      initTypes: [],
+      typeScopes: [],
       declHash: hashString(''),
       exportHash: hashString(''),
       poisoned: e instanceof Error ? e.message : String(e),

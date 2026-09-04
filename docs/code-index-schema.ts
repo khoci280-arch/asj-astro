@@ -247,7 +247,7 @@ export interface ResolvedReference {
   symKey: SymKey;
   role: OccurrenceRole;
   /** How binding succeeded — `import` is the cross-file case (§4.3). */
-  resolvedVia: 'scope' | 'import' | 'global' | 'lib';
+  resolvedVia: 'scope' | 'import' | 'global' | 'lib' | 'type';
   /** Phase 4: the reference precedes the TDZ declaration it bound to (§4.1). */
   usedBeforeDecl?: boolean;
 }
@@ -396,7 +396,7 @@ export interface ResolveResponse {
     container?: string;
     decls: Array<{ uri: string; l: number; c: number }>;
     detail?: string;
-    resolvedVia: 'scope' | 'import' | 'global' | 'lib';
+    resolvedVia: 'scope' | 'import' | 'global' | 'lib' | 'type';
   } | null;
   /** Same-named symbols elsewhere, ranked by §7.1. Present ⇒ ambiguity, not a guess. */
   alternatives: Array<{ symId: SymId; reason: string }>;

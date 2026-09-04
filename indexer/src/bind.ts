@@ -45,6 +45,7 @@ import {
 } from '../../docs/code-index-schema.js';
 import type { ExportIndex } from './exportTables.js';
 import { exportSymKey } from './exportTables.js';
+import type { InitType } from './parse.js';
 import type { ResolvedImportRecord, ResolvedReexportRecord } from './graph.js';
 
 export interface BoundRef {
@@ -52,7 +53,7 @@ export interface BoundRef {
   range: Range;
   symKey: SymKey;
   role: number;
-  resolvedVia: 'scope' | 'import' | 'global' | 'lib';
+  resolvedVia: 'scope' | 'import' | 'global' | 'lib' | 'type';
   usedBeforeDecl?: boolean;
 }
 
@@ -78,6 +79,10 @@ interface BindInput {
   resolvedImports: Map<FileIdx, ResolvedImportRecord[]>;
   /** Phase 2 (graph output): per-file `export … from` records resolved to their target file. */
   resolvedReexports: Map<FileIdx, ResolvedReexportRecord[]>;
+  /** Tier 2 (parse-side): initializer shapes per variable/field symbol key. */
+  initTypes: Map<SymKey, InitType[]>;
+  /** Tier 2 (parse-side): class/interface/enum/namespace scope key → owning symbol key, per file. */
+  typeScopes: Map<FileIdx, Map<number, SymKey>>;
 }
 
 /**
@@ -126,7 +131,13 @@ const LIB_GLOBALS = new Set<string>([
   'setImmediate', 'clearImmediate', 'NodeJS', 'BufferEncoding',
 ]);
 
-/** Roles that name real symbols. Member/intrinsic names skip binding. */
+/** Type keywords firstTypeIdent must skip (they are not user type names). */
+const PRIMITIVE_TYPES = new Set([
+  'string', 'number', 'boolean', 'void', 'unknown', 'any', 'never', 'object', 'null', 'undefined',
+  'symbol', 'bigint', 'true', 'false', 'this', 'typeof', 'keyof', 'readonly', 'infer', 'is', 'asserts',
+]);
+
+/** Roles that name real symbols. Member/intrinsic names skip binding. *//** Roles that name real symbols. Member/intrinsic names skip binding. */
 const BINDABLE_ROLES = new Set<number>([
   OccurrenceRole.Read,
   OccurrenceRole.Write,
@@ -221,10 +232,27 @@ export function bindIndex(input: BindInput): BindResult {
     unresolved.push({ fileIdx, range: o.range, name: o.name, reason });
   };
 
+  // Tier 2: every symbol declared inside a class/interface/enum/namespace
+  // scope is a MEMBER of that type symbol (methods, properties, nested
+  // classes, enum members, namespace exports). One owner per member.
+  // scope.id → scope.key (ids and keys are per-file ordinals).
+  const scopeKeyById = new Map<string, number>();
+  for (const sc of input.scopes) scopeKeyById.set(sc.fileIdx + ':' + sc.id, sc.key);
+  const membersByParent = new Map<SymKey, SymbolNode[]>();
+  for (const s of input.symbols) {
+    const sk = scopeKeyById.get(s.fileIdx + ':' + s.scopeId);
+    const owner = sk !== undefined ? input.typeScopes.get(s.fileIdx)?.get(sk) : undefined;
+    if (owner === undefined) continue;
+    let arr = membersByParent.get(owner);
+    if (!arr) membersByParent.set(owner, (arr = []));
+    arr.push(s);
+  }
+
   for (const [fileIdx, occs] of occurrencesByFile) {
     const scopeMap = scopesByFile.get(fileIdx);
     if (!scopeMap) continue;
     const syms = symbolsByFile.get(fileIdx) ?? [];
+    const typeSymByScope = input.typeScopes.get(fileIdx) ?? new Map<number, SymKey>();
 
     // scope key → same-named candidates in declaration (source) order. Parse
     // pushes each declaration exactly once, to the scope where its name is
@@ -284,6 +312,196 @@ export function bindIndex(input: BindInput): BindResult {
       return { kind: 'keepLocal' };
     };
 
+    // ── Tier 2: type-guided member resolution (obj.method → the member's
+    // declaration symbol, resolvedVia 'type'). Policy, in one place:
+    //   base = this              → innermost enclosing class scope → member,
+    //                              instance first, static fallback (static methods).
+    //   base = identifier        → value-scope symbol; namespace/class/enum/alias
+    //                              bases resolve directly; annotated symbols
+    //                              (const x: Foo, param (x: Foo)) and initializer
+    //                              shapes (new/cast/call/mcall/id) resolve the type
+    //                              then the member. Import bindings chase first.
+    //   member lookup            → own members, then the heritage chain
+    //                              (class A extends B), depth ≤ 3. Static policy:
+    //                              class-as-value → static only; enum/namespace →
+    //                              any; instance (new/annotation) → non-static
+    //                              preferred, static fallback.
+    // Nothing here guesses: an unresolvable type or missing member stays
+    // unindexed (the occurrence is simply not claimed).
+
+    /** First user type identifier in a type text (skips primitives + lib globals). */
+    const firstTypeIdent = (text: string): string | undefined => {
+      if (text.startsWith('{')) return undefined; // object literal type
+      for (const tok of text.split(/[|&,\s]+/)) {
+        for (const m of tok.matchAll(/[A-Za-z_$][\w$]*/g)) {
+          const t = m[0];
+          if (PRIMITIVE_TYPES.has(t) || LIB_GLOBALS.has(t)) continue;
+          return t;
+        }
+      }
+      return undefined;
+    };
+
+    /** (a: A) => Ret → the return-type text; plain annotations pass through. */
+    const returnTypeOf = (typeRef: string): string => {
+      const idx = typeRef.lastIndexOf('=>');
+      return idx >= 0 ? typeRef.slice(idx + 2) : typeRef;
+    };
+
+    /** Scope-chain search for a NAME (not the occurrence's own name). */
+    const findByName = (name: string, scopeKey: number, valuePos: boolean): SymbolNode | undefined => {
+      const found = searchScopeChain(
+        { fileIdx, range: { start: 0, end: 0, startLine: 1, startChar: 0, endLine: 1, endChar: 0 }, name, scopeKey, role: valuePos ? OccurrenceRole.Read : OccurrenceRole.TypeRef },
+        valuePos,
+      );
+      return found.kind === 'bound' ? found.sym : undefined;
+    };
+
+    type MemberPolicy = 'any' | 'static' | 'instance';
+
+    /**
+     * The member named o.name owned by typeSym — own members first, then the
+     * heritage chain (class/interface typeRef is the comma-joined extends
+     * list). Policy: 'static'/'instance' filter by modifiers.static; 'any'
+     * matches everything (enums, namespaces).
+     */
+    const resolveMemberIn = (typeSym: SymbolNode, o: Occurrence, policy: MemberPolicy, depth = 0): BoundRef | undefined => {
+      if (depth > 3) return undefined;
+      for (const m of membersByParent.get(typeSym.key) ?? []) {
+        if (m.name !== o.name) continue;
+        if (policy === 'static' && !m.modifiers.static) continue;
+        if (policy === 'instance' && m.modifiers.static) continue;
+        return { fileIdx, range: o.range, symKey: m.key, role: o.role, resolvedVia: 'type' };
+      }
+      const heritage = typeSym.typeRef;
+      if (heritage) {
+        for (const h of heritage.split(',')) {
+          const t = firstTypeIdent(h);
+          if (!t) continue;
+          const parent = findTypeSym(t, o, false);
+          if (parent) {
+            const hit = resolveMemberIn(parent, o, policy, depth + 1);
+            if (hit) return hit;
+          }
+        }
+      }
+      return undefined;
+    };
+
+    /**
+     * Member chase from a base VALUE symbol (never a guess — every hop needs
+     * a resolvable type or shape). Depth-bounded for alias cycles.
+     */
+    const tryMemberFromSymbol = (baseSym: SymbolNode | undefined, o: Occurrence, depth: number): BoundRef | undefined => {
+      if (!baseSym || depth > 3) return undefined;
+      if (baseSym.kind === SymbolKind.Class || baseSym.kind === SymbolKind.Component) {
+        return resolveMemberIn(baseSym, o, 'static'); // class object → static members
+      }
+      if (baseSym.kind === SymbolKind.Enum || baseSym.kind === SymbolKind.Namespace) {
+        return resolveMemberIn(baseSym, o, 'any');
+      }
+      // Annotated type: const x: Foo / param (x: Foo) → Foo.member
+      if (baseSym.typeRef) {
+        const t = firstTypeIdent(returnTypeOf(baseSym.typeRef));
+        if (t) {
+          const typeSym = findTypeSym(t, o, false);
+          if (typeSym) {
+            const hit = resolveMemberIn(typeSym, o, 'instance');
+            if (hit) return hit;
+          }
+        }
+      }
+      // Initializer shapes
+      for (const it of input.initTypes.get(baseSym.key) ?? []) {
+        if (it.k === 'new' || it.k === 'cast') {
+          const t = firstTypeIdent(it.t);
+          if (!t) continue;
+          const typeSym = findTypeSym(t, o, it.k === 'new'); // new → class value; cast → type
+          if (!typeSym) continue;
+          const hit = resolveMemberIn(typeSym, o, 'instance');
+          if (hit) return hit;
+        } else if (it.k === 'id') {
+          const alias = findByName(it.t, o.scopeKey, true);
+          if (!alias) continue;
+          const hit = tryMemberFromSymbol(alias.kind === SymbolKind.ImportBinding ? chasedSym(o, it.t) : alias, o, depth + 1);
+          if (hit) return hit;
+        } else if (it.k === 'call') {
+          // callee's declared return type
+          const callee = findByName(it.t, o.scopeKey, true);
+          if (!callee) continue;
+          const calleeSym = callee.kind === SymbolKind.ImportBinding ? chasedSym(o, it.t) : callee;
+          if (!calleeSym || !calleeSym.typeRef) continue;
+          const t = firstTypeIdent(returnTypeOf(calleeSym.typeRef));
+          if (!t) continue;
+          const typeSym = findTypeSym(t, o, false);
+          if (!typeSym) continue;
+          const hit = resolveMemberIn(typeSym, o, 'instance');
+          if (hit) return hit;
+        } else if (it.k === 'mcall') {
+          // factory.ctor() → the member's declared return type
+          const base = findByName(it.base, o.scopeKey, true);
+          if (!base) continue;
+          const baseSym2 = base.kind === SymbolKind.ImportBinding ? chasedSym(o, it.base) : base;
+          if (!baseSym2) continue;
+          const member = (membersByParent.get(baseSym2.key) ?? []).find((m) => m.name === it.member);
+          if (!member || !member.typeRef) continue;
+          const t = firstTypeIdent(returnTypeOf(member.typeRef));
+          if (!t) continue;
+          const typeSym = findTypeSym(t, o, false);
+          if (!typeSym) continue;
+          const hit = resolveMemberIn(typeSym, o, 'instance');
+          if (hit) return hit;
+        }
+      }
+      return undefined;
+    };
+
+    /** The Tier-2 entry: resolve a Property occurrence through its base. */
+    const tryTypedMember = (o: Occurrence): BoundRef | undefined => {
+      if (o.base === undefined) return undefined;
+      if (o.base === 'this') {
+        // innermost enclosing class/interface/enum/namespace scope
+        let scopeKey: number | undefined = o.scopeKey;
+        while (scopeKey !== undefined) {
+          const owner = typeSymByScope.get(scopeKey);
+          if (owner !== undefined) {
+            const own = keyToSym.get(owner);
+            if (!own) return undefined;
+            return resolveMemberIn(own, o, 'instance') ?? resolveMemberIn(own, o, 'static');
+          }
+          scopeKey = scopeMap.get(scopeKey)?.parentKey;
+        }
+        return undefined;
+      }
+      const found = searchScopeChain({ ...o, name: o.base }, true);
+      if (found.kind !== 'bound') return undefined;
+      let baseSym: SymbolNode | undefined = found.sym;
+      if (baseSym.kind === SymbolKind.ImportBinding) {
+        baseSym = chasedSym(o, o.base);
+        if (!baseSym) return undefined;
+      }
+      return tryMemberFromSymbol(baseSym, o, 0);
+    };
+
+    /** Resolve an import binding to its chased symbol, if unambiguous. */
+    /** Resolve an import binding to its chased symbol, if unambiguous. */
+    const chasedSym = (o: Occurrence, localName: string): SymbolNode | undefined => {
+      const chased = chaseImportBinding(o, localName, true);
+      return chased.kind === 'chased' ? keyToSym.get(chased.key) : undefined;
+    };
+
+    /** Type-name resolution through imports: a type name that is an import
+     * binding is chased to the declaring file before member lookup. */
+    const findTypeSym = (name: string, o: Occurrence, valuePos: boolean): SymbolNode | undefined => {
+      const found = findByName(name, o.scopeKey, valuePos);
+      if (!found) return undefined;
+      if (found.kind === SymbolKind.ImportBinding) {
+        const chased = chaseImportBinding(o, name, valuePos);
+        return chased.kind === 'chased' ? keyToSym.get(chased.key) : undefined;
+      }
+      return found;
+    };
+
     const reexportSpecOcc = (o: Occurrence): boolean =>
       o.role === OccurrenceRole.ExportSpecifier &&
       (input.resolvedReexports
@@ -315,6 +533,10 @@ export function bindIndex(input: BindInput): BindResult {
       if (o.role === OccurrenceRole.Property) {
         const nsRef = tryNamespaceMember(o);
         if (nsRef) refs.push(nsRef);
+        else {
+          const mRef = tryTypedMember(o);
+          if (mRef) refs.push(mRef);
+        }
         continue;
       }
       if (!BINDABLE_ROLES.has(o.role)) continue;

@@ -87,7 +87,7 @@ Five stages. Stages 1–2 are per-file and embarrassingly parallel; 3–5 are gl
 This is what runs on every keystroke-scale change. Cost is linear in file size and roughly
 1/10th of a checker-backed pass.
 
-**Tier 2 (deep, checker-backed).** A `ts.createProgram` per resolution universe
+**Tier 2 — light type-guided member binding (shipped, 2026-09-04), deep checker-backed program (design).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain — 248 member refs bound on this tree, compiler-verified (validate run: 21,442/21,442, 0 disagreements; §13). The design's checker-backed full program (`ts.createProgram` per resolution universe) remains the deep tier for lib binding (`lib-not-loaded`), cross-file declaration merging, and `detail`/hover strings (§9.1, §13).
 (`src` universe and `netlify` universe share `shared/`), reused incrementally via
 `ts.createIncrementalProgram` / `oldProgram`. Used for:
 - resolving `export { _mapForm as mapForm }` and multi-hop barrel chains
@@ -170,7 +170,7 @@ see §10.
 Occurrence   { fileId, range, name, scopeId, role }
                  role: callee | typeRef | property | jsxName | importSpecifier
                      | exportSpecifier | decorator | write | read | key
-Reference    { id, symId, fileId, range, role, resolvedVia:'scope'|'import'|'global'|'lib' }
+Reference    { id, symId, fileId, range, role, resolvedVia:'scope'|'import'|'global'|'lib'|'type' }
 Edge         { id, source, target, type, weight }
                  type: contains | declares | imports | importsType | importsDynamic
                      | reExports | calls | reads | writes | extends | implements
@@ -776,13 +776,14 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
+| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`), binder-owned policy in bind.ts (`tryTypedMember`/`tryMemberFromSymbol`/`resolveMemberIn`), 248 member refs bound on this tree (L1Cache.store, Kandidat.wa, `this.` chains, heritage, enums, namespaces, factory-return types), differential validation extended to check every bound Property ref against the compiler (21,442/21,442, 0 disagreements); the checker-backed full program (lib binding, merging, hovers) is the open remainder — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
 **2 → 3 → 4** is done — those phases were validated against the compiler before
 the read side shipped, precisely because this repo's 540 `../` hops, 15 barrels,
 and aliased re-exports are where a naive indexer silently produces wrong answers.
-Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
+Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 open remainder (the checker-backed full program: lib binding for the `lib-not-loaded` bucket, cross-file declaration merging, hover strings), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
 
 ---
 
@@ -958,9 +959,9 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
 
 **Full-inventory results (246 files, 24,134 bindable occurrences, ~5.6 s):**
 
-- agreement **21,319/21,319 (100%)** — 21,314 bound with the same name at the
-  same offset, 5 both-unresolvable (exactly the known dangling refs from
-  Phase 4: `findCandidates` ×3, `sessionToken` ×2);
+- agreement **21,442/21,442 (100%)** (Tier 2 landed 2026-09-04: the universe
+  now includes every bound Property ref — type-guided member binds and
+  namespace-member chases are compiler-checked like all other refs);
 - disagreements **0** — no bound-but-unbound, no name mismatch, no
   false-positive, no offset mismatch. **No genuine binder bugs were exposed**
   by the full run; the Phase-4 curation paid off, so no fix-tests were needed;
@@ -968,8 +969,10 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
   - `lib-not-loaded` 2,815 — the compiler confirms 2,814 bind lib symbols
     (classification validated); the 1 exception is `Astro` (BaseLayout.astro),
     a framework global with no lib declaration;
-  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 16,497 —
+  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 16,071 —
     recorded, never scope-bound by design (§4.3, member access is Tier 2);
+    bound Property refs are NOT skipped: they join the universe and must agree
+    with the compiler (they do — see the agreement line above);
   - lowercase JSX intrinsics (`<div>` …) 1,878.
 
 Scope note: comparison is **name-level** — it proves the compiler binds *a*
@@ -1426,6 +1429,30 @@ for when the poll loop lands: src/lib/apiClient throws a generic error on `!res.
 the body, so a future client must parse the error body (or pre-validate jobId) to surface the
 domain message; error messaging for non-200 responses is app-side work, not backend.
 
+### Tier 2 member binding shipped (2026-09-04)
+
+Row 9 landed: `obj.method` call sites bind to the member's declaration symbol
+(`resolvedVia: 'type'`) instead of staying unindexed. Parse side (never
+serialized) classifies variable/field initializers (`initTypes`: new/call/
+mcall/id/cast shapes) and maps class/interface/enum/namespace scopes to their
+symbol (`typeScopes`), plus `base: 'this'` on member occurrences. The binder
+owns the policy in one place: base resolution (this / value symbol / import
+chase), type resolution (annotation, initType shapes, factory return types,
+firstTypeIdent skips primitives + lib globals), and member lookup with
+heritage chain and static policy (class-as-value → static; enum/namespace →
+any; instance → non-static preferred, static fallback). Depth-bounded, never
+guesses: unresolvable types stay unindexed. Real-tree effect: 248 member refs
+bound (L1Cache.store ×17, Job.id, Kandidat.wa, GeminiExtractedData fields,
+resilience/kernel/cache internals, modal components) — the `refs`/`impact`
+answers for those families are now complete. Differential validation extended:
+bound Property refs join the universe, full run **21,442/21,442 (100%),
+0 disagreements** (validate.test.ts still green on the sample). New
+`tier2.test.ts` (3 tests): synthetic fixture covering new/call/id/annotation/
+this/enum/namespace/heritage/static + zero-dangling-join and flagship real-tree
+assertions. Dump/query/serve contracts unchanged (additive `resolvedVia`
+value only). Open remainder (design's deep tier): checker-backed lib binding,
+declaration merging, hover strings.
+
 ### idx:gate wired into ci:quality (2026-09-04)
 
 The drift gate is now a first-class CI stage: `npm run idx:gate` builds once,
@@ -1480,7 +1507,9 @@ real tree):
   only — dump shape unchanged), and bind chases `base.member` through the
   namespace import’s export surface (the same resolveExport hop the named-import
   chase uses; ambiguous/type-only targets are not claimed; non-namespace member
-  accesses stay unindexed, Tier 2). `refs` lists those sites (role 5,
+  accesses stay unindexed, Tier 2). **Superseded 2026-09-04:** Tier 2 shipped
+  (row 9) — non-namespace member accesses now bind through types where the
+  shape is resolvable; see the "Tier 2 member binding shipped" log entry. `refs` lists those sites (role 5,
   resolvedVia import) and `def` at them jumps to the definition. Real-tree
   effect: 21,118 → 21,189 ref rows; unresolved counts unchanged (2818).
   Regressions: cli.e2e scenario 11 (synthetic `import * as a; a.greet()`
