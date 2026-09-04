@@ -2,8 +2,12 @@
  * build.test.ts — full pipeline (Phases 0-4) over the real repo.
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildIndex, type BuildResult } from './build.js';
+import { buildIndex, type BuildResult, type ParseReuseCache } from './build.js';
+import { dumpDoc } from './dump.js';
 
 const ROOT = process.cwd().replace(/\\/g, '/');
 
@@ -116,4 +120,86 @@ describe('full build', () => {
     expect(r.graph.unresolved.filter((u) => u.reason === 'astro-glob-no-match')).toHaveLength(0);
   });
 
+});
+
+describe('§6.2 incremental engine — per-file parse reuse (fixture tree)', () => {
+  // Three files with cross-file imports (a → b, a → c) so bind/resolve have
+  // real work; deep tier off — the watch generation profile §6.2 targets.
+  function makeTree(root: string): void {
+    mkdirSync(join(root, 'src'), { recursive: true });
+    writeFileSync(join(root, '.gitignore'), 'node_modules/\n', 'utf8');
+    writeFileSync(join(root, 'src/a.ts'), "import { greet } from './b';\nimport { tag } from './c';\nexport function run(): string { return greet() + tag; }\n", 'utf8');
+    writeFileSync(join(root, 'src/b.ts'), "export function greet(): string { return 'hi'; }\n", 'utf8');
+    writeFileSync(join(root, 'src/c.ts'), "export const tag = '!';\n", 'utf8');
+  }
+
+  // Content-deterministic whole-document equality: a warm (cache-carrying)
+  // build must produce byte-identical output to a cold build of the same tree.
+  const coldDoc = (root: string): string => JSON.stringify(dumpDoc(buildIndex(root, { deep: false })));
+
+  it('a warmed cache reuses every unchanged file and reproduces the cold document exactly', () => {
+    const root = mkdtempSync(join(tmpdir(), 'idx62-reuse-'));
+    makeTree(root);
+    const cold = coldDoc(root);
+    const cache: ParseReuseCache = new Map();
+    const warm1 = buildIndex(root, { deep: false, parseCache: cache }); // fills the cache
+    expect(warm1.stats.parseReusedFiles).toBe(0); // nothing to reuse on a cold session
+    expect(JSON.stringify(dumpDoc(warm1))).toBe(cold);
+    const warm2 = buildIndex(root, { deep: false, parseCache: cache });
+    expect(warm2.stats.parseReusedFiles).toBe(3); // every file skipped Stage 2
+    expect(JSON.stringify(dumpDoc(warm2))).toBe(cold);
+    // Zero-copy sharing across generations stays safe: a third reuse of the
+    // very same parse arrays still reproduces the cold document.
+    const warm3 = buildIndex(root, { deep: false, parseCache: cache });
+    expect(warm3.stats.parseReusedFiles).toBe(3);
+    expect(JSON.stringify(dumpDoc(warm3))).toBe(cold);
+  });
+
+  it('a single-file body edit re-parses only that file; output equals a cold build', () => {
+    const root = mkdtempSync(join(tmpdir(), 'idx62-edit-'));
+    makeTree(root);
+    const cache: ParseReuseCache = new Map();
+    buildIndex(root, { deep: false, parseCache: cache });
+    const before = coldDoc(root);
+    // Body-only edit: declHash/exportHash change only if the signature/export
+    // table does — either way the file must reparse; a.ts and c.ts must not.
+    writeFileSync(join(root, 'src/b.ts'), "export function greet(): string { return 'hello there'; }\n", 'utf8');
+    const incremental = buildIndex(root, { deep: false, parseCache: cache });
+    expect(incremental.stats.parseReusedFiles).toBe(2);
+    expect(JSON.stringify(dumpDoc(incremental))).toBe(coldDoc(root)); // == cold build of the edited tree
+    expect(JSON.stringify(dumpDoc(incremental))).not.toBe(before); // the edit did land
+  });
+
+  it('an identical-content rewrite (editor swap noise) reuses every file', () => {
+    const root = mkdtempSync(join(tmpdir(), 'idx62-noise-'));
+    makeTree(root);
+    const cache: ParseReuseCache = new Map();
+    buildIndex(root, { deep: false, parseCache: cache });
+    const before = coldDoc(root);
+    writeFileSync(join(root, 'src/b.ts'), "export function greet(): string { return 'hi'; }\n", 'utf8'); // same bytes
+    const again = buildIndex(root, { deep: false, parseCache: cache });
+    expect(again.stats.parseReusedFiles).toBe(3); // hash unchanged → nothing re-parses
+    // The only observable difference is the file's mtime (a rewrite bumps it) —
+    // drift detection (fileDrift) is hash-based, so content-wise this is a no-op.
+    const norm = (doc: { files: Array<{ mtime: number }> }): unknown => {
+      for (const f of doc.files) f.mtime = 0;
+      return doc;
+    };
+    expect(norm(dumpDoc(again))).toEqual(norm(JSON.parse(before)));
+  });
+
+  it('a file deletion shifts later ordinals and falls back to a full reparse, still identical', () => {
+    const root = mkdtempSync(join(tmpdir(), 'idx62-del-'));
+    makeTree(root);
+    const cache: ParseReuseCache = new Map();
+    buildIndex(root, { deep: false, parseCache: cache });
+    rmSync(join(root, 'src/a.ts'));
+    // b.ts and c.ts keep their content but their fileIdx shifts down by one,
+    // so their cached keys (fileIdx-packed) are invalid — reuse must refuse
+    // and reparse, never serve stale keys.
+    const incremental = buildIndex(root, { deep: false, parseCache: cache });
+    expect(incremental.stats.parseReusedFiles).toBe(0);
+    expect(JSON.stringify(dumpDoc(incremental))).toBe(coldDoc(root));
+    expect(incremental.files.map((f) => f.path)).toEqual(['src/b.ts', 'src/c.ts']);
+  });
 });

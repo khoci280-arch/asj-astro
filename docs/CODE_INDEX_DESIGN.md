@@ -1,6 +1,6 @@
 # Code Indexing & Symbol Resolution — Design
 
-**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); the §8 surface beyond the shipped subset, row 6’s §6.2 incremental engine + WS push, and phase 7 (SQLite) are designed, not built (the astro template scope — symbol-level template interpolations — and Astro.glob expansion — wildcard module-edge expansion — both ship with this pass, §13) · **Date:** 2026-09-04
+**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); row 6’s §6.2 per-file parse-reuse half shipped (2026-09-04), and the §8 surface beyond the shipped subset, row 6’s remaining dirty-set bind/resolve impact half + WS push, and phase 7 (SQLite) are designed, not built (the astro template scope — symbol-level template interpolations — and Astro.glob expansion — wildcard module-edge expansion — both ship with this pass, §13) · **Date:** 2026-09-04
 
 This document specifies a semantic index ("the index") over the repository: how files are
 discovered and parsed, how symbols are stored, how a name written in one file is resolved to the
@@ -367,10 +367,17 @@ swap makes the gate real). depcruise stays available as the oracle script
 
 ## 6. Incremental updates
 
-*(Phase 6 MVP on this tree: the generation/commit/diff lifecycle below is shipped
-(§13), but each generation is a FULL re-discovery + rebuild (measured ~570 ms init
-on this repo, 2026-09-03) — §6.2's dirty-set impact analysis and the hash-split
-parse reuse are the open row-6 remainder, not the 150 ms path described here.)*
+*(Phase 6 on this tree: the generation/commit/diff lifecycle is shipped (§13), and
+§6.2's hash-split per-file parse reuse shipped 2026-09-04 — `idx watch` generations
+carry a content-hash + fileIdx-keyed parse cache (buildIndex `parseCache`), so an
+unchanged file skips Stage 2 entirely (zero-copy: downstream stages never mutate
+parse records; output proven byte-identical to a cold build). A fully warm rebuild
+re-parses 0 of 247 files (parse ~1 ms vs ~470 ms cold; no-deep build ~0.14 s vs
+~0.64 s) and a one-file save re-parses one file, not the inventory. The 150 ms path
+described here is still not reached end to end: the remaining row-6 half — §6.2's
+dirty-set impact analysis (bind/resolve over an impact set instead of the global
+passes) — is deliberately not built (those passes are ~0.1 s global on this tree,
+below the fan-out threshold), and WS push stays open (§13).)*
 
 ### 6.1 Content hashing, three ways
 
@@ -786,7 +793,7 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 3 | Export tables, barrels, alias unwrapping | `_mapForm as mapForm` + all barrels resolve | ✅ shipped — §13 |
 | 4 | Reference binding + symbol graph | differential validation ≥ 99% vs the compiler | ✅ 100% (21,319/21,319) — §13 |
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /deps/cycles /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the row-5 read-surface pass (2026-09-04) adds `/sym/:symId`, `/files/:path/unresolved`, `/deps/path`, `/deps/orphans` and `?gen=` validation (§8, §13); the still-open §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search-by-filter, /graph) plus WS push (row 6) is the remaining surface |
-| 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
+| 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). §6.2 per-file parse reuse shipped (2026-09-04): watch generations carry a content-hash + fileIdx-keyed parse cache across rebuilds (`buildIndex parseCache`), so rebuild cost tracks the dirty set, not the inventory — fully warm rebuild re-parses 0/247 files (parse ~1 ms vs ~470 ms cold; no-deep build ~0.14 s vs ~0.64 s), one-file save re-parses one file; byte-identical-to-cold output pinned by fixture tests (reuse-everything, body edit, swap noise, deletion ordinal shift → full reparse). Row-6 remainder: the dirty-set impact analysis half (bind/resolve over an impact set — deliberately not built: those passes are ~0.1 s global on this tree, below the fan-out threshold) + WS push — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
 | 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; every such ref records its sibling declaration keys and def/hover shows ALL declaration sites across the files; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Template SCOPE shipped (2026-09-04): `{expr}` interpolations (text + `attr={expr}`, recursing into JSX-in-expression) emit Read occurrences in an `AstroTemplate` scope that is a child of the frontmatter module scope, so `lang={lang}` in BaseLayout binds to the destructured frontmatter const — def/hover at a template position answers with the frontmatter declaration and `idx refs` on those consts lists the template sites (5 interpolation reads on this tree; `<script>` bodies stay client-side and unindexed; the compiler program receives frontmatter-stripped .astro sources, so template positions are scope-resolved and excluded from differential validation). Astro.glob expansion shipped (2026-09-04): frontmatter `Astro.glob('../pages/*.astro')` string-literal calls are recorded at parse and expanded against the indexed inventory into AstroGlob module edges (type 15, specifier the raw pattern) — zero usage on this tree, so zero new edges/unresolveds; a pattern matching no indexed file surfaces as an `astro-glob-no-match` unresolved record (§13) |
@@ -795,7 +802,7 @@ Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13
 **2 → 3 → 4** is done — those phases were validated against the compiler before
 the read side shipped, precisely because this repo's 540 `../` hops, 15 barrels,
 and aliased re-exports are where a naive indexer silently produces wrong answers.
-Remaining work: phase 7 (SQLite — likely never, see row 7), the row-6 open remainder (the §6.2 incremental engine and WS push), and the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search-by-filter, /graph) — row 9 is fully closed and the row-5 read-surface pass shipped the §8 symbol/file/edge endpoints + `?gen=` (member binding, lib tier, merged-declaration joins, `detail` read-surface rendering, /sym/:symId, /files/:path/unresolved, /deps/path, /deps/orphans, §13).
+Remaining work: phase 7 (SQLite — likely never, see row 7), the row-6 remainder (the §6.2 dirty-set bind/resolve impact half + WS push — the per-file parse reuse half shipped 2026-09-04), and the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search-by-filter, /graph) — row 9 is fully closed and the row-5 read-surface pass shipped the §8 symbol/file/edge endpoints + `?gen=` (member binding, lib tier, merged-declaration joins, `detail` read-surface rendering, /sym/:symId, /files/:path/unresolved, /deps/path, /deps/orphans, §13).
 
 ---
 
@@ -1712,6 +1719,34 @@ semantics of the circular:false bug fix). Live on this tree: 3 SCCs (master-data
 ×3, db/client↔kernel/http, src apiClient/fcm/authReactive ×3); oracle and
 violation counts unchanged (11).
 
+**Row 6 §6.2 — per-file parse reuse shipped (2026-09-04).**
+The parse-reuse half of the §6.2 incremental engine lands on the watch
+path. `buildIndex` gains an optional `parseCache` (a `path → ParsedFile +
+content hash` map owned by the caller): a file whose (content hash, fileIdx)
+match the cache's entry skips Stage 2 entirely. Sound because parse is a pure
+function of (fileIdx, path, lang, content) — symbol/scope keys pack the
+fileIdx (`(fileIdx << 20) | ordinal`), so identical input reproduces identical
+output — and because no downstream stage mutates parse records (bind, graph,
+export tables read them; verified by inspection and by the equality tests),
+so the zero-copy shared arrays stay pristine across generations. Stale entries
+are replaced on (hash, fileIdx) mismatch and pruned when a file leaves the
+inventory; a deletion that shifts later ordinals refuses reuse for those files
+(their packed keys would be wrong) and falls back to a clean reparse.
+`idx watch` carries one cache across every generation (init fills it;
+subsequent rebuilds reuse), and `stats.parseReusedFiles` (additive-optional
+in the schema's IndexStats) reports the per-generation reuse count. Measured
+on this tree (deep tier off, the watch profile): parse 470 ms → **1.3 ms** on
+a fully warm rebuild and the no-deep build ~0.64 s → **~0.14 s**; a one-file
+save re-parses exactly that file. Output equality is fixture-pinned
+(build.test.ts §6.2 describe): warm == cold byte-for-byte across repeated
+reuse, a single-file body edit re-parses 1 of 3 files and still equals a cold
+build, an identical-bytes rewrite (editor swap noise) reuses all 3, and a
+file deletion (ordinal shift) falls back to a full reparse with identical
+output. Deliberate non-goal, recorded on the roadmap: the dirty-set impact
+analysis half (bind/resolve over an impact set) — those passes are global
+~0.1 s on this tree, below the fan-out threshold the design's 150 ms target
+was written against — and WS push remain the row-6 open items.
+
 ### Corrective pass - line-granular def + one candidate policy (2026-09-03)
 
 - `resolveLine` (query.ts): `idx def <file>:<line>` answers what the line
@@ -2018,4 +2053,4 @@ Ownership rules that hold today:
 - ResolvedSymbol describes the resolved symbol: `file`/`decls[].uri` are the
   symbol's home file, never the file the query pointed at.
 
-Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket, merged-declaration joins, and the read-surface rendering pass — `detail`/`typeRef`/`kind` answer on /resolve, /symbols outline, /refs and /search; row 8 includes the astro template scope — template interpolations bind to frontmatter consts — and Astro.glob expansion — frontmatter glob calls expand into AstroGlob module edges; row 5's read-surface pass ships the §8 symbol/file/edge endpoints — /sym/:symId with hover markdown, /files/:path/unresolved, /deps/path, /deps/orphans — plus `?gen=` validation; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search, /graph), the row-6 open remainder (§6.2 incremental engine, WS push), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
+Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket, merged-declaration joins, and the read-surface rendering pass — `detail`/`typeRef`/`kind` answer on /resolve, /symbols outline, /refs and /search; row 8 includes the astro template scope — template interpolations bind to frontmatter consts — and Astro.glob expansion — frontmatter glob calls expand into AstroGlob module edges; row 5's read-surface pass ships the §8 symbol/file/edge endpoints — /sym/:symId with hover markdown, /files/:path/unresolved, /deps/path, /deps/orphans — plus `?gen=` validation; row 7 designed-not-built; row 6's §6.2 per-file parse reuse half ships (2026-09-04) — watch generations skip Stage 2 for unchanged files through a content-hash parse cache, warm rebuild parse ~1 ms vs ~470 ms cold, byte-identical output pinned by fixture tests — leaving the dirty-set bind/resolve impact half + WS push as its remainder), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search, /graph), the row-6 remainder (§6.2's dirty-set bind/resolve impact half + WS push), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).

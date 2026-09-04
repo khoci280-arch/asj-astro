@@ -423,3 +423,36 @@ exit 0 (0 violations). Real-tree counts tidak berubah (view-layer only).
 
 - Commit tiga fitur (lihat Next steps di atas).
 - Lanjut row 6 §6.2 incremental engine + WS push; §8 tail opsional di belakangnya.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 — Commit 3 fitur + Row 6 §6.2 (per-file parse reuse)
+
+**Branch:** `dev` (8 commit ahead of origin/dev) · Dua hal: (1) tiga fitur indexer yang menumpuk
+di-commit terpisah via hunk selection; (2) row 6 §6.2 — per-file parse reuse — terimplementasi
+(dan BELUM di-commit, menunggu review).
+
+## Sesi A — Commit terpisah (tiga fitur)
+
+- `05c6557 feat(indexer): Astro.glob expansion — module edges from frontmatter glob calls` (10 file: astroGlob.ts/.test.ts baru, parse/graph/build/dump/schema, hunk EDGE_DEP_TYPE query.ts)
+- `f250e4b feat(indexer): row-9 read surfaces — detail/kind carried on outline, refs, search` (query.ts hunks 1–7 + query.test.ts row-9 hunks)
+- `b2c04b3 feat(indexer): §8 read endpoints — symbol card, file unresolved, deps path/orphans, gen pinning` (query view hunks + query.test.ts sisa + serve/cli + kedua dokumen utuh — teks doc kumulatif ketiga fitur tidak bisa dipecah per baris)
+- Teknik: `git add -p` per hunk; satu hunk campur (describe row-9 + row-5 berdekatan) dipecah deterministik (backup → hapus sementara blok row-5 → stage → restore byte-identik). Setiap staging diverifikasi via `git diff --cached`.
+
+## Sesi B — Row 6 §6.2 incremental engine (per-file parse reuse)
+
+- **Mengapa scope ini:** pengukuran menunjukkan tiap bagian index cepat (build ~4,6 dtk dgn deep tier 3,7 dtk; validate 8 dtk; suite 46 dtk = dominan). Yang lambat = siklus verifikasi penuh berulang, BUKAN rebuild watch (~0,9 dtk). §6.2 tetap dibangun atas pilihan user; gain jujur = stage parse di rebuild watch.
+- **Schema:** `IndexStats.parseReusedFiles` (additive optional).
+- **build.ts:** `ParseCacheEntry`/`ParseReuseCache` + `BuildOptions.parseCache` — file dgn (content hash, fileIdx) sama dgn cache melewati Stage 2 (aman: parse murni, key pack fileIdx, tak ada stage downstream yg memutasi hasil parse → zero-copy). Entri basi diganti, file hilang di-prune.
+- **watch.ts:** satu cache per sesi watch, dibawa lintas generasi (init mengisi; rebuild berikut reuse).
+- **Terukur (deep off):** parse 470 ms → **1,3 ms** saat warm penuh; no-deep build ~0,64 s → **~0,14 s**; save satu file re-parse satu file. Output byte-identik dgn cold build (fixture-pinned: warm berulang, body edit, swap noise, deletion → ordinal shift → full reparse).
+- **Non-goal jujur:** separuh dirty-set impact analysis (bind/resolve atas impact set) TIDAK dibangun — pass global ~0,1 dtk di tree ini, di bawah ambang fan-out desain 150 ms. WS push juga tetap open (row 6).
+- Verifikasi: typecheck bersih; suite **14 file / 196 test hijau** (+4: build.test.ts §6.2 describe); `watch.e2e.js` & `cli.e2e.js` standalone exit 0; idx:gate/boundary lihat catatan bawah.
+
+**Status commit:** 5 file + HANDOVER ini BELUM di-commit (schema, build.ts, build.test.ts, watch.ts, CODE_INDEX_DESIGN.md) — commit terpisah `feat(indexer): row 6 §6.2 — per-file parse reuse in idx watch` siap dibuat atas izin. Jangan push tanpa izin.
+
+## Next setelah sesi ini
+
+- Commit row 6 §6.2 (file di atas) — kalau mau, review dulu: ini mengubah inti build path (walaupun additive-optional).
+- Verifikasi cepat saat iterasi fitur: jalankan HANYA test terdampak (`npx vitest run --project indexer indexer/src/<file>.test.ts`) + typecheck (~2 dtk); suite penuh 46 dtk cukup pra-commit; CI jalan `ci:quality` penuh.
+- Row 6 sisa: dirty-set bind/resolve impact half (perlu hanya kalau repo tumbuh jauh) + WS push; §8 tail opsional.

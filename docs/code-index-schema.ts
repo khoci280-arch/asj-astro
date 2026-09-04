@@ -421,6 +421,10 @@ export interface IndexStats {
   unresolvedCount: number;
   stageMs: { discover: number; parse: number; resolve: number; bind: number; commit: number; deep: number };
   memoryBytes: number;
+  /** §6.2 per-file parse reuse: files whose (content hash, fileIdx) matched the
+   * previous generation and skipped Stage 2. Absent on cold builds that never
+   * carried a parse cache. */
+  parseReusedFiles?: number;
 }
 
 export interface IndexDiff {

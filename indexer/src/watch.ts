@@ -2,15 +2,16 @@
  * watch.ts — Phase 6 MVP: generation diffs, `idx watch`, and serve-side
  * refresh over a generation state dir (design §6, §11 row 6).
  *
- * Deliberate MVP scope: each generation is a FULL re-discovery + rebuild
- * (measured 0.5–1.5 s on this repo), so a save → queryable cycle is
- * seconds, not the §6.2 150 ms design target. The three-way hash split
- * (hash/declHash/exportHash), dirty-set impact analysis, and per-file parse
- * reuse of §6.1–6.3 are NOT implemented here — they are recorded as the
- * row-6 follow-up in §11/§13. What this phase owns and verifies: the
- * generation lifecycle (monotonic epochs, atomic snapshot commits, diff
- * computation, watcher → rebuild loop, JSONL diff output) that the future
- * incremental engine slots into.
+ * §6.2 shipped here: each generation carries a per-file parse cache (§6.1's
+ * content-hash split) across rebuilds — files whose (content hash, fileIdx)
+ * are unchanged since the previous generation skip Stage 2 entirely
+ * (buildIndex's parseCache), so a one-file save re-parses one file, not all
+ * 247. Remaining row-6 items, recorded in §11/§13: the dirty-set impact
+ * analysis half (bind/resolve over an impact set instead of the global
+ * ~0.1 s passes — below the fan-out threshold on this tree, so deliberately
+ * not built) and WS push. This phase still owns and verifies the generation
+ * lifecycle: monotonic epochs, atomic snapshot commits, diff computation,
+ * watcher → rebuild loop, JSONL diff output.
  */
 
 import { createHash } from 'node:crypto';
@@ -19,7 +20,7 @@ import { join } from 'node:path';
 import type { DumpDoc } from './dump.js';
 import { dumpDoc, loadSnapshot } from './dump.js';
 import { discoverFiles, isDeniedDir, parseGitignore } from './discover.js';
-import { buildIndex } from './build.js';
+import { buildIndex, type ParseReuseCache } from './build.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure: diff computation over two dump documents
@@ -217,16 +218,20 @@ const DEBOUNCE_MS = 120;
 
 /**
  * Rebuild the whole index into one generation and commit it. `buildIndex`
- * reads rootDir/.gitignore, so a root without one fails here (exit 1).
+ * reads rootDir/.gitignore, so a root without one fails here (exit 1). The
+ * parse cache (§6.2) rides along: files unchanged since the previous
+ * generation skip Stage 2, so the rebuild cost tracks the dirty set's size,
+ * not the inventory's.
  */
 async function buildGeneration(
   opts: WatchOptions,
   onDiff: (d: GenerationDiff) => void,
   trigger: DiffTrigger,
   prevDoc: DumpDoc | null,
+  parseCache: ParseReuseCache,
 ): Promise<DumpDoc> {
   const t0 = Date.now();
-  const r = buildIndex(opts.rootDir, { deep: false }); // deep tier off: generation latency (§13)
+  const r = buildIndex(opts.rootDir, { deep: false, parseCache }); // deep tier off: generation latency (§13)
   const doc = dumpDoc(r);
   const line = commitGenerationLine(prevDoc, doc, trigger, Date.now() - t0);
   if (!line) return prevDoc ?? doc; // unchanged — no new generation
@@ -250,11 +255,14 @@ async function buildGeneration(
  */
 export async function startWatch(opts: WatchOptions, onDiff: (d: GenerationDiff) => void): Promise<WatchHandle> {
   const log = opts.log ?? (() => {});
+  // §6.2: one parse cache per watch session — carried across every generation
+  // (init fills it; later generations reuse whatever did not change).
+  const parseCache: ParseReuseCache = new Map();
   // Initial generation: diff against whatever the state dir already holds, so
   // edits made while the watcher was down surface as one real diff, not noise.
   let prevDoc = loadStateDoc(opts.stateDir);
   try {
-    prevDoc = await buildGeneration(opts, onDiff, 'init', prevDoc);
+    prevDoc = await buildGeneration(opts, onDiff, 'init', prevDoc, parseCache);
   } catch (err) {
     throw new Error(`initial index build failed (${opts.rootDir}): ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -273,7 +281,7 @@ export async function startWatch(opts: WatchOptions, onDiff: (d: GenerationDiff)
     }
     busy = true;
     try {
-      const next = await buildGeneration(opts, onDiff, trigger, prevDoc);
+      const next = await buildGeneration(opts, onDiff, trigger, prevDoc, parseCache);
       if (next !== prevDoc) prevDoc = next;
     } catch (err) {
       log(`build failed (${trigger}): ${err instanceof Error ? err.message : String(err)}`);

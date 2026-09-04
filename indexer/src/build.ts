@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import type { FileNode, IndexStats, Occurrence, ScopeNode, SymbolNode } from '../../docs/code-index-schema.js';
 import { discoverFiles, isDeniedDir, parseGitignore } from './discover.js';
-import type { AstroGlobCall, ExportRecord, RawImportRecord } from './parse.js';
+import type { AstroGlobCall, ExportRecord, ParsedFile, RawImportRecord } from './parse.js';
 import { parseFile } from './parse.js';
 import { createResolver } from './resolve.js';
 import type { ModuleGraph } from './graph.js';
@@ -45,11 +45,31 @@ export interface BuildResult {
   stats: IndexStats;
 }
 
+/**
+ * §6.2 per-file parse reuse: one cached Stage-2 output, valid while the file's
+ * content hash AND fileIdx are unchanged. parseFile is a pure function of
+ * (fileIdx, path, lang, content) and its emitted keys are (fileIdx << 20) |
+ * per-file ordinal — identical input therefore reproduces identical output,
+ * and no downstream stage mutates parse structures (bind/graph/export tables
+ * read them), so zero-copy sharing across generations is safe.
+ */
+export type ParseCacheEntry = ParsedFile & { hash: string };
+
+/** path → entry. Owned by the caller (idx watch carries one across
+ * generations); buildIndex reads it for Stage-2 reuse and mutates it in place
+ * (invalidated entries replaced, removed files pruned). */
+export type ParseReuseCache = Map<string, ParseCacheEntry>;
+
 export interface BuildOptions {
   /** Checker-backed member tier (§9.1): resolves light-unbound Property
    * occurrences through ts.createProgram (≈2.1 s on this tree). Default
    * true; watch opts out ({ deep: false }) to keep generation latency. */
   deep?: boolean;
+  /** §6.2: reuse Stage-2 output for files whose (content hash, fileIdx) match
+   * this cache's entry — the dirty-set parse reuse half of the incremental
+   * engine. Output is identical to a full build; only unchanged files skip
+   * parse. Warm it by passing the same map to consecutive builds. */
+  parseCache?: ParseReuseCache;
 }
 
 export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildResult {
@@ -90,9 +110,24 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
   const astroGlobsByFile = new Map<FileNode['idx'], AstroGlobCall[]>();
   const initTypes = new Map<SymKey, InitType[]>();
   const typeScopes = new Map<FileIdx, Map<number, SymKey>>();
+  let parseReusedFiles = 0;
   for (const d of discovered) {
     const idx = idxByPath.get(d.path)!;
-    const parsed = parseFile({ fileIdx: idx, path: d.path, lang: d.lang, content: d.content });
+    // §6.2: a cached parse whose content hash AND fileIdx match this discovery
+    // is byte-identical to a fresh parseFile (keys pack the fileIdx, parse is
+    // a pure function of the content), so Stage 2 is skipped entirely.
+    const cached = opts.parseCache?.get(d.path);
+    const parsed: ParsedFile =
+      cached !== undefined && cached.hash === d.hash && cached.fileIdx === idx
+        ? cached
+        : parseFile({ fileIdx: idx, path: d.path, lang: d.lang, content: d.content });
+    if (cached !== parsed) {
+      // New or invalidated (hash or fileIdx moved): (re)parse and refresh the
+      // cache so the entry always matches the latest (hash, fileIdx).
+      opts.parseCache?.set(d.path, { hash: d.hash, ...parsed });
+    } else {
+      parseReusedFiles++;
+    }
     const f = files[idx as unknown as number];
     f.declHash = parsed.declHash;
     f.exportHash = parsed.exportHash;
@@ -113,6 +148,11 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     }
     if (parsed.typeScopes.length) typeScopes.set(idx, new Map(parsed.typeScopes.map((t) => [t.scopeKey, t.symKey])));
     if (parsed.templateTags) templateTagsByFile.set(idx, parsed.templateTags);
+  }
+  // §6.2: files that left the inventory (deleted, re-ignored, renamed) can
+  // never be hit again — drop their entries so the cache tracks the tree.
+  if (opts.parseCache !== undefined) {
+    for (const k of opts.parseCache.keys()) if (!idxByPath.has(k)) opts.parseCache.delete(k);
   }
   const parseMs = performance.now() - t2;
 
@@ -178,6 +218,7 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     libRefCount: libRefs.length,
     unresolvedCount: bound.unresolved.length + graph.unresolved.length,
     stageMs: { discover: discoverMs, parse: parseMs, resolve: resolveMs, bind: bindMs, commit: 0, deep: deepMs },
+    ...(opts.parseCache !== undefined ? { parseReusedFiles } : {}),
     memoryBytes:
       files.length * 320 +
       symbols.length * 256 +
