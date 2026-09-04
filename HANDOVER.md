@@ -631,3 +631,34 @@ Semua handler sudah ber-guard KECUALI yang berikut (guard=0). Klasifikasi:
 
 - Commit C3 sweep (`feat(backend): C3 sweep ...`) atas izin; jangan push.
 - Lanjut Prioritas 2 (Tab Mail/Jadwal/Config wiring) atau fitur HIGH lain — lihat referensi.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (5) — Parity legacy(live) ↔ Astro v2
+
+**Branch:** `dev` · User menunjuk `F:\Asjpow4v7-main\khoci921` = **legacy stable yang MASIH
+LIVE** dipakai user/siswa (+ deep-doc di `khoci921/docs/`, + referensi brain) dan minta
+bandingkan fitur/modal/pipeline data sbg referensi menuju **100% produksi**.
+
+## Hasil
+
+- `docs/LEGACY_PARITY_REFERENCE.md` (repo) + salinan `khoci921/docs/LEGACY_PARITY_ASTRO_2026-09-04.md`.
+- Isi: peta 7 halaman legacy ↔ 9 halaman Astro; parity 8 tab admin + ~20 modal/aksi admin +
+  modal kandidat/publik; parity backend action AI/data-flow (rebuild 1:1 ✅); delta produksi P1/P2/P3.
+- Temuan kunci: **backend Astro sudah parity 1:1** (action AI/wawancara/parse/submit dll,
+  semua ✅ + hardening C3–C6). Gap utama = sisi UI/wiring: share viewer TSK **tidak live**
+  (`shareData` belum dipetakan di surfaces/docs.ts — kode handler sudah ada), TabMail/TabJadwal/
+  TabConfig belum ter-wire, plus P2 (email notif, Excel, reject-mail composer, dsb).
+
+## Next
+
+- P1: implementasi shareData + per-job token, wire ShareView/share.astro; wire TabMail;
+  wire TabJadwal+TabConfig.
+- QA checklist per halaman pakai deep-doc legacy (§6 referensi).
+
+## Catatan
+
+- Docs-only (belum commit). Tidak menyentuh code; status keamanan tidak berubah.
+
+---
+
