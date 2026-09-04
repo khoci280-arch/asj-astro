@@ -1,6 +1,6 @@
 # Code Indexing & Symbol Resolution — Design
 
-**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); the §8 surface beyond the shipped subset, row 6’s §6.2 incremental engine + WS push, phase 7 (SQLite), and row 8’s Astro.glob expansion are designed, not built (the astro template scope — symbol-level template interpolations — ships with this pass, §13) · **Date:** 2026-09-04
+**Project:** `asj-portal-v2` (`F:\astro`) · **Status:** Phases 0–6 + row 8 shipped on this tree (implementation log: §13); the §8 surface beyond the shipped subset, row 6’s §6.2 incremental engine + WS push, and phase 7 (SQLite) are designed, not built (the astro template scope — symbol-level template interpolations — and Astro.glob expansion — wildcard module-edge expansion — both ship with this pass, §13) · **Date:** 2026-09-04
 
 This document specifies a semantic index ("the index") over the repository: how files are
 discovered and parsed, how symbols are stored, how a name written in one file is resolved to the
@@ -87,7 +87,7 @@ Five stages. Stages 1–2 are per-file and embarrassingly parallel; 3–5 are gl
 This is what runs on every keystroke-scale change. Cost is linear in file size and roughly
 1/10th of a checker-backed pass.
 
-**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05) + lib tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, plus **8,123 lib refs** (the `lib-not-loaded` bucket graduates to lib.dom/lib.es/package targets — lib globals through the compiler, CJS module-wrapper vars + the Astro global through canonical framework entries into the installed types; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; def/hover on a lib ref answers with the lib declaration file + line (`resolvedVia: 'lib'`); what remains is `detail` strings and cross-file declaration merging (§9.1, §13).
+**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05) + lib tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, plus **8,123 lib refs** (the `lib-not-loaded` bucket graduates to lib.dom/lib.es/package targets — lib globals through the compiler, CJS module-wrapper vars + the Astro global through canonical framework entries into the installed types; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; def/hover on a lib ref answers with the lib declaration file + line (`resolvedVia: 'lib'`); the row-9 remainder — `detail` strings and cross-file declaration merging — is closed: checker-joined merged decl sites + the detail pass ship with the deep tier, and the read-surface rendering pass puts `detail`/`typeRef`/`kind` on every answer surface (§9.1, §13).
 (`src` universe and `netlify` universe share `shared/`), reused incrementally via
 `ts.createIncrementalProgram` / `oldProgram`. Used for:
 - resolving `export { _mapForm as mapForm }` and multi-hop barrel chains
@@ -491,18 +491,20 @@ The scope tree is the backbone of resolution. Beyond §4.1:
 ## 8. Query interfaces
 
 Base URL: designed at `http://127.0.0.1:7878`; the shipped server binds `127.0.0.1`
-on `--port` (default 8787, `0` = ephemeral) and does not take `?gen` yet.
+on `--port` (default 8787, `0` = ephemeral); every versioned read takes `?gen=` (2026-09-04): validated against the current epoch — older generations are retained as bounded diffs, not snapshots, so full historical reads await the /diff durability follow-up (§13).
 Lines are **1-based editor lines** and `char` a **0-based column** (LSP-style) — one
 coordinate space end to end: dump ranges, `/resolve` params, CLI `def`/`refs`
 input and output, and every `l`/`c` in responses. (Char stays 0-based code units,
 never bytes or code points.)
-**Shipped subset (2026-09-03):** `/healthz`, `/stats`, `/resolve`, `/refs`,
-`/search`, `/deps`, `/deps/cycles`, `/symbols`, `/violations` — contract,
-positions, and measured numbers in §13 (Phase 5; /violations and
-/deps/cycles §13 row 8). Everything
-else in §8.1–8.4 is the designed target surface (incl. `?gen=` and the
-remaining symbol/file/edge/WS endpoints), not live; it maps to roadmap
-phases 6–8 (§11).
+**Shipped read surface (2026-09-04):** `/healthz /stats /resolve /refs
+/sym/:symId /search /deps /deps/cycles /deps/path /deps/orphans /symbols
+/files/:path/unresolved /violations` — contract, positions, and measured
+numbers in §13 (Phase 5; /violations, /deps/cycles and the §8 read-surface
+pass §13). Everything else in §8.1–8.4 is the designed target surface, not
+live — §8.2's role-filtered refs, callers/callees, implementations and
+rename-plan, the /symbols symbol search (renamed /symbols/search on ship,
+§8.1), the §8.3 `kind`-filtered deps and /graph, and the §8.4 WS push
+channel (row 6) — mapping to roadmap phases 6–8 (§11).
 **File-needle policy (uniform since 2026-09-03):** every `file` param —
 /resolve, /deps, /symbols — and `idx export <file>` share one lookup:
 exact repo path (case-insensitive) → extension probing (so `repository` and
@@ -519,9 +521,13 @@ GET  /symbols?q=findMasterByWa&kind=function&file=&exported=true&fuzzy=1&limit=5
      (collision: shipped `GET /symbols?file=` already means “file outline” — when
       this symbol-search endpoint ships it must be renamed, e.g. `/symbols/search`)
 GET  /sym/:symId                      → def, decls[], hover, container, refs count, centrality
+     (✅ live 2026-09-04 — symbol card incl. LSP-shaped hover markdown, §13)
 POST /resolve                         → { file, line, character } → def + all decls
+     (deferred — GET /resolve?file&line&char covers it)
 GET  /files/:path/symbols             → document outline (nested scope tree)
+     (designed-not-built: the dump carries no scope tree; /symbols?file= answers the honest flat outline)
 GET  /files/:path/unresolved          → names that failed to bind, with reasons
+     (✅ live 2026-09-04 — occurrence-level + import-level unresolveds of one file, §13)
 ```
 
 `POST /resolve` response, showing the ambiguity case that actually exists in this repo:
@@ -570,9 +576,8 @@ The block below is the designed superset — not live.
 
 ```
 GET  /deps?from=<file|dir>&to=&direction=in|out|both&kind=static|dynamic|type|all
-GET  /deps/path?from=A&to=B          → shortest dependency path (BFS, < 5 ms)
-GET  /deps/orphans                   → files nothing imports
-GET  /deps/orphans                   → files nothing imports
+GET  /deps/path?from=A&to=B          → shortest dependency path (BFS, < 5 ms)   ✅ live 2026-09-04 (§13)
+GET  /deps/orphans                   → files nothing imports                    ✅ live 2026-09-04 (§13)
 GET  /graph?scope=module|symbol&root=&depth=2&maxNodes=2000   → subgraph for visualization
 GET  /stats                          → counts, epoch, memory, build timings
 ```
@@ -780,17 +785,17 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 2 | Specifier resolution + module graph | zero unresolved relative specifiers in this repo | ✅ shipped — §13 (2 remote only) |
 | 3 | Export tables, barrels, alias unwrapping | `_mapForm as mapForm` + all barrels resolve | ✅ shipped — §13 |
 | 4 | Reference binding + symbol graph | differential validation ≥ 99% vs the compiler | ✅ 100% (21,319/21,319) — §13 |
-| 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
+| 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /deps/cycles /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the row-5 read-surface pass (2026-09-04) adds `/sym/:symId`, `/files/:path/unresolved`, `/deps/path`, `/deps/orphans` and `?gen=` validation (§8, §13); the still-open §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search-by-filter, /graph) plus WS push (row 6) is the remaining surface |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
 | 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,123 lib refs** (8,092 checker-confirmed + 31 canonical framework rows closing the `lib-not-loaded` bucket — CJS wrapper vars → @types/node, Astro → astro types) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; def/hover on lib refs answers with the lib declaration; cross-file declaration merging is recognized by the checker join (a compiler symbol spanning several indexed declarations — interface+interface/namespace+namespace merging, intersection/union member access — binds ONE deterministic symbol per declaration set, never split; every such ref records its sibling declaration keys and def/hover shows ALL declaration sites across the files; fixture-pinned); every lib ref + symbol carries `detail` (short signature — `console: Console`, `log(...data: any[]): void;`) and def renders kind labels, not bare numbers; `idx refs/impact` answers lib names (`console`, `String`, `console.log`) with every usage site from the libRefs table — §13 |
-| 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Template SCOPE shipped (2026-09-04): `{expr}` interpolations (text + `attr={expr}`, recursing into JSX-in-expression) emit Read occurrences in an `AstroTemplate` scope that is a child of the frontmatter module scope, so `lang={lang}` in BaseLayout binds to the destructured frontmatter const — def/hover at a template position answers with the frontmatter declaration and `idx refs` on those consts lists the template sites (5 interpolation reads on this tree; `<script>` bodies stay client-side and unindexed; the compiler program receives frontmatter-stripped .astro sources, so template positions are scope-resolved and excluded from differential validation). Open: Astro.glob expansion (zero usage on this tree) (§13) |
+| 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Template SCOPE shipped (2026-09-04): `{expr}` interpolations (text + `attr={expr}`, recursing into JSX-in-expression) emit Read occurrences in an `AstroTemplate` scope that is a child of the frontmatter module scope, so `lang={lang}` in BaseLayout binds to the destructured frontmatter const — def/hover at a template position answers with the frontmatter declaration and `idx refs` on those consts lists the template sites (5 interpolation reads on this tree; `<script>` bodies stay client-side and unindexed; the compiler program receives frontmatter-stripped .astro sources, so template positions are scope-resolved and excluded from differential validation). Astro.glob expansion shipped (2026-09-04): frontmatter `Astro.glob('../pages/*.astro')` string-literal calls are recorded at parse and expanded against the indexed inventory into AstroGlob module edges (type 15, specifier the raw pattern) — zero usage on this tree, so zero new edges/unresolveds; a pattern matching no indexed file surfaces as an `astro-glob-no-match` unresolved record (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
 **2 → 3 → 4** is done — those phases were validated against the compiler before
 the read side shipped, precisely because this repo's 540 `../` hops, 15 barrels,
 and aliased re-exports are where a naive indexer silently produces wrong answers.
-Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (Astro.glob expansion), the row-9 open remainder (cross-file declaration merging and `detail`/hover strings — lib binding is shipped), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
+Remaining work: phase 7 (SQLite — likely never, see row 7), the row-6 open remainder (the §6.2 incremental engine and WS push), and the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search-by-filter, /graph) — row 9 is fully closed and the row-5 read-surface pass shipped the §8 symbol/file/edge endpoints + `?gen=` (member binding, lib tier, merged-declaration joins, `detail` read-surface rendering, /sym/:symId, /files/:path/unresolved, /deps/path, /deps/orphans, §13).
 
 ---
 
@@ -841,12 +846,13 @@ module graph, `idx build|stats|unresolved` CLI), third vitest project
 5. **Type params** are declared with kind `parameter` (the schema has no
    `typeParam` kind) so type positions can bind in Phase 4.
 
-Deferred to later phases: TypeParams scopes, Astro.glob expansion, CJS export
+Deferred to later phases: TypeParams scopes, CJS export
 *symbols* (export records exist), Tier 2 checker work (cross-file declaration
-merging, `detail`/hover strings). Astro template SCOPE (symbol-level
-interpolations) is no longer deferred — it ships with this pass (an
-`AstroTemplate` scope under the frontmatter module scope binds `{expr}` reads
-to frontmatter consts/imports, §2.4, row 8, §13).
+merging, `detail`/hover strings). Astro template work is no longer deferred —
+the template SCOPE (an `AstroTemplate` scope under the frontmatter module
+scope binds `{expr}` reads to frontmatter consts/imports) and Astro.glob
+expansion (frontmatter glob calls expand into AstroGlob module edges) both
+ship with this pass (§2.4, row 8, §13).
 
 ### Phase exit criteria — status
 
@@ -1237,8 +1243,9 @@ tag scan), and `npm run boundary` has been swapped to the index (the depcruise
 `--exit-code` flag that 18.x removed never gated; the index gate is real).
 Still open and recorded: depcruise dependencyTypes beyond the four import kinds,
 `via`/`viaNot`, `reachable`, config files outside the indexed universe, and —
-within astro — Astro.glob expansion (the template SCOPE — symbol-level
-interpolations — ships with the 2026-09-04 pass, see below).
+within astro — the markup edge kinds Renders/AstroGlob (index-only edges the
+depcruise oracle never sees; the template SCOPE and Astro.glob expansion both
+ship with the 2026-09-04 pass, see below).
 **Superseded by the drift-fix pass (2026-09-04, §13):** the 11 violations are
 gone — the master-data cycle was broken and characterisation.test.ts left
 `_lib/kernel` — so the remaining 8 were warnings. **Superseded by the warning
@@ -1635,8 +1642,65 @@ sites. The compiler program only receives frontmatter-stripped .astro sources,
 so template positions carry no compiler identifier — validation classifies them
 (`astro template interpolations` deviation bucket) instead of checking them;
 the full run stays 22,495/22,495, 0 disagreements. On this tree: 5 interpolation
-reads (BaseLayout), every one scope-bound. Still designed, not built: Astro.glob
-expansion (zero `Astro.glob` usage on this tree).
+reads (BaseLayout), every one scope-bound. Astro.glob expansion ships with the
+same pass: walkCall records frontmatter `Astro.glob('…')` string-literal calls
+as AstroGlobCall rows (non-literal arguments, other receivers, and non-astro
+files are never recorded), and graph.ts expands each pattern against the
+indexed inventory — astroGlob.ts compiles the fast-glob subset
+`*`/`**`/`?`/`[...]`/`{a,b}` into an anchored matcher resolved from the
+importing file's directory (leading-`/` patterns from the repo root,
+case-insensitive like the resolver), where a wildcard never escapes that
+directory: candidates outside it start with `../` and only match a literal
+`..`-prefix in the pattern itself. Every matched file emits one AstroGlob
+module edge (type 15, the raw pattern as specifier, no bindings — a glob
+imports whole modules, never names, so the binding chase cannot claim a
+symbol through one). A pattern that matches no indexed file surfaces as an
+`astro-glob-no-match` unresolved record — a dead or out-of-universe dependency
+is a real health signal, never a silent no-op. On this tree: zero `Astro.glob`
+usage → zero expansion edges, zero new unresolveds; real-tree counts and the
+differential run (22,495/22,495, 0 disagreements) are unchanged. Fixture
+coverage: astroGlob.test.ts (matcher + full parse→graph fixture) and the
+parse/build suites (+4 tests).
+
+**Row-9 read-surface rendering (2026-09-04) — `detail`/kind on every
+def/hover answer.** `/resolve` already rendered the full ResolvedSymbol
+(`detail`, `kind`, merged decl sites across the files, §13 deep tier); the
+remaining read surfaces now render the same hover metadata, so an editor
+hovering an outline row, a refs answer, or a search hit sees the signature
+`/resolve` shows for the position it covers: `fileSymbols` outline entries
+(`GET /symbols`) carry the projection's `detail` and `typeRef` again
+(previously dropped by the entry projection — schema `detail` is "rendered
+signature for hover"), refs answers (`GET /refs`, `idx refs`/`impact`, and
+lib-target refs via refsOfLib) name the target's `kind` + `detail`, and
+search hits carry `detail`. Additive optional fields throughout — legacy
+snapshots without detail load unchanged, fixture-pinned in query.test.ts
+(a synthetic row with and without detail over outline/refs/search) and
+real-tree assertions on the FINDBYWA symbol; real-tree counts unchanged.
+
+Test count: query.test.ts 50 → 52 (+2 fixture tests in the new
+"row-9 read surfaces" describe).
+
+**Row-5 read-surface pass — the §8 symbol/file/edge endpoints (2026-09-04).**
+The designed-but-not-live §8 read surface ships as query views + HTTP
+routes: `GET /sym/:symId` answers the symbol card — decls[], LSP-shaped
+hover markdown (the `detail` signature fenced as TS, qualified-name fallback
+on legacy rows without detail), container, export flags, refs count and
+centrality; 404 on unknown ids (`symId`s embed repo paths, so the whole
+remainder after `/sym/` is the id). `GET /files/:path/unresolved` answers
+one file's unresolveds — occurrence-level rows with reason + position and
+module-level imports with specifier + reason (fileFound:false with empty
+lists on unknown files, 200, matching /symbols). `GET /deps/path?from&to`
+runs BFS over the dump's file-to-file importEdges and answers the real
+shortest path (found/unreachable/unknown-file states distinct); `GET
+/deps/orphans` lists every indexed file with no in-edge. Every versioned
+read now takes `?gen=`, validated against the current epoch: a non-current
+gen answers 400 with the retention contract spelled out (bounded history
+keeps diffs, not snapshots — full historical reads await the /diff
+durability follow-up). Views: symbolCardOf / fileUnresolvedOf / depsPathOf /
+depsOrphansOf in query.ts; serve.ts routes them URL-param style per §8.
+Test count: query.test.ts 52 → 58 (+6: real-tree card/file/path/orphans,
+synthetic unresolved + BFS, HTTP contract incl. ?gen errors). Real-tree
+counts unchanged.
 
 The SCC machinery surfaced as a read endpoint the same day:
 `GET /deps/cycles[?file=]` (serve.ts) lists the non-trivial module cycles via
@@ -1954,4 +2018,4 @@ Ownership rules that hold today:
 - ResolvedSymbol describes the resolved symbol: `file`/`decls[].uri` are the
   symbol's home file, never the file the query pointed at.
 
-Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket; row 8 now includes the astro template scope — template interpolations bind to frontmatter consts; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail` strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
+Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,123 lib refs closing the residual bucket, merged-declaration joins, and the read-surface rendering pass — `detail`/`typeRef`/`kind` answer on /resolve, /symbols outline, /refs and /search; row 8 includes the astro template scope — template interpolations bind to frontmatter consts — and Astro.glob expansion — frontmatter glob calls expand into AstroGlob module edges; row 5's read-surface pass ships the §8 symbol/file/edge endpoints — /sym/:symId with hover markdown, /files/:path/unresolved, /deps/path, /deps/orphans — plus `?gen=` validation; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 tail (role-filtered refs, callers/callees/implementations, rename-plan, symbol search, /graph), the row-6 open remainder (§6.2 incremental engine, WS push), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).

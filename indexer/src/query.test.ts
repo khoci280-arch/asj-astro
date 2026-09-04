@@ -8,7 +8,7 @@ import { get as httpGet, request as httpRequest } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import { buildIndex, type BuildResult } from './build.js';
 import { dumpDoc, type DumpDoc } from './dump.js';
-import { cyclesOf, depsOf, fileSymbols, importSitesOf, importTargetsOf, indexFromDoc, isImportBindingSymbol, refsOf, resolveAt, resolveLine, search, searchPage, statsOf, symbolsByExactName, symbolsDefining, type QueryIndex } from './query.js';
+import { cyclesOf, depsOf, depsOrphansOf, depsPathOf, fileSymbols, fileUnresolvedOf, importSitesOf, importTargetsOf, indexFromDoc, isImportBindingSymbol, refsOf, resolveAt, resolveLine, search, searchPage, statsOf, symbolCardOf, symbolsByExactName, symbolsDefining, type QueryIndex } from './query.js';
 import { EdgeType, SymbolKind } from '../../docs/code-index-schema.js';
 import { bind, createIndexServer } from './serve.js';
 
@@ -159,6 +159,75 @@ describe('query layer over the real index', () => {
     for (let i = 1; i < view.alternatives.length; i++) {
       expect(view.alternatives[i - 1].refCount).toBeGreaterThanOrEqual(view.alternatives[i].refCount);
     }
+  });
+
+  it('symbol card answers the §8.1 /sym/:symId shape (hover markdown, refs, centrality)', () => {
+    const index = qindex();
+    const row = index.symbolById.get(FINDBYWA)!;
+    const card = symbolCardOf(index, FINDBYWA);
+    expect(card.found).toBe(true);
+    expect(card.name).toBe('findMasterByWa');
+    expect(card.kind).toBe(row.kind);
+    expect(card.file).toBe(index.fileByIdx.get(row.fileIdx)!.path);
+    expect(card.decls).toEqual(refsOf(index, FINDBYWA).decls);
+    expect(card.refs).toBe(refsOf(index, FINDBYWA).references.length);
+    expect(card.centrality).toBe(row.centrality);
+    expect(card.exported).toBe(row.exported);
+    expect(card.hover.contents.kind).toBe('markdown');
+    expect(card.hover.contents.value).toMatch(/^```ts\n[\s\S]*findMasterByWa[\s\S]*\n```$/);
+    expect(symbolCardOf(index, 'sym:nope#nope').found).toBe(false);
+  });
+
+  it('file-scoped unresolved lists the file refs + imports with reasons (§8.1)', () => {
+    const index = qindex();
+    const view = fileUnresolvedOf(index, 'src/lib/fcm.ts');
+    expect(view.fileFound).toBe(true);
+    expect(view.file).toBe('src/lib/fcm.ts');
+    // fcm.ts: the two https dynamic imports are the known import-level unresolveds.
+    expect(view.imports.length).toBeGreaterThanOrEqual(2);
+    expect(view.imports.every((u) => u.reason === 'remote-specifier' && u.specifier.startsWith('https://'))).toBe(true);
+    const clean = fileUnresolvedOf(index, 'netlify/functions/contexts/master-data/repository.ts');
+    expect(clean.fileFound).toBe(true);
+    expect(clean.references).toHaveLength(0);
+    const ghost = fileUnresolvedOf(index, 'no/such/file.ts');
+    expect(ghost.fileFound).toBe(false);
+    expect(ghost.references).toEqual([]);
+    expect(ghost.imports).toEqual([]);
+  });
+
+  it('deps/path answers the shortest module path; unreachable and unknown files answer cleanly (§8.3)', () => {
+    const index = qindex();
+    const barrel = 'netlify/functions/contexts/master-data/index.ts';
+    const repo = 'netlify/functions/contexts/master-data/repository.ts';
+    const direct = depsPathOf(index, barrel, repo);
+    expect(direct.found).toBe(true);
+    expect(direct.path[0]).toBe(barrel);
+    expect(direct.path[direct.path.length - 1]).toBe(repo);
+    // src and netlify/functions are separate universes: an honest not-found.
+    const unreachable = depsPathOf(index, 'src/pages/index.astro', repo);
+    expect(unreachable.found).toBe(false);
+    expect(unreachable.path).toEqual([]);
+    const ghost = depsPathOf(index, 'no/such/file.ts', repo);
+    expect(ghost.fromFound).toBe(false);
+    expect(ghost.found).toBe(false);
+    const same = depsPathOf(index, repo, repo);
+    expect(same.found).toBe(true);
+    expect(same.path).toEqual([repo]);
+  });
+
+  it('deps/orphans lists every file with no in-edges, self-consistent with importEdges (§8.3)', () => {
+    const index = qindex();
+    const orphans = depsOrphansOf(index);
+    const imported = new Set<number>();
+    for (const e of index.doc.importEdges ?? []) if (typeof e.to === 'number') imported.add(e.to);
+    const expected = index.doc.files
+      .filter((f) => !imported.has(f.idx))
+      .map((f) => f.path)
+      .sort();
+    expect(orphans.files).toEqual(expected);
+    expect(orphans.total).toBe(expected.length);
+    expect(orphans.gen).toBe(index.doc.epoch);
+    expect(orphans.files).toContain('src/pages/index.astro'); // an entry page nothing imports
   });
 });
 
@@ -430,6 +499,31 @@ describe('row-9 read surfaces — detail/kind carried on outline, refs, search (
   });
 });
 
+describe('row-5 §8 remainder read views — synthetic (unresolved rows + BFS)', () => {
+  it('file unresolved lists occurrence rows with reasons/ranges; deps/path BFS hops module edges', () => {
+    const index = mkDoc([], [], {
+      files: [f(0, 'a.ts'), f(1, 'b.ts'), f(2, 'c.ts')],
+      unresolved: [
+        { fileIdx: 0, name: 'missingThing', reason: 'global-unknown', range: { startLine: 3, startChar: 4, endLine: 3, endChar: 15, start: 60, end: 71 } },
+      ],
+      unresolvedImports: [{ fileIdx: 0, specifier: 'https://x', reason: 'remote-specifier' }],
+      importEdges: [
+        { from: 0, to: 1, type: EdgeType.Imports, specifier: './b' },
+        { from: 1, to: 2, type: EdgeType.Imports, specifier: './c' },
+      ],
+    });
+    const uv = fileUnresolvedOf(index, 'a.ts');
+    expect(uv.fileFound).toBe(true);
+    expect(uv.references).toHaveLength(1);
+    expect(uv.references[0]).toMatchObject({ name: 'missingThing', reason: 'global-unknown', line: 3, char: 4 });
+    expect(uv.imports).toEqual([{ specifier: 'https://x', reason: 'remote-specifier' }]);
+    const path = depsPathOf(index, 'a.ts', 'c.ts');
+    expect(path.found).toBe(true);
+    expect(path.path).toEqual(['a.ts', 'b.ts', 'c.ts']);
+    expect(path.gen).toBe(1);
+  });
+});
+
 describe('HTTP surface (Phase 5 endpoints)', () => {
   function requestJson(port: number, path: string, method: string): Promise<{ status: number; body: Record<string, unknown> }> {
     return new Promise((resolveP, reject) => {
@@ -589,6 +683,73 @@ describe('HTTP surface (Phase 5 endpoints)', () => {
       expect(body.gen).toBe(doc.epoch);
       expect(body.poisonedCount).toBe(1);
       expect(body.poisoned).toEqual([{ path: first.path, error: 'boom at 3:1' }]);
+    } finally {
+      await new Promise<void>((done) => server.close(() => done()));
+    }
+  });
+});
+
+describe('HTTP row-5 §8 endpoints (/sym, /files/:path/unresolved, /deps/path, /deps/orphans, ?gen=)', () => {
+  function getJson(port: number, path: string): Promise<{ status: number; body: Record<string, unknown> }> {
+    return new Promise((resolveP, reject) => {
+      const req = httpGet({ host: '127.0.0.1', port, path }, (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => resolveP({ status: res.statusCode ?? 0, body: data ? JSON.parse(data) : {} }));
+      });
+      req.on('error', reject);
+    });
+  }
+
+  it('serves the §8 remainder endpoints with their contract', async () => {
+    const server = createIndexServer({ index: qindex(), source: 'test', history: [] });
+    const port = await bind(server, 0);
+    try {
+      const sym = await getJson(port, `/sym/${encodeURIComponent(FINDBYWA)}`);
+      expect(sym.status).toBe(200);
+      const sv = sym.body as { found: boolean; name: string; refs: number; hover: { contents: { kind: string; value: string } } };
+      expect(sv.found).toBe(true);
+      expect(sv.name).toBe('findMasterByWa');
+      expect(sv.refs).toBeGreaterThan(0);
+      expect(sv.hover.contents.kind).toBe('markdown');
+      expect(sv.hover.contents.value).toContain('findMasterByWa');
+      const missingSym = await getJson(port, '/sym/sym:nope');
+      expect(missingSym.status).toBe(404);
+
+      const un = await getJson(port, `/files/${encodeURIComponent('src/lib/fcm.ts')}/unresolved`);
+      expect(un.status).toBe(200);
+      expect((un.body as { fileFound: boolean; imports: unknown[] }).fileFound).toBe(true);
+      expect((un.body as { imports: unknown[] }).imports.length).toBeGreaterThanOrEqual(2);
+      const ghostFile = await getJson(port, `/files/${encodeURIComponent('no/such.ts')}/unresolved`);
+      expect(ghostFile.status).toBe(200);
+      expect((ghostFile.body as { fileFound: boolean }).fileFound).toBe(false);
+
+      const dp = await getJson(port, `/deps/path?from=${encodeURIComponent('contexts/master-data/index')}&to=${encodeURIComponent('contexts/master-data/repository')}`);
+      expect(dp.status).toBe(200);
+      const dpv = dp.body as { found: boolean; path: string[] };
+      expect(dpv.found).toBe(true);
+      expect(dpv.path[0].endsWith('master-data/index.ts')).toBe(true);
+      expect(dpv.path[dpv.path.length - 1].endsWith('master-data/repository.ts')).toBe(true);
+      const noFrom = await getJson(port, '/deps/path?to=a.ts');
+      expect(noFrom.status).toBe(400);
+
+      const orphans = await getJson(port, '/deps/orphans');
+      expect(orphans.status).toBe(200);
+      const ov = orphans.body as { total: number; files: string[] };
+      expect(ov.total).toBe(ov.files.length);
+      expect(ov.files).toContain('src/pages/index.astro');
+
+      // ?gen= is validated on the versioned reads: the current generation
+      // passes; any other gen explains the diff-only retention (400).
+      const gen = qindex().doc.epoch;
+      const ok = await getJson(port, `/resolve?file=${encodeURIComponent('src/lib/fcm.ts')}&line=0&char=0&gen=${gen}`);
+      expect(ok.status).toBe(200);
+      const future = await getJson(port, `/resolve?file=${encodeURIComponent('src/lib/fcm.ts')}&line=0&char=0&gen=${gen + 5}`);
+      expect(future.status).toBe(400);
+      const oldGen = await getJson(port, `/deps/orphans?gen=0`);
+      expect(oldGen.status).toBe(400);
+      const badGen = await getJson(port, `/sym/${encodeURIComponent(FINDBYWA)}?gen=abc`);
+      expect(badGen.status).toBe(400);
     } finally {
       await new Promise<void>((done) => server.close(() => done()));
     }

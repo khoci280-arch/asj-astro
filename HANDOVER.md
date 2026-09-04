@@ -294,12 +294,53 @@ Kode siap **±85–88%**; sisanya operasional bukan kode:
   branch `dev` tidak auto-deploy (rilis lewat `develop`/tag).
 - Catatan: `.env.lokal` BUKAN sampah — itu file env lokal sesungguhnya (lihat tabel credentials di atas).
 
-## Next steps
+## Next steps (per 2026-09-04 larut — setelah Astro.glob expansion + row-9 read surfaces + row-5 §8 pass)
 
-1. Commit 7 file + HANDOVER.md (perintah §1 atas).
-2. Roadmap indexer tersisa: **Astro.glob expansion** (row 8); row-9 remainder = rendering
-   detail/merged-site di UI serve/hover (bukan CLI).
+1. Commit sesi-sesi ini: `e6f0982` (astro template scope) sudah di HEAD; tiga fitur indexer
+   berikut MASIH di working tree, BELUM di-commit — (a) Astro.glob expansion (10 file + 2 baru),
+   (b) row-9 read surfaces (query.ts, query.test.ts + docs), (c) row-5 §8 pass (query.ts,
+   serve.ts, query.test.ts + docs). Ketiganya berbagi file (`query.ts`, kedua dokumen) →
+   commit terpisah butuh `git add -p` per hunk.
+2. Roadmap indexer tersisa: **row 6 §6.2** (incremental engine: dirty sets, hash-split impact
+   analysis, per-file reuse + WS push) dan **§8 tail** (role-filtered refs, callers/callees,
+   implementations, rename-plan, symbol search-by-filter, /graph); TypeParams scopes + CJS
+   export symbols masih deferred. Row 9 full closed; row-5 read-surface (symbol/file/edge
+   endpoints + `?gen=`) shipped sesi ini.
 3. Pra-rilis app: `npm run ci:quality` penuh; finalisasi keputusan SSR; e2e + verify DB di staging.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (sore) — Astro.glob expansion (row 8)
+
+**Branch:** `dev` · Row-8 open remainder **Astro.glob expansion** selesai; perubahan di bawah
++ sync docs (`CODE_INDEX_DESIGN.md`, `HANDOVER.md`) **belum di-commit** (commit sesuai saran
+di bagian "Next setelah sesi ini").
+
+## Ringkasan fitur
+
+- **parse.ts:** frontmatter `Astro.glob('…')` dengan argumen string literal direkam sebagai
+  `AstroGlobCall` (di `walkCall`) — argumen non-literal, receiver selain `Astro`, dan file
+  non-astro tidak pernah direkam. Property `astroGlobs` hanya ada di file `.astro`.
+- **astroGlob.ts (baru):** matcher subset fast-glob (`*` dalam satu segmen, `**` lintas segmen,
+  `?`, `[...]`, `{a,b}`) — pola relatif ke direktori file importer, pola berawalan `/` relatif
+  ke repo root, case-insensitive. Wildcard tidak bisa keluar direktori importer: kandidat di
+  luar direktori (rel berawalan `../`) hanya cocok bila polanya sendiri diawali `../` literal.
+- **graph.ts + build.ts:** tiap call diekspansi menjadi module edge `EdgeType.AstroGlob` (15,
+  specifier = pola mentah, tanpa bindings — glob impor seluruh modul, bukan nama) per file yang
+  cocok; pola tanpa match menjadi unresolved `astro-glob-no-match` (health signal, bukan no-op).
+- **query.ts / dump.ts:** label edge `astro-glob`, dep-type `dynamic-import`, doc dump additive
+  (types 3..6 saja tidak diasumsikan — Renders 13 + AstroGlob 15).
+- **Test:** `astroGlob.test.ts` baru (matcher + fixture pipeline penuh), `parse.test.ts` +3
+  (deteksi glob), `build.test.ts` +1 (real tree: 0 usage).
+
+**Angka terverifikasi:** real tree zero `Astro.glob` usage → 0 edge AstroGlob / 0 unresolved
+`astro-glob-no-match`; angka global (refs, validate 22.495/22.495) tidak berubah; typecheck
+indexer + suite indexer **14 file / 184 test hijau** (+12: astroGlob 8 baru, parse +3, build +1).
+
+## Next setelah sesi ini
+
+- Commit/push sesi ini (jangan push tanpa izin; `dev` sudah 5+ commit ahead of origin).
+- Row-9 remainder / pra-rilis app seperti daftar Next steps di atas.
 
 ## Command reference (dari root repo)
 
@@ -315,3 +356,70 @@ npx tsc --noEmit && npm run test:frontend && npm run test:backend && npm run bui
 
 **Catatan lingkungan:** root lokal sesi ini `E:/astro` (docs header menulis `F:\astro` — beda mesin,
 jangan dipakai untuk perintah). Windows + Git Bash; dump index ~10,6 MiB deterministic.
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (malam) — Row-9 read-surface rendering
+
+**Branch:** `dev` · Row-9 remainder ditutup: `detail`/`typeRef`/`kind` sekarang dirender di
+semua permukaan def/hover read surface. Perubahan BELUM di-commit (menumpuk di working tree
+bersama fitur Astro.glob expansion sesi sebelumnya).
+
+## Ringkasan
+
+- **query.ts:** (1) `fileSymbols` (GET /symbols outline) tidak lagi membuang `detail` + `typeRef`
+  dari proyeksi entry (schema: detail = "rendered signature for hover"; entry outline harus
+  menjawab hover seperti posisi yang dicakupnya); (2) `RefView` (GET /refs, idx refs/impact,
+  `refsOfLib` untuk lib target) membawa `kind` + `detail` target; (3) `SearchHit` (GET /search)
+  membawa `detail`. Semua additive optional — snapshot legacy tanpa detail tetap load, tanpa
+  perubahan wire kontrak lama.
+- **query.test.ts** +2 (describe baru "row-9 read surfaces": fixture synthetic dgn detail dan
+  tanpa detail di outline/refs/search) + assertion real-tree di outline/refs/search/HTTP
+  (simbol FINDBYWA).
+- **Docs:** CODE_INDEX_DESIGN.md — klausa "row-9 open remainder" dihapus dari status (baris
+  remaining-work + status tail), paragraf §13 baru "Row-9 read-surface rendering".
+
+**Angka terverifikasi:** `npm run typecheck:indexer` bersih; suite indexer **14 file / 186 test
+hijau** (+2 dari sesi ini, di atas 184); `npm run idx:gate` exit 0 (4/4); `npm run boundary`
+exit 0 (0 violations). Real-tree counts tidak berubah (view-layer only).
+
+## Next setelah sesi ini
+
+- Commit ketiga fitur (Astro.glob expansion, row-9 read surface, row-5 §8 pass) — berbagi file
+  (`docs/CODE_INDEX_DESIGN.md`, `HANDOVER.md`, `indexer/src/query.ts`, plus `serve.ts` untuk
+  row-5), jadi `git add -p` per hunk untuk commit terpisah, atau satu kesatuan kalau disepakati.
+  Jangan push tanpa izin.
+- Lanjut row 6 §6.2 (daftar Next steps di atas).
+
+---
+
+# 🔄 HANDOVER Sesi 2026-09-04 (larut) — Row-5 §8 read-surface pass
+
+**Branch:** `dev` · Row-5 remainder (bagian read-surface) selesai: endpoint §8 symbol/file/edge
++ validasi `?gen=`. Perubahan BELUM di-commit (menumpuk bersama dua fitur sebelumnya).
+
+## Ringkasan
+
+- **query.ts (view murni baru):** `symbolCardOf` (kartu simbol §8.1 — decls[], hover markdown
+  LSP-shape dari `detail` difence ```ts, container, export flags, refs count, centrality),
+  `fileUnresolvedOf` (unresolved per-file: baris occurrence + import dengan reason),
+  `depsPathOf` (BFS shortest path atas file-to-file importEdges; state found/unreachable/
+  unknown terpisah), `depsOrphansOf` (file yang tidak diimpor siapa pun).
+- **serve.ts (route URL-param gaya §8):** `GET /sym/:symId` (404 utk unknown; symId boleh berisi
+  `/` karena embed path repo), `GET /files/:path/unresolved` (200 + fileFound:false utk unknown),
+  `GET /deps/path?from&to`, `GET /deps/orphans`. `?gen=` divalidasi di semua read yang membawa
+  gen: hanya epoch berjalan yang dilayani; gen lain → 400 dgn pesan kontrak retensi (history =
+  diff, bukan snapshot; baca historis penuh = follow-up /diff durability).
+- **query.test.ts** +6 (total 58): real-tree card/file-unresolved/path/orphans, synthetic
+  unresolved+BFS, HTTP contract incl. error ?gen.
+- **Docs:** CODE_INDEX_DESIGN.md — §8 header/§8.1/§8.3 ditandai live, sel row 5 + remaining-work
+  + status tail + paragraf §13 baru.
+
+**Angka terverifikasi:** `npm run typecheck:indexer` bersih; suite indexer **14 file / 192 test
+hijau** (+6 dari sesi ini, di atas 186); `npm run idx:gate` exit 0 (4/4); `npm run boundary`
+exit 0 (0 violations). Real-tree counts tidak berubah (view-layer only).
+
+## Next setelah sesi ini
+
+- Commit tiga fitur (lihat Next steps di atas).
+- Lanjut row 6 §6.2 incremental engine + WS push; §8 tail opsional di belakangnya.

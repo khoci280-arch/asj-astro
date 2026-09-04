@@ -1116,6 +1116,195 @@ export function fileSymbols(index: QueryIndex, file: string): FileSymbolsView {
   };
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Row-5 remainder — §8 symbol/file/edge endpoints (query view layer)
+// ────────────────────────────────────────────────────────────────────────
+
+/** One symbol card (design §8.1 GET /sym/:symId): the definition, declaration
+ * sites, hover markdown, container, refs count and centrality. The hover is
+ * LSP-shaped (`contents.kind: 'markdown'`); its value is the declaration's
+ * short signature (`detail` — the schema's "rendered signature" field),
+ * fenced as TS, falling back to the qualified name on legacy snapshots
+ * without detail. */
+export interface SymbolCard {
+  found: boolean;
+  symId: string;
+  name: string;
+  qualified: string;
+  kind: number;
+  container?: string;
+  file: string;
+  fileIdx: number;
+  exported: boolean;
+  exportNames: string[];
+  decls: Array<{ uri: string; l: number; c: number }>;
+  /** Bound reference count (rename/impact weight, design §5.2). */
+  refs: number;
+  centrality: number;
+  hover: { contents: { kind: 'markdown'; value: string } };
+  gen: number;
+}
+
+function hoverMarkdown(sig: string): SymbolCard['hover'] {
+  return { contents: { kind: 'markdown', value: '```ts\n' + sig + '\n```' } };
+}
+
+/** Signature for the hover fence: `detail` (first declaration line) when the
+ * row has one, else the qualified name — never a fabricated type string. */
+function signatureOf(sym: DumpSymbol): string {
+  const d = sym.detail?.trim();
+  return d !== undefined && d !== '' ? d : sym.qualified;
+}
+
+export function symbolCardOf(index: QueryIndex, symId: string): SymbolCard {
+  const sym = index.symbolById.get(symId);
+  if (!sym) {
+    return { found: false, symId, name: '', qualified: '', kind: 0, file: '', fileIdx: -1, exported: false, exportNames: [], decls: [], refs: 0, centrality: 0, hover: hoverMarkdown(symId), gen: index.doc.epoch };
+  }
+  const dot = sym.qualified.lastIndexOf('.');
+  return {
+    found: true,
+    symId: sym.id,
+    name: sym.name,
+    qualified: sym.qualified,
+    kind: sym.kind,
+    ...(dot > 0 ? { container: sym.qualified.slice(0, dot) } : {}),
+    file: pathOf(index, sym.fileIdx),
+    fileIdx: sym.fileIdx,
+    exported: sym.exported,
+    exportNames: sym.exportNames,
+    decls: declView(index, sym),
+    refs: index.refsBySymKey.get(sym.key)?.length ?? 0,
+    centrality: sym.centrality,
+    hover: hoverMarkdown(signatureOf(sym)),
+    gen: index.doc.epoch,
+  };
+}
+
+/** One file-scoped unresolved answer (design §8.1 GET
+ * /files/:path/unresolved): every occurrence-level reference in `file` that
+ * failed to bind, with its reason and position, plus the file's unresolved
+ * module imports (specifier + reason). Unknown files answer fileFound:false
+ * with empty lists (200), matching /symbols. */
+export interface FileUnresolvedView {
+  query: { file: string };
+  file: string;
+  fileFound: boolean;
+  references: Array<{ name: string; reason: string; line: number; char: number; range: Range }>;
+  imports: Array<{ specifier: string; reason: string }>;
+  gen: number;
+}
+
+export function fileUnresolvedOf(index: QueryIndex, file: string): FileUnresolvedView {
+  const fileIdx = resolveFileNeedle(index, file);
+  if (fileIdx === undefined) {
+    return { query: { file }, file, fileFound: false, references: [], imports: [], gen: index.doc.epoch };
+  }
+  const references = (index.doc.unresolved ?? [])
+    .filter((u) => u.fileIdx === fileIdx)
+    .sort((a, b) => a.range.start - b.range.start)
+    .map((u) => ({
+      name: u.name,
+      reason: u.reason,
+      line: u.range.startLine,
+      char: u.range.startChar,
+      range: u.range,
+    }));
+  const imports = (index.doc.unresolvedImports ?? [])
+    .filter((u) => u.fileIdx === fileIdx)
+    .map((u) => ({ specifier: u.specifier, reason: u.reason }));
+  return {
+    query: { file },
+    file: pathOf(index, fileIdx),
+    fileFound: true,
+    references,
+    imports,
+    gen: index.doc.epoch,
+  };
+}
+
+/** Shortest module dependency path from file A to file B (design §8.3 GET
+ * /deps/path): BFS over the dump's file-to-file import edges (module ids and
+ * legacy snapshots without importEdges never join), answering the real
+ * `from → … → to` path when one exists. Pure and deterministic. */
+export interface DepsPathView {
+  query: { from: string; to: string };
+  from: string;
+  to: string;
+  fromFound: boolean;
+  toFound: boolean;
+  found: boolean;
+  path: string[];
+  gen: number;
+}
+
+export function depsPathOf(index: QueryIndex, from: string, to: string): DepsPathView {
+  const fromIdx = resolveFileNeedle(index, from);
+  const toIdx = resolveFileNeedle(index, to);
+  const base = { query: { from, to }, found: false, path: [] as string[], gen: index.doc.epoch };
+  if (fromIdx === undefined || toIdx === undefined) {
+    return {
+      ...base,
+      from: fromIdx !== undefined ? pathOf(index, fromIdx) : from,
+      to: toIdx !== undefined ? pathOf(index, toIdx) : to,
+      fromFound: fromIdx !== undefined,
+      toFound: toIdx !== undefined,
+    };
+  }
+  const fromPath = pathOf(index, fromIdx);
+  const toPath = pathOf(index, toIdx);
+  if (fromIdx === toIdx) return { ...base, from: fromPath, to: toPath, fromFound: true, toFound: true, found: true, path: [fromPath] };
+  const adj = new Map<number, number[]>();
+  for (const e of index.doc.importEdges ?? []) {
+    if (typeof e.to !== 'number') continue;
+    let list = adj.get(e.from);
+    if (!list) adj.set(e.from, (list = []));
+    list.push(e.to);
+  }
+  const prev = new Map<number, number>();
+  const seen = new Set<number>([fromIdx]);
+  const queue = [fromIdx];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    if (cur === toIdx) break;
+    for (const next of adj.get(cur) ?? []) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      prev.set(next, cur);
+      queue.push(next);
+    }
+  }
+  if (!seen.has(toIdx)) return { ...base, from: fromPath, to: toPath, fromFound: true, toFound: true };
+  const path = [toIdx];
+  let cur = toIdx;
+  while (cur !== fromIdx) {
+    cur = prev.get(cur)!;
+    path.push(cur);
+  }
+  return { ...base, from: fromPath, to: toPath, fromFound: true, toFound: true, found: true, path: path.reverse().map((idx) => index.fileByIdx.get(idx)?.path ?? `#${idx}`) };
+}
+
+/** Module orphans (design §8.3 GET /deps/orphans): every indexed file that no
+ * indexed file imports (no file-to-file in-edge). Sorted by path; module ids
+ * and legacy snapshots without importEdges never count as importers. */
+export interface DepsOrphansView {
+  total: number;
+  files: string[];
+  gen: number;
+}
+
+export function depsOrphansOf(index: QueryIndex): DepsOrphansView {
+  const imported = new Set<number>();
+  for (const e of index.doc.importEdges ?? []) {
+    if (typeof e.to === 'number') imported.add(e.to);
+  }
+  const files = index.doc.files
+    .filter((f) => !imported.has(f.idx))
+    .map((f) => f.path)
+    .sort();
+  return { total: files.length, files, gen: index.doc.epoch };
+}
+
 // ────────────────────────────────────────────────────────────────────────────────────────
 // Architecture boundary rules (roadmap row 8 — the violations half)
 // ────────────────────────────────────────────────────────────────────────────────────────

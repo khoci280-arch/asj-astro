@@ -12,10 +12,12 @@
  *                             bound refs, symbol edges, export surfaces
  *                             (plus unresolved refs); compact by default
  *   idx serve [--port N] [--snapshot <file>|--state <dir>] [--root <dir>]
- *                             [--refresh-ms N]
- *                             Phase 5/6 query API (GET /stats /resolve /refs
- *                             /search /deps /symbols /violations /gen /diff?since=;
- *                             POST /rebuild). Serves a live build (rebuild
+ *                             [--refresh-ms N]   *                             Phase 5/6 query API (GET /stats /resolve /refs
+   *                             /sym/:symId /search /deps /deps/cycles /deps/path
+   *                             /deps/orphans /symbols /files/:path/unresolved
+   *                             /violations /gen /diff?since=; POST /rebuild —
+   *                             versioned reads take ?gen=, validated to the
+   *                             current epoch). Serves a live build (rebuild
  *                             on POST /rebuild), an `idx dump` snapshot,
  *                             or an `idx watch` state dir polled every
  *                             --refresh-ms for new generations.
