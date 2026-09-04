@@ -87,7 +87,7 @@ Five stages. Stages 1–2 are per-file and embarrassingly parallel; 3–5 are gl
 This is what runs on every keystroke-scale change. Cost is linear in file size and roughly
 1/10th of a checker-backed pass.
 
-**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, compiler-verified (validate run: 22,495/22,495, 0 disagreements; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; what remains is lib binding (`lib-not-loaded`, needs lib tables) and `detail`/hover strings (§9.1, §13).
+**Tier 2 — light type-guided member binding (shipped, 2026-09-04) + checker-backed deep tier (shipped, 2026-09-05) + lib tier (shipped, 2026-09-05).** Shipped: `obj.method` sites resolve to the member's declaration through initializer shapes (`new Foo()`, `as Foo`, aliases, factory calls' declared return types), annotations (`const x: Foo`, params), `this.` in classes, class-as-value static access, enums, namespaces, and the heritage chain, constructor parameter properties (`constructor(private repo: Repo)`), and multi-hop chains (`this.repo.get()`, `svc.helper.run()`) — 252 light member refs + 1,049 checker-backed deep refs bound on this tree, plus **8,092 checker-confirmed lib refs** (the `lib-not-loaded` bucket graduates to lib.dom/lib.es/package targets; §13). The deep tier (`ts.createProgram` per build, `resolvedVia: 'type'` + `deep: true`) is wired and default-on; what remains is `detail`/hover strings and cross-file declaration merging (§9.1, §13).
 (`src` universe and `netlify` universe share `shared/`), reused incrementally via
 `ts.createIncrementalProgram` / `oldProgram`. Used for:
 - resolving `export { _mapForm as mapForm }` and multi-hop barrel chains
@@ -776,14 +776,14 @@ only and the rest of this list's endpoints are not live yet; see §13 Phase 5.)*
 | 5 | Query API + CLI | §8 endpoints live, budgets met | 🟡 subset shipped — `/healthz /stats /resolve /refs /search /deps /symbols`, `idx dump\|export\|def\|refs\|serve` (§8.5, §13); the rest of the §8 surface (symbol/file/edge/WS endpoints, `?gen=`) is the open remainder |
 | 6 | Incremental updates + watcher + WS | save → diff < 150 ms p95 | 🟡 MVP shipped (2026-09-03) — generation lifecycle: `idx watch` (full rebuild per gen, JSONL diffs with per-generation poisoned-file health, state dir w/ current.json + optional previous.json), a staleness watchdog (periodic reconcile under fs.watch, `--watchdog-ms`), serve refresh over `--state` (GET /gen with the poisoned view, GET /diff?since=, POST /rebuild). The §6.2 incremental engine (dirty sets, hash-split impact analysis, per-file reuse) and WS push are the open remainder — §13 |
 | 7 | SQLite snapshot + `nav.index.jsonl` | cold start < 800 ms | ⏳ designed-not-built — the JSON dump already cold-starts at ~425 ms, under the 800 ms target, so SQLite/WAL storage waits for a real need (perf gate or consumer), not speculative work (§13) |
-| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs bound on this tree, differential validation **22,495/22,495, 0 disagreements**; open remainder: lib tables for `lib-not-loaded` binding and `detail`/hover strings — §13 |
+| 9 | Tier 2 member binding | `obj.method` call sites resolve to definitions in refs/impact | ✅ shipped (2026-09-04/05) — light type-guided tier over parse-side `initTypes`/`typeScopes` (schema `resolvedVia: 'type'`) + the checker-backed deep tier (deep-tier.ts, default-on in buildIndex, opt-out in watch): 252 light + 1,049 deep member refs + **8,092 lib refs** (lib tables for the `lib-not-loaded` bucket, checker-confirmed) bound on this tree, differential validation **22,495/22,495, 0 disagreements**; open remainder: `detail`/hover strings and cross-file declaration merging — §13 |
 | 8 | Astro template + boundary rules + CI gates | `npm run boundary` runs off the index | ✅ shipped (2026-09-03) — `idx violations` + GET /violations evaluate the repo’s own .dependency-cruiser.cjs rules over TS/TSX module edges incl. circular rules (`to.circular` over the graph’s SCCs, cycles.ts), oracle-equal to depcruise 18 — 0 violations on this tree (0 error, 0 warn) since the 2026-09-04 drift fixes + warning sweep (§13); the §5.4 `no-circular` rule sits in the config and is clean; astro template tags resolve through frontmatter imports into Renders module edges (49 on this tree), unbound tags surface as `template-component` unresolveds; `npm run boundary` runs off the index, green with zero violations since the drift fixes + warning sweep. Open: astro template SCOPE (symbol-level interpolations/props), Astro.glob expansion (zero usage on this tree) (§13) |
 
 Phases 0–6 are shipped on this tree (row 6 as an MVP; implementation log: §13). The risky order
 **2 → 3 → 4** is done — those phases were validated against the compiler before
 the read side shipped, precisely because this repo's 540 `../` hops, 15 barrels,
 and aliased re-exports are where a naive indexer silently produces wrong answers.
-Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 open remainder (the checker-backed full program: lib binding for the `lib-not-loaded` bucket, cross-file declaration merging, hover strings), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
+Remaining work: phase 7 (SQLite — likely never, see row 7), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 open remainder (cross-file declaration merging and `detail`/hover strings — lib binding is shipped), the row-6 open remainder (the §6.2 incremental engine and WS push), and the unshipped §8 endpoints.
 
 ---
 
@@ -891,7 +891,8 @@ it. Value/type positions split on role; the symbol graph (`calls`/`renders`/
 **Unresolved bucket with reasons:** `global-unknown` (genuine dangling
 reference), `type-only-import-in-value-position`, `export-star-ambiguous`, and
 `lib-not-loaded` (Tier 1 has no lib tables — a recognized standard-library
-global awaiting Tier 2's `lib.dom` bind; §9.1).
+global; the lib tier graduates the bucket to lib refs and only CJS module
+vars (`exports`/`module`) and framework globals (`Astro`) stay; §9.1).
 
 **Parse upgrades** (schema + `parse.ts`): `tdz`/`isTypeOnly` modifiers,
 per-binding import shapes (`default`/`named`/`namespace`), `var`/`let` split,
@@ -957,7 +958,7 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
 - the full run builds a per-file identifier position index (one walk per file)
   — a per-occurrence walk would be quadratic at ~24k occurrences.
 
-**Full-inventory results (247 files, 25,341 bindable occurrences incl. deep refs):**
+**Full-inventory results (247 files, 22,526 bindable occurrences incl. deep refs — the 2,815 value lib refs are verified before the bindable check and leave the universe, §13):**
 
 - agreement **22,495/22,495 (100%)** (Tier 2 landed 2026-09-04: the universe
   now includes every bound Property ref — type-guided member binds and
@@ -966,14 +967,19 @@ against `checker.getSymbolAtLocation` at the same offset. Implementation notes:
   false-positive, no offset mismatch. **No genuine binder bugs were exposed**
   by the full run; the Phase-4 curation paid off, so no fix-tests were needed;
 - deliberate deviations, classified not forced to zero:
-  - `lib-not-loaded` 2,846 — the compiler confirms 2,845 bind lib symbols
-    (classification validated); the 1 exception is `Astro` (BaseLayout.astro),
-    a framework global with no lib declaration;
-  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 15,018 —
+  - lib refs 8,092 — every row checker-confirmed at its offset (agree
+    8,092 / disagree 0): 5,277 unbound-Property member binds (`console.log` →
+    `Console.log`, `document.createElement` → `Document.createElement`) + 2,815
+    value-bucket graduates (`String`, `JSON`, `process`, `undefined`…; the
+    residual `lib-not-loaded` 31 = `exports` ×29 + `module` + `Astro`, with 30
+    compiler-binds of the CJS module object and 1 framework global the
+    compiler binds nothing to);
+  - non-bindable roles (Property / ImportSpecifier / ObjectKey) 9,741 —
     recorded, never scope-bound by design (§4.3, member access is Tier 2);
-    bound Property refs (light-tier + the deep tier's 1,049 checker joins) are
-    NOT skipped: they join the universe and must agree with the compiler (they
-    do — see the agreement line above);
+    bound Property refs (light-tier + the deep tier's 1,049 checker joins) and
+    lib member refs (5,277) are NOT skipped: the former join the universe and
+    must agree with the compiler, the latter are compiler-verified before the
+    skip (they do — see the agreement and lib-ref lines above);
   - lowercase JSX intrinsics (`<div>` …) 1,878.
 
 Scope note: comparison is **name-level** — it proves the compiler binds *a*
@@ -981,8 +987,10 @@ symbol with the same name at the offset, which is blind to same-name shadowing
 (binder picking a different declaration of the same name). Declaration-identity
 comparison (decl file + offset) is the natural hardening next step.
 `validate.test.ts` (2 tests) locks the sample-mode harness at zero
-disagreements — 158 indexer tests total (13 files, incl. the 4-test
-deep-tier suite).
+disagreements — 159 indexer tests total (13 files, incl. the 5-test
+deep-tier suite that pins the lib tier: real-tree lib refs, determinism,
+dump round-trip, and a tsconfig'd fixture binding `String`/`JSON`/`console`/
+`document.createElement`).
 
 ### Phase 5 shipped — read side: `idx dump` + `idx serve` + query layer (2026-09-03)
 
@@ -1057,8 +1065,10 @@ match the pipeline's one coordinate space (§8 note): line 1-based, char a
   (light ~0.6 s + deep ~3.5 s; `idx watch` generations stay light-only);
 - 247 files · 9,263 symbols · 22,495 bound refs (21,446 light + 1,049 deep) ·
   10,919 symbol edges · 1,005 import edges (incl. 49 astro Renders);
-  2,848 unresolved total (2,846 ref-level + 2 imports); dump ~8.8 MB compact,
-  byte-identical across runs, zero dangling joins;
+  33 unresolved total (31 ref-level — CJS module vars + the Astro framework
+global — + 2 imports); dump ~10.0 MB compact (8,092 lib refs across 54 lib
+files), byte-identical across runs, zero dangling joins (lib refs carry a
+libIdx into libs[]);
 - `idx dump` joins: ref `symKey` / edge `target` → `symbols[].key`; `fileIdx` →
   `files[].idx`; export entries carry `symKey` (or `localName`/`targetName` per
   the schema union).
@@ -1075,8 +1085,10 @@ the version `package.json` declares — removed. **Superseded:** row 8 swapped
 drift-fix pass cleared its error class — the boundary gate is now green; only
 the app typecheck ratchet drift kept the overall gate red. **Superseded 2026-09-04:** the ratchet drift is resolved (§13 entry "app typecheck ratchet closed") — `ci:quality` exits 0 end to end.
 
-Next: **declaration-identity comparison** (same name → same declaration), then
-Tier 2's `lib.dom`/`lib.es` tables to dissolve the `lib-not-loaded` bucket.
+Next: **cross-file declaration merging** and `detail`/hover strings — the
+`lib.dom`/`lib.es` tables are shipped (lib tier, §13): the `lib-not-loaded`
+bucket graduates to checker-confirmed lib refs and only CJS module vars +
+framework globals stay unresolved.
 
 ### Phase 6 shipped (MVP, 2026-09-03) — generation lifecycle
 
@@ -1657,22 +1669,42 @@ and agrees with the compiler (decl identity: match 20,827, merged-declaration
 43, alias-vs-chase 1,623, shadowing-disagreement 2 — both pre-existing
 Tier-1 reads).
 
+**Lib tier (same pass, §4.3 open remainder — shipped 2026-09-05):** the same
+program answers dissolve the `lib-not-loaded` bucket into **lib refs** —
+dump rows without a symKey (lib declarations are not repo symbols) carrying
+the lib file (`libs[]`: `typescript/lib/lib.es5.d.ts` ×4,020,
+`lib.dom.d.ts` ×2,084, `@vitest/expect` ×480, `@types/node` ×188, … 54
+files total) and the qualified name (`Console.log`, `JSON`, `process.env`;
+module paths are root-stripped so libNames are portable). Two classes
+graduate: (a) light-unbound Property occurrences the compiler binds outside
+the repo (`console.log` → `Console.log`, `document.createElement` →
+`Document.createElement`) and (b) unresolved `lib-not-loaded` value refs the
+compiler binds to a lib/package declaration of the same name — `String`,
+`JSON`, `console`, `process`, `undefined`… (undefined/globalThis are
+intrinsic globals with no accessible declaration, so they use the tier's
+small canonical-lib table). Never a guess: every emitted row is
+compiler-verified by validate (lib refs 8,092, agree 8,092 / disagree 0) and
+the residual bucket is exactly the CJS module vars + framework globals the
+compiler does not bind to a lib declaration (31 rows). The dump contract is
+additive (legacy snapshots without libs/libRefs load unchanged).
+
 Cost & gating: program creation + pass ≈ **3.5 s** (stageMs.deep) vs ≈ 0.6 s
 for the whole light build, so one-shot build/serve run it by default while
 `idx watch` opts out (`{ deep: false }`) to keep generation latency; the
 tier degrades to zero refs (never throws) when no program can be built — a
 tsconfig-less root yields exactly the light surface (pinned). Architecture:
 the program machinery moved out of validate.ts into `program.ts` (one owner,
-no build → deep-tier → validate cycle); `deepTierReport` now sizes what a
-FUTURE tier could add (lib tables for the lib-or-package bucket, §9.1 — the
-remaining open remainder — and the compiler-none bucket, unreachable even
-for the checker).
+no build → deep-tier → validate cycle); `deepTierReport` now sizes what
+remains beyond the shipped tiers (in-tree-unmappable 1,006 and
+compiler-none 2,139 on the full run — the latter unreachable even for the
+checker).
 
 ### ~~Deep-tier prototype~~ superseded by the shipped tier (2026-09-04)
 
 > The entry below was written while the tier was a measurement prototype.
 > The joinable bucket it measured (80 on the sample) is now emitted by
-> buildIndex itself; the report's remaining buckets size lib tables.
+> buildIndex itself and the lib-or-package bucket by the lib tier; the
+> report's remaining buckets size the compiler-none / unmappable gaps.
 
 
 `deep-tier.ts` (prototype, NOT wired into the pipeline or dump) answers the
@@ -1824,4 +1856,4 @@ Ownership rules that hold today:
 - ResolvedSymbol describes the resolved symbol: `file`/`decls[].uri` are the
   symbol's home file, never the file the query pointed at.
 
-Status: Phases 0–6 + row 8 shipped on this tree — roadmap §11 rows 5, 6, 8 (rows 5–6 🟡 subsets with open remainders, row 8 ✅; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).
+Status: Phases 0–6 + rows 8–9 shipped on this tree (row 9 includes the checker-backed deep tier and the lib tables: 1,049 deep refs + 8,092 lib refs; row 7 designed-not-built), CLI §8.5, measured numbers and CI state §13. Open items beyond the shipped surface: the §8 remainder, the row-6 open remainder (§6.2 incremental engine, WS push), the row-8 open remainder (astro template SCOPE, Astro.glob expansion), the row-9 remainder (cross-file declaration merging, `detail`/hover strings), and §13’s recorded follow-ups (/diff durability, serve-holder extraction).

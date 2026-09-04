@@ -91,7 +91,8 @@ interface BindInput {
  * Known standard-library globals (ES built-ins, DOM, Node, TS utility types).
  * Tier 1 has no lib symbol tables, so these are classified `lib-not-loaded` —
  * distinct from genuine unknowns, which stay `global-unknown` as a real signal.
- * Tier 2 will bind them to actual lib.dom/lib.es symbols via the checker.
+ * The lib tier (deep-tier.ts) graduates the bucket through the checker into
+ * lib refs; only CJS module vars and framework globals stay here.
  */
 const LIB_GLOBALS = new Set<string>([
   // ES value + built-in constructors
@@ -580,7 +581,7 @@ export function bindIndex(input: BindInput): BindResult {
       }
       if (found.kind === 'none') {
         // Tier 1 has no lib tables: names we recognize as standard-library
-        // globals are tagged `lib-not-loaded` (Tier 2 binds them for real);
+        // globals are tagged `lib-not-loaded` (the lib tier graduates them);
         // anything else is a genuine unknown worth surfacing.
         recordUnresolved(fileIdx, o, LIB_GLOBALS.has(name) ? 'lib-not-loaded' : 'global-unknown');
         continue;

@@ -15,7 +15,7 @@ import type { ModuleGraph } from './graph.js';
 import { buildModuleGraph } from './graph.js';
 import { buildExportSurfaces, createExportIndex, type ExportIndex, type ExportSurfaces } from './exportTables.js';
 import { bindIndex, type BindResult } from './bind.js';
-import { deepMemberBind } from './deep-tier.js';
+import { deepMemberBind, type LibRefRow } from './deep-tier.js';
 import type { InitType } from './parse.js';
 import type { FileIdx, SymKey } from '../../docs/code-index-schema.js';
 import { fileIdx } from './util.js';
@@ -40,6 +40,8 @@ export interface BuildResult {
   symbolEdges: BindResult['edges'];
   /** Phase 4: bindable occurrences that failed to resolve, with reasons (§4.3 step 7). */
   unresolvedRefs: BindResult['unresolved'];
+  /** Checker-confirmed refs into lib/package declarations (lib tier, §4.3). */
+  libRefs: LibRefRow[];
   stats: IndexStats;
 }
 
@@ -132,13 +134,20 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
   const bound = bindIndex({ symbols, scopes, occurrences, exportIndex, resolvedImports: graph.resolvedImports, resolvedReexports: graph.resolvedReexports, initTypes, typeScopes });
   const bindMs = performance.now() - t4;
 
-  // Stage 4.5: checker-backed member tier (deep, §9.1) — appends refs for
-  // light-unbound Property occurrences the compiler resolves to an indexed
-  // declaration. Degrades to zero refs when no program can be built.
+  // Stage 4.5: checker-backed tiers (deep member joins + lib refs, §9.1 /
+  // §4.3 open remainder) — appends in-repo refs for light-unbound Property
+  // occurrences the compiler resolves to an indexed declaration, and lib
+  // refs for the `lib-not-loaded` bucket + lib/package member binds. Both
+  // degrade to zero output when no program can be built.
   const t45 = performance.now();
+  let libRefs: LibRefRow[] = [];
   if ((opts.deep ?? true) === true) {
-    const deepRefs = deepMemberBind({ files, symbols, occurrences, refs: bound.refs, rootDir });
-    bound.refs.push(...deepRefs);
+    const deep = deepMemberBind({ files, symbols, occurrences, refs: bound.refs, unresolvedRefs: bound.unresolved, rootDir });
+    bound.refs.push(...deep.refs);
+    libRefs = deep.libRefs;
+    // Rows the lib pass graduated are no longer unresolved (the bucket keeps
+    // framework globals and binder gaps).
+    if (deep.graduated.size > 0) bound.unresolved = bound.unresolved.filter((u) => !deep.graduated.has(`${u.fileIdx}:${u.range.start}`));
   }
   const deepMs = performance.now() - t45;
 
@@ -146,6 +155,7 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     fileCount: files.length,
     symbolCount: symbols.length,
     referenceCount: bound.refs.length,
+    libRefCount: libRefs.length,
     unresolvedCount: bound.unresolved.length + graph.unresolved.length,
     stageMs: { discover: discoverMs, parse: parseMs, resolve: resolveMs, bind: bindMs, commit: 0, deep: deepMs },
     memoryBytes:
@@ -172,6 +182,7 @@ export function buildIndex(rootDirAbs: string, opts: BuildOptions = {}): BuildRe
     refs: bound.refs,
     symbolEdges: bound.edges,
     unresolvedRefs: bound.unresolved,
+    libRefs,
     stats,
   };
 }

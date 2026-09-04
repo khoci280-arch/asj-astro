@@ -299,6 +299,9 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     libNotLoaded: 0,
     libCompilerBinds: 0,
     libCompilerNone: 0,
+    libRefs: 0,
+    libRefAgree: 0,
+    libRefDisagree: 0,
     skippedNonBindable: 0,
     skippedJsxIntrinsic: 0,
     offsetMismatch: 0,
@@ -314,6 +317,9 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   const identityOf = makeIdentityComparator(r, program, checker, astroOffset);
   const refTargetByOcc = new Map<string, SymKey>();
   for (const ref of r.refs) refTargetByOcc.set(`${ref.fileIdx}:${ref.range.start}`, ref.symKey);
+  // Lib tier rows: not repo-bound refs, so they must not reach the unresolved
+  // branch (which would read them as indexer-unresolved vs compiler-bound).
+  const libRefStart = new Set<string>(r.libRefs.map((z) => `${z.fileIdx}:${z.range.start}`));
 
   const lineOf = (f: FileNode, start: number): number => {
     // Binary search the line index for the greatest line whose offset <= start.
@@ -347,10 +353,28 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     perFile.push(fileAgg);
 
     for (const o of occByFile.get(f.idx) ?? []) {
+      const at = `${f.idx}:${o.range.start}`;
+      if (libRefStart.has(at)) {
+        // Lib tier rows are verified BEFORE the skip branches: member rows
+        // (Property) are non-bindable roles, value rows are bindable ones —
+        // every emitted lib ref must have the compiler bind the SAME name at
+        // the offset (never a guess).
+        const pos = o.range.start - fmOff;
+        const id = idents.get(pos);
+        const compilerName = id ? compilerNameAt(checker, id) : undefined;
+        counts.libRefs++;
+        fileAgg.lib++;
+        if (id !== undefined && compilerName === o.name) counts.libRefAgree++;
+        else {
+          counts.libRefDisagree++;
+          disagreements.push({ path: rel, line: lineOf(f, o.range.start), name: o.name, role: ROLE_NAME[o.role], reason: 'lib-ref', indexer: `lib-ref:${o.name}`, compiler: compilerName ?? '<none>' });
+        }
+        continue;
+      }
       // Tier 2: member accesses the binder resolved through types (or a
       // namespace import) are Property-role refs — check THOSE against the
       // compiler too (the member name must bind at the same offset).
-      if (!BINDABLE_ROLES.has(o.role) && !(o.role === OccurrenceRole.Property && boundStart.has(`${f.idx}:${o.range.start}`))) {
+      if (!BINDABLE_ROLES.has(o.role) && !(o.role === OccurrenceRole.Property && boundStart.has(at))) {
         counts.skippedNonBindable++;
         fileAgg.skipped++;
         continue;
@@ -362,7 +386,7 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
       }
       universe++;
       fileAgg.universe++;
-      const isBound = boundStart.has(`${f.idx}:${o.range.start}`);
+      const isBound = boundStart.has(at);
       const pos = o.range.start - fmOff;
       const id = idents.get(pos);
       const compilerName = id ? compilerNameAt(checker, id) : undefined;
@@ -436,6 +460,8 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
     identityExamples,
   };
 
+  // libRefs never entered the universe (verified before the bindable check),
+  // so only the residual lib-not-loaded rows are subtracted.
   const total = universe - counts.libNotLoaded;
   const agree = counts.agreeBound + counts.agreeUnresolved;
   const disagree = counts.disagreeBoundNoCompiler + counts.disagreeNameMismatch + counts.disagreeFalsePositive + counts.offsetMismatch;
@@ -450,8 +476,9 @@ export function runValidation(rootDir: string, opts: { sampleOnly?: boolean } = 
   lines.push(`  bound (same name at offset):           ${counts.agreeBound}`);
   lines.push(`  unresolved (both unresolvable):        ${counts.agreeUnresolved}`);
   lines.push('deliberate deviations (excluded):');
-  lines.push(`  lib-not-loaded (Tier 2):               ${counts.libNotLoaded}`);
-  lines.push(`    ↳ compiler also binds:               ${counts.libCompilerBinds}`);
+  lines.push(`  lib refs (emitted, compiler-confirm):   ${counts.libRefs} (agree ${counts.libRefAgree} / disagree ${counts.libRefDisagree})`);
+  lines.push(`  residual lib-not-loaded (framework):    ${counts.libNotLoaded}`);
+  lines.push(`    ↳ compiler also binds:                ${counts.libCompilerBinds}`);
   lines.push(`    ↳ compiler binds nothing (framework): ${counts.libCompilerNone}`);
   lines.push(`  non-bindable roles:                    ${counts.skippedNonBindable}`);
   lines.push(`  lowercase JSX intrinsics:              ${counts.skippedJsxIntrinsic}`);

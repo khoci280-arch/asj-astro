@@ -273,6 +273,28 @@ export interface UnresolvedReference {
   reason: UnresolvedReason;
 }
 
+/** A standard-library / package declaration file lib refs bind into (§4.3, lib tier). */
+export interface LibFile {
+  idx: number;
+  /** Deterministic id: path relative to `node_modules/` (e.g. `typescript/lib/lib.dom.d.ts`,
+   * `@types/node/process.d.ts`), or the basename for libs outside node_modules. */
+  id: string;
+}
+
+/** A checker-confirmed reference into a lib/package declaration (§4.3, lib tier).
+ * Deliberately NOT a BoundRef: lib declarations are not repo symbols, so there
+ * is no symKey — the ref carries the lib file + qualified name instead. */
+export interface LibRef {
+  fileIdx: FileIdx;
+  range: Range;
+  /** Site name (member or value identifier). */
+  name: string;
+  /** Index into the doc's libs[]. */
+  libIdx: number;
+  /** Qualified name inside the lib (e.g. `Console.log`, `JSON`, `process.env`). */
+  libName: string;
+}
+
 export interface Edge {
   source: SymKey | FileIdx;
   target: SymKey | FileIdx;
@@ -374,6 +396,8 @@ export interface IndexStats {
   fileCount: number;
   symbolCount: number;
   referenceCount: number;
+  /** Checker-confirmed refs into lib/package declarations (lib tier, §4.3). */
+  libRefCount: number;
   unresolvedCount: number;
   stageMs: { discover: number; parse: number; resolve: number; bind: number; commit: number; deep: number };
   memoryBytes: number;

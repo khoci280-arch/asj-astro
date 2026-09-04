@@ -165,7 +165,9 @@ function printUnresolved(r: BuildResult): void {
   if (refs.length > 0) {
     // Aggregate occurrence-level unresolved by name for a readable summary.
     // Known standard-library globals are tagged `lib-not-loaded` (Tier 1 has
-    // no lib tables) and collapse to one line so genuine unknowns stay visible.
+    // no lib tables; the lib tier graduates them — the residual bucket is CJS
+    // module vars + framework globals) and collapse to one line so genuine
+    // unknowns stay visible.
     const byName = new Map<string, { reason: string; count: number; sample: string }>();
     for (const u of refs) {
       const hit = byName.get(u.name);

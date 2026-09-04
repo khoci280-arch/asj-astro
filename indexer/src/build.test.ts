@@ -31,12 +31,14 @@ describe('full build', () => {
   it('reports occurrences, unresolved, and stage timings', () => {
     const r = built();
     expect(r.stats.referenceCount).toBeGreaterThan(20000); // bound references
-    // Unresolved bucket (Phase 4): lib globals are tagged lib-not-loaded (Tier 2
-    // binds them via lib.dom); the only global-unknowns are five genuine dangling
-    // references measured in the source (post-rebuild dead code, see §13).
+    // Unresolved bucket (Phase 4): lib globals are tagged lib-not-loaded and the
+    // lib tier graduates them to libRefs — only framework globals (Astro) stay;
+    // global-unknowns are zero (the five genuine dangling refs got fixed, §13).
     const lib = r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded').length;
     const genuine = r.unresolvedRefs.filter((u) => u.reason === 'global-unknown').length;
-    expect(lib).toBeGreaterThan(1000);
+    expect(lib).toBeLessThan(50); // CJS module vars (exports/module) + framework globals (Astro)
+    expect(r.libRefs.length).toBeGreaterThan(1000);
+    expect(r.stats.libRefCount).toBe(r.libRefs.length);
     expect(genuine).toBe(0);
     // unresolvedCount additionally includes the 2 import-level unresolveds
     // (the https dynamic imports in fcm.ts) from the resolve stage.

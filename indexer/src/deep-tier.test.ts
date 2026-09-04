@@ -44,25 +44,68 @@ describe('deep tier (checker-backed member bind)', () => {
       expect(member).toBeDefined();
       expect(sym.name).toBe(member); // never a guess: name must match
     }
+    // Lib tier: thousands of checker-confirmed lib refs, the value bucket
+    // reduced to framework globals, Property rows carrying the member name.
+    expect(r.libRefs.length).toBeGreaterThan(1000);
+    expect(r.stats.libRefCount).toBe(r.libRefs.length);
+    for (const z of r.libRefs) {
+      expect(z.libId.length).toBeGreaterThan(0);
+      expect(z.libName.length).toBeGreaterThan(0);
+      const m = occName.get(`${z.fileIdx}:${z.range.start}`);
+      if (m !== undefined) expect(m).toBe(z.name); // member rows match the site
+    }
+    expect(r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded').length).toBeLessThan(50); // CJS + framework intrinsics
     expect(r.stats.stageMs.deep).toBeGreaterThan(0);
   }, 120000);
 
-  it('deterministic: two builds emit the same deep refs', () => {
+  it('deterministic: two builds emit the same deep refs and lib refs', () => {
     const a = buildIndex(ROOT);
     const b = buildIndex(ROOT);
     const keysA = a.refs.filter((z) => z.deep).map((z) => `${z.fileIdx}:${z.range.start}:${z.symKey}`);
     const keysB = b.refs.filter((z) => z.deep).map((z) => `${z.fileIdx}:${z.range.start}:${z.symKey}`);
     expect(keysA).toEqual(keysB);
+    const libA = a.libRefs.map((z) => `${z.fileIdx}:${z.range.start}:${z.libId}:${z.libName}`);
+    const libB = b.libRefs.map((z) => `${z.fileIdx}:${z.range.start}:${z.libId}:${z.libName}`);
+    expect(libA).toEqual(libB);
   }, 120000);
 
-  it('dump round-trip keeps the deep flag (additive contract)', () => {
+  it('dump round-trip keeps the deep flag and lib refs (additive contract)', () => {
     const r = buildIndex(ROOT);
     const doc = dumpDoc(r);
     expect(doc.refs.some((z) => z.deep === true)).toBe(true);
+    expect(doc.libRefs.length).toBe(r.libRefs.length);
+    expect(doc.stats.libRefCount).toBe(r.libRefs.length);
+    const libIdx = new Set(doc.libs.map((l) => l.idx));
+    for (const z of doc.libRefs) expect(libIdx.has(z.libIdx)).toBe(true); // no dangling lib join
     const path = join(tmpdir(), `idx-deep-${process.pid}-${Date.now()}.json`);
     writeFileSync(path, JSON.stringify(doc), 'utf8');
     const loaded = loadSnapshot(path);
     expect(loaded.refs.filter((z) => z.deep === true).length).toBe(doc.refs.filter((z) => z.deep === true).length);
+    expect(loaded.libRefs.length).toBe(doc.libRefs.length);
+  }, 120000);
+
+  it('lib tier binds lib globals and members on a tsconfig fixture (never a guess)', () => {
+    const fx = mkdtempSync(join(tmpdir(), 'idx-lib-fx-'));
+    writeFileSync(join(fx, '.gitignore'), 'node_modules/\n', 'utf8');
+    writeFileSync(
+      join(fx, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', lib: ['ES2022', 'DOM'], strict: true, skipLibCheck: true, types: [] } }),
+      'utf8',
+    );
+    mkdirSync(join(fx, 'src'), { recursive: true });
+    writeFileSync(
+      join(fx, 'src', 'a.ts'),
+      ['const s: string = String(1);', 'const p: unknown = JSON.parse("{}");', 'console.log(s);', 'document.createElement("div");', 'export const x = p;'].join('\n'),
+      'utf8',
+    );
+    const r = buildIndex(fx);
+    const names = r.libRefs.map((z) => `${z.name}@${z.libName}`).sort();
+    expect(names).toContain('String@String'); // value bucket graduated
+    expect(names).toContain('JSON@JSON');
+    expect(names).toContain('console@console');
+    expect(names.some((n) => n === 'log@Console.log')).toBe(true); // member bind
+    expect(names.some((n) => n === 'createElement@Document.createElement')).toBe(true);
+    expect(r.unresolvedRefs.filter((u) => u.reason === 'lib-not-loaded')).toHaveLength(0);
   }, 120000);
 
   it('degrades to zero deep refs on a tsconfig-less root (watch opt-out too)', () => {

@@ -19,7 +19,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { BuildResult } from './build.js';
-import type { DeclRange, Range, SymbolNode } from '../../docs/code-index-schema.js';
+import type { DeclRange, LibFile, LibRef, Range, SymbolNode } from '../../docs/code-index-schema.js';
 
 export interface DumpFile {
   id: string;
@@ -106,6 +106,8 @@ export interface DumpStats {
   fileCount: number;
   symbolCount: number;
   referenceCount: number;
+  /// Checker-confirmed lib/package refs (libs + libRefs collections)
+  libRefCount: number;
   /// refs + unresolvedImports (the two unresolved collections in the doc)
   unresolvedCount: number;
   memoryBytes: number;
@@ -133,6 +135,10 @@ export interface DumpDoc {
   files: DumpFile[];
   symbols: DumpSymbol[];
   refs: DumpRef[];
+  /** Checker-confirmed lib/package declaration files (additive: legacy
+   * snapshots without libs/libRefs load unchanged). */
+  libs: LibFile[];
+  libRefs: LibRef[];
   unresolved: DumpUnresolved[];
   unresolvedImports: DumpUnresolvedImport[];
   symbolEdges: DumpEdge[];
@@ -143,6 +149,8 @@ export interface DumpDoc {
 /** Serialize a build into the dump document (content-deterministic). */
 export function dumpDoc(r: BuildResult): DumpDoc {
   const symKeys = new Set<number>(r.symbols.map((s) => s.key));
+  const libIds = [...new Set(r.libRefs.map((z) => z.libId))].sort();
+  const libIdxById = new Map(libIds.map((id, i) => [id, i]));
   return {
     epoch: r.epoch,
     rootDir: r.rootDir,
@@ -150,6 +158,7 @@ export function dumpDoc(r: BuildResult): DumpDoc {
       fileCount: r.stats.fileCount,
       symbolCount: r.stats.symbolCount,
       referenceCount: r.stats.referenceCount,
+      libRefCount: r.stats.libRefCount,
       unresolvedCount: r.stats.unresolvedCount,
       memoryBytes: r.stats.memoryBytes,
     },
@@ -191,6 +200,8 @@ export function dumpDoc(r: BuildResult): DumpDoc {
       ...(z.usedBeforeDecl ? { usedBeforeDecl: true } : {}),
       ...(z.deep ? { deep: true } : {}),
     })),
+    libs: libIds.map((id, i) => ({ idx: i, id })),
+    libRefs: r.libRefs.map((z) => ({ fileIdx: z.fileIdx, range: z.range, name: z.name, libIdx: libIdxById.get(z.libId)!, libName: z.libName })),
     unresolved: r.unresolvedRefs.map((u) => ({ fileIdx: u.fileIdx, name: u.name, reason: u.reason, range: u.range })),
     unresolvedImports: r.graph.unresolved.map((u) => ({ fileIdx: u.from, specifier: u.specifier, reason: u.reason })),
     symbolEdges: r.symbolEdges.map((e) => ({
