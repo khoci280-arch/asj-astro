@@ -1,4 +1,4 @@
-import { render, screen, waitFor, cleanup } from '@testing-library/preact';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/preact';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import PemberkasanModal from './PemberkasanModal';
 
@@ -53,7 +53,7 @@ describe('PemberkasanModal — A05 parity', () => {
     expect(screen.queryByText('candidate.biodata_title')).toBeNull();
   });
 
-  it('shows all panels for admin and marks saved docs as done (link) vs belum', async () => {
+  it('shows all panels for admin and marks saved docs as done (tombol preview inline) vs belum', async () => {
     render(
       <PemberkasanModal
         {...base}
@@ -66,13 +66,20 @@ describe('PemberkasanModal — A05 parity', () => {
       />,
     );
     await waitFor(() => expect(screen.getByText('ui.stage1_short')).toBeTruthy());
-    // KK sudah → link "ui.uploaded_view"; PAS FOTO belum → "ui.not_yet".
+    // KK sudah → tombol "ui.uploaded_view" (B03: preview INLINE via modal,
+    // parity setStatusBerkas → bukaPreviewDokumen — bukan <a target=_blank>).
     expect(screen.getByText('ui.uploaded_view')).toBeTruthy();
     const notYet = screen.getAllByText('ui.not_yet');
     expect(notYet.length).toBeGreaterThan(0);
-    const link = document.querySelector('a[href="https://cdn.example/kk.pdf"]');
-    expect(link).not.toBeNull();
+    expect(document.querySelector('a[href="https://cdn.example/kk.pdf"]')).toBeNull();
     expect(screen.queryByText('ui.upload_locked')).toBeNull();
+
+    // Klik tombol → DocumentPreviewModal terbuka (PDF → Google Docs Viewer)
+    fireEvent.click(screen.getByText('ui.uploaded_view'));
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    expect(frame).toBeTruthy();
+    expect(frame.src).toContain('docs.google.com/gview?url=');
+    expect(frame.src).toContain(encodeURIComponent('https://cdn.example/kk.pdf'));
   });
 
   it('prefills biodata from candidate.bio (short keys → long payload keys)', async () => {

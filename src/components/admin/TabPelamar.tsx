@@ -17,8 +17,12 @@ import {
 import InputManualModal from './InputManualModal.tsx';
 import RirekishoBuilder from './RirekishoBuilder';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
+import WAPintarModal from '../WAPintarModal';
+import api from '../../lib/apiClient';
+import { normalizeWaInput } from '../../lib/schemas';
 
 import type { Kandidat } from "../../store/adminStore";
+import type { WaTemplate } from '../../types/api';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
@@ -36,7 +40,22 @@ export default function TabPelamar() {
   }, []);
   const kandidat = useStore(kandidatList);
   const [rirekWa, setRirekWa] = useState("");
+  const fotoFallbackFor = (wa: string) => {
+    const k = kandidat.find((c) => c.wa === wa);
+    return k && k.pasPhoto ? String(k.pasPhoto) : undefined;
+  };
   const [showRirek, setShowRirek] = useState(false);
+  // B02: WA Pintar — legacy per-row button bukaModalWaPintar(idKandidat) opens
+  // the smart-sender modal with template picker (js/08_wa_pintar.js); Astro's
+  // old button was a bare wa.me link with no template/message support.
+  const [waTemplates, setWaTemplates] = useState<WaTemplate[]>([]);
+  const [waTarget, setWaTarget] = useState<{ nama: string; job: string; phone: string } | null>(null);
+  useEffect(() => {
+    // Templates datang dari getAppData (parity legacy window.ALL_WA_TEMPLATES).
+    api.secure('getAppData', ['admin']).then((d: any) => {
+      if (d && d.success) setWaTemplates(Array.isArray(d.waTemplates) ? d.waTemplates : []);
+    }).catch(() => { /* non-blokir: modal tetap bisa dipakai manual */ });
+  }, []);
   const totalAll = useStore(kandidatTotal);
   const loading = useStore(kandidatLoading);
   const search = useStore(adminSearch);
@@ -93,7 +112,7 @@ export default function TabPelamar() {
             <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
           </button>
           <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> Export CSV</button>
-          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> Laporan Bulanan</button>
+          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
         </div>
       </div>
 
@@ -168,8 +187,8 @@ te-800">
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
                       <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> Edit</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
-                      <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
+                      <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
                   </td>
                 </tr>
@@ -188,7 +207,11 @@ te-800">
       {/* Modals */}
       <InputManualModal />
       <LaporanBulananModal />
-          <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} />
+      {waTarget && (
+        <WAPintarModal candidateName={waTarget.nama} candidateJob={waTarget.job} phone={waTarget.phone}
+          templates={waTemplates} onClose={() => setWaTarget(null)} />
+      )}
+          <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} />
 </div>
   );
 }

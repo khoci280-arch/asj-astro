@@ -1,6 +1,25 @@
+/**
+ * PamfletModal.tsx — Full-size pamflet/job-poster zoom overlay.
+ * Migrated from legacy js/08_wa_pintar.ts bukaPamflet/tutupPamflet +
+ * the #pamfletModal shell (index.html, shared CSS `.modal-content-pamflet`).
+ *
+ * B05 parity (2026-09-05) root fix: the close button's aria-label was
+ * hard-coded English "Close"; legacy localizes it via `data-lang-aria`
+ * `public.close` ("Tutup"/"閉じる-family). Now keyed through t().
+ *
+ * Geometry parity with legacy CSS `.modal-content-pamflet`: overlay
+ * `bg-black/90 blur z-9999`, image object-fit contain, width 100%,
+ * max-width 700px, max-height 90vh, radius 16px, shadow 0 0 40px black.
+ * Legacy closes only via the × button; this port additionally closes on
+ * backdrop/Escape (useOverlay) — an accessibility upgrade. The inner
+ * container stops propagation so ONLY a true backdrop click closes and
+ * the × button fires onClose exactly once (previously any click inside
+ * the overlay — image included — closed it, and the × double-fired).
+ */
 import { h } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import { useOverlay } from '../ui/useOverlay';
+import { t } from '../../store/i18n';
 
 interface Props { isOpen: boolean; url: string; onClose: () => void; }
 
@@ -16,11 +35,14 @@ const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
     style: "backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);",
     ref: containerRef, onClick: onBackdropClick,
   },
-    h("div", { class: "relative w-full max-w-3xl mx-auto flex flex-col items-center" },
+    h("div", {
+      class: "relative w-full max-w-3xl mx-auto flex flex-col items-center",
+      onClick: (e: MouseEvent) => e.stopPropagation(),
+    },
       h("button", {
         onClick: onClose,
+        "aria-label": t("public.close"),
         class: "absolute -top-12 right-0 text-slate-300 hover:text-red-500 text-4xl font-black drop-shadow-md transition transform hover:scale-110 z-10",
-        "aria-label": "Close",
       }, "\u00d7"),
       h("img", {
         src: url,

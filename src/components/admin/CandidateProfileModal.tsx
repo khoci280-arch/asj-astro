@@ -4,6 +4,8 @@ import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
+import { t } from '../../store/i18n';
+import DocumentPreviewModal from '../DocumentPreviewModal';
 
 interface Props {
   wa: string;
@@ -40,6 +42,10 @@ interface CandidateData {
   isVIP?: boolean;
   isSiswaASJ?: boolean;
   foto?: string;
+  /** URL berkas — parity tombol BUKA CV/JFT/SSW/FOTO dossier legacy (cvUrl/jftUrl/sswUrl/pasPhoto). */
+  cvUrl?: string;
+  jftUrl?: string;
+  sswUrl?: string;
   applications?: Array<{
     code: string;
     kategori?: string;
@@ -92,6 +98,11 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     isVIP: /\[VIP\]/i.test(catatanInt),
     isSiswaASJ: !!c.isSiswaASJ || hasClassTag(catatanInt),
     foto: c.berkas?.foto || c.pasPhoto || c.foto || '',
+    // B03: surface sertifikat URL — row ter-dekorasi membawa cvUrl/jftUrl/sswUrl
+    // (mapCandidate), dossier legacy #modal-cv membuka tombol BUKA CV/JFT/SSW/FOTO.
+    cvUrl: c.cvUrl || c.berkas?.cv || c.fileCv || '',
+    jftUrl: c.jftUrl || c.berkas?.jft || '',
+    sswUrl: c.sswUrl || c.berkas?.ssw || '',
     applications: c.applications || [],
     berkas: c.berkas || {},
     bio: c.bio || {},
@@ -100,11 +111,18 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
 
 export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candidate }: Props) {
   const [data, setData] = useState<CandidateData | null>(null);
+  // Row MENTAH (ter-dekorasi mapCandidate / getExistingCandidateJsonByWa) —
+  // diteruskan apa adanya ke openCandidateEdit supaya EditCandidateModal
+  // terisi penuh (A19: dulu yang dikirim data ter-map — fisik digabung,
+  // tmplahir ≠ tempatLahir → prefill kosong, defect class A01–A03).
+  const [row, setRow] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [catatanInternal, setCatatanInternal] = useState('');
   const [catatanExternal, setCatatanExternal] = useState('');
   const [isVIP, setIsVIP] = useState(false);
+  // B03: preview dokumen inline — parity legacy un()/bukaPreviewDokumen di #modal-cv.
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   // Row yang sudah ter-dekorasi (dari getCandidatesPage) — kalau ada, tidak
@@ -121,6 +139,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     const apply = (c: Record<string, any>) => {
       const mapped = mapApiToCandidate(c, nama, wa);
       setData(mapped);
+      setRow(c);
       setCatatanInternal(mapped.catatanInternal ?? '');
       setCatatanExternal(mapped.catatanExternal ?? '');
       setIsVIP(mapped.isVIP ?? false);
@@ -200,13 +219,13 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
         setData(patched);
         setCatatanInternal(intNote);
         setCatatanExternal(extNote);
-        showToast('Evaluasi catatan tersimpan.', 'success');
+        showToast(t('ui.toast_eval_note_saved'), 'success');
         window.dispatchEvent(new CustomEvent('candidates-changed', { detail: { wa: data.wa } }));
       } else {
-        showToast((out && out.error) || 'Gagal menyimpan catatan.', 'error');
+        showToast(String((out && out.error) || t('ui.cv_save_failed')), 'error');
       }
     } catch (e) {
-      showToast('Network error: ' + (e instanceof Error ? e.message : String(e)), 'error');
+      showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error');
     } finally {
       setSaving(false);
     }
@@ -259,7 +278,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
         {loading || !data ? (
           <div class="text-center py-12">
             <Icon spin name="spinner" class="text-2xl text-sky-400" />
-            <p class="text-slate-500 mt-2 text-sm">Memuat data kandidat...</p>
+            <p class="text-slate-500 mt-2 text-sm">{t('ui.loading_candidates')}</p>
           </div>
         ) : (
           <>
@@ -276,19 +295,24 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="text-lg font-bold text-white truncate">{data.nama}</h2>
                   {data.isSiswaASJ ? (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Siswa ASJ</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{t('ui.cv_siswa_asj')}</span>
                   ) : (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">Eksternal</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">{t('ui.cv_eksternal')}</span>
                   )}
                 </div>
                 <p class="text-xs text-emerald-400 font-mono mt-1">📱 {data.wa}</p>
                 {data.idKandidat && (
                   <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-600/30 text-sky-300 border border-sky-500/40">{data.idKandidat}</span>
                 )}
-                {data.tahapan && (
-                  <div class="mt-2">
-                    <span class="text-[10px] text-slate-500 uppercase">Status Tahapan</span>
-                    <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{data.tahapan}</span>
+                {(data.tahapan || data.status) && (
+                  <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_status_label')}</span>
+                    {data.tahapan && (
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{data.tahapan}</span>
+                    )}
+                    {data.status && (
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">{data.status}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -296,44 +320,44 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
 
             {/* 2. Biodata */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
-              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Biodata</h3>
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cv_bio_header')}</h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Gender</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_gender')}</span>
                   <p class="text-white font-bold">{data.gender || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Usia</span>
-                  <p class="text-white font-bold">{data.usia ? `${data.usia} Tahun` : '-'}</p>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_usia')}</span>
+                  <p class="text-white font-bold">{data.usia ? `${data.usia}${t('ui.age_years_suffix')}` : '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">TB / BB (Fisik)</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_fisik')}</span>
                   <p class="text-white font-bold">{data.fisik || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Pendidikan</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_pendidikan')}</span>
                   <p class="text-white font-bold">{data.pendidikan || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Tempat, Tgl Lahir</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_ttl')}</span>
                   <p class="text-white font-bold">{data.tmplahir && data.tgllahir ? `${data.tmplahir}, ${data.tgllahir}` : data.tmplahir || data.tgllahir || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">Email</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_email')}</span>
                   <p class="text-white font-bold">{data.email || '-'}</p>
                 </div>
                 <div class="col-span-2">
-                  <span class="text-[10px] text-slate-500 uppercase">Alamat Asal</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_alamat')}</span>
                   <p class="text-white font-bold">{data.alamat || '-'}</p>
                 </div>
               </div>
               <div class="flex gap-3 mt-3">
                 <div class="flex-1 p-2 bg-sky-900/30 rounded-lg border border-sky-500/20 text-center">
-                  <span class="text-[10px] text-sky-400 uppercase font-bold">JFT / JFJ</span>
+                  <span class="text-[10px] text-sky-400 uppercase font-bold">{t('ui.jft_jlpt')}</span>
                   <p class="text-white font-bold text-sm">{data.jft || '-'}</p>
                 </div>
                 <div class="flex-1 p-2 bg-emerald-900/30 rounded-lg border border-emerald-500/20 text-center">
-                  <span class="text-[10px] text-emerald-400 uppercase font-bold">SSW / Bidang</span>
+                  <span class="text-[10px] text-emerald-400 uppercase font-bold">{t('ui.ssw_field')}</span>
                   <p class="text-white font-bold text-sm">{data.ssw || '-'}</p>
                 </div>
               </div>
@@ -342,11 +366,13 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 3. Edit Data Cepat */}
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: data }));
+                // Row mentah supaya EditCandidateModal (A03) ter-prefill penuh:
+                // gender/usia/tempatLahir/tglLahir/tb/bb/jftText/sswText/catatanInt.
+                window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: row || data }));
               }}
               class="w-full mb-4 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
-              <Icon name="edit" /> Edit Data Cepat
+              <Icon name="edit" /> {t('ui.edit_quick_cv')}
             </button>
 
             {/* 3b. Pemberkasan & Biodata */}
@@ -356,14 +382,47 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               }}
               class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
-              <Icon name="folder-open" /> Lengkapi Pemberkasan & Biodata
+              <Icon name="folder-open" /> {t('ui.complete_berkas_biodata')}
             </button>
+
+            {/* 3c. Preview Dokumen — BUKA CV/JFT/SSW/FOTO (parity dossier legacy btn-cv-jft/dll) */}
+            {(data.foto || data.cvUrl || data.jftUrl || data.sswUrl) && (
+              <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
+                <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.doc_preview_title')}</h3>
+                <div class="flex flex-wrap gap-2">
+                  {data.foto && (
+                    <button onClick={() => setPreview({ url: data.foto!, title: t('ui.open_photo') })}
+                      class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                      <Icon name="camera" class="text-xs" /> {t('ui.open_photo')}
+                    </button>
+                  )}
+                  {data.cvUrl && (
+                    <button onClick={() => setPreview({ url: data.cvUrl!, title: t('ui.open_cv') })}
+                      class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                      <Icon name="file-alt" class="text-xs" /> {t('ui.open_cv')}
+                    </button>
+                  )}
+                  {data.jftUrl && (
+                    <button onClick={() => setPreview({ url: data.jftUrl!, title: t('ui.open_jft') })}
+                      class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                      <Icon name="file-pdf" class="text-xs" /> {t('ui.open_jft')}
+                    </button>
+                  )}
+                  {data.sswUrl && (
+                    <button onClick={() => setPreview({ url: data.sswUrl!, title: t('ui.open_ssw') })}
+                      class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                      <Icon name="file-pdf" class="text-xs" /> {t('ui.open_ssw')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* 4. Job Yang Dilamar */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
-              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Job / Bidang Yang Dilamar</h3>
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cv_jobs_header')}</h3>
               {(!data.applications || data.applications.length === 0) ? (
-                <p class="text-slate-500 text-sm">Belum ada lamaran.</p>
+                <p class="text-slate-500 text-sm">{t('ui.cv_no_applications')}</p>
               ) : (
                 <div class="flex flex-wrap gap-2">
                   {data.applications.map((app, i) => (
@@ -386,12 +445,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               onClick={handleDownloadBiodata}
               class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
-              <Icon name="download" /> Download Full Biodata
+              <Icon name="download" /> {t('ui.cv_download_biodata')}
             </button>
 
             {/* 6. Evaluasi Kandidat (VIP Toggle) */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
-              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">Evaluasi Kandidat (Admin)</h3>
+              <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cand_eval')}</h3>
               <button
                 onClick={() => setIsVIP(!isVIP)}
                 class={`w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
@@ -400,28 +459,28 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                     : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
                 }`}
               >
-                {isVIP ? '✅ VIP (Rencana Resmi)' : '☐ Tandai VIP'}
+                {isVIP ? t('ui.cv_vip_on') : t('ui.cv_vip_off')}
               </button>
             </div>
 
             {/* 7. Catatan Internal & External */}
             <div class="mb-4 space-y-3">
               <div>
-                <label class="text-xs font-bold text-red-400 uppercase mb-1 block">Catatan Internal (Private)</label>
+                <label class="text-xs font-bold text-red-400 uppercase mb-1 block">{t('ui.note_internal')}</label>
                 <textarea
                   value={catatanInternal}
                   onInput={(e) => setCatatanInternal((e.target as HTMLTextAreaElement).value)}
-                  placeholder="Kelemahan/Catatan khusus admin..."
+                  placeholder={t('ui.cv_note_int_ph')}
                   class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
                   rows={3}
                 />
               </div>
               <div>
-                <label class="text-xs font-bold text-sky-400 uppercase mb-1 block">Catatan External (Kandidat)</label>
+                <label class="text-xs font-bold text-sky-400 uppercase mb-1 block">{t('ui.note_external')}</label>
                 <textarea
                   value={catatanExternal}
                   onInput={(e) => setCatatanExternal((e.target as HTMLTextAreaElement).value)}
-                  placeholder="Feedback untuk kandidat..."
+                  placeholder={t('ui.cv_note_ext_ph')}
                   class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
                   rows={3}
                 />
@@ -435,7 +494,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 disabled={saving}
                 class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
               >
-                {saving ? <><Icon spin name="spinner" /> Menyimpan...</> : <><Icon name="save" /> Simpan Evaluasi Catatan</>}
+                {saving ? <><Icon spin name="spinner" /> {t('ui.saving')}</> : <><Icon name="save" /> {t('ui.cv_save_eval')}</>}
               </button>
               <div class="flex gap-2">
                 <a
@@ -444,16 +503,19 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                   rel="noopener noreferrer"
                   class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
                 >
-                  <Icon name="whatsapp" /> WhatsApp
+                  <Icon name="whatsapp" /> {t('ui.cv_wa')}
                 </a>
                 <button onClick={onClose} class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
-                  Tutup
+                  {t('ui.close')}
                 </button>
               </div>
             </div>
           </>
         )}
       </div>
+      {preview && (
+        <DocumentPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />
+      )}
     </div>
   );
 }

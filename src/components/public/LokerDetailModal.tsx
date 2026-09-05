@@ -1,11 +1,22 @@
 /**
  * LokerDetailModal.tsx — Job detail popup with rincian biaya
- * Migrated from legacy/js/01_public.ts bukaDetailLoker() 100%
+ * Migrated from legacy/js/01_public.ts bukaDetailLoker()
  * Modern Preact: TypeScript, i18n, theme-aware CSS vars
+ *
+ * B04 parity (2026-09-05) fixed two root mismatches vs bukaDetailLoker:
+ *   1. jobTutupUntukLamar dropped LIST-CHECK/PENCARIAN/PENDAFTARAN/DAFTAR
+ *      from the still-open set — jobs still recruiting showed a disabled
+ *      "Lamar" button. Now imports the canonical rule (src/lib/jobPhase.ts).
+ *   2. The pamflet was a static image; legacy opens bukaPamflet (full zoom)
+ *      on click with a ui.click_zoom title, like the list rows. Now wired
+ *      to PamfletModal.
  */
+import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
+import { jobTutupUntukLamar } from '../../lib/jobPhase';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import PamfletModal from './PamfletModal';
 
 interface Job { code: string; pekerjaan: string; status: string; tahapan: string; keterangan: string; kategori: string; kuota: string; gender: string; lokasi: string; syarat: string; rincianBiaya?: string; totalBiaya?: string; pamflet?: string; templateCv?: string; dokumenShare?: string; }
 interface Props { job: Job; onClose: () => void; }
@@ -29,14 +40,6 @@ function parseRincianBiaya(text: string): Parsed {
     if (!cur) { cur = { type: 'INFO', items: [] }; out.sections.push(cur); } cur.items.push(content);
   }
   return out;
-}
-
-function jobTutupUntukLamar(j: Job): boolean {
-  if (!j) return true;
-  if ((j.status || '').toUpperCase().includes('CLOSE')) return true;
-  const th = (j.tahapan || '').toUpperCase().trim();
-  if (!th || th === '-' || th === 'LIST' || th === 'OPEN' || th === 'MENUNGGU' || th === 'REVIEW') return false;
-  return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|PASPORT|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL|MEDIKAL/i.test(th);
 }
 
 function StepTimeline({ sections }: { sections: RSection[] }) {
@@ -75,9 +78,11 @@ export default function LokerDetailModal({ job, onClose }: Props) {
     ? String(job.syarat).split(',').map(s => s.trim()).filter(Boolean) : [];
   const pamfletUrl = job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 ? job.pamflet : '';
 
+  const [zoomOpen, setZoomOpen] = useState(false);
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
+    <>
     <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
@@ -86,7 +91,7 @@ export default function LokerDetailModal({ job, onClose }: Props) {
         </div>
         <div class="p-5">
           <div class="flex items-start gap-4 mb-6">
-            {pamfletUrl && <img src={pamfletUrl} loading="lazy" class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg flex-shrink-0" alt="Pamflet" />}
+            {pamfletUrl && <img src={pamfletUrl} loading="lazy" decoding="async" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)} class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0" alt="Pamflet" />}
             <div class="flex-1 min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
@@ -110,11 +115,13 @@ export default function LokerDetailModal({ job, onClose }: Props) {
           <div class="flex flex-col sm:flex-row gap-3">
             {job.templateCv && <a href={job.templateCv} target="_blank" download class="flex-1 px-5 py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow transition"><Icon name="download" class="mr-1.5" />{t('button.format')}</a>}
             {tutupLamar ? <button disabled class="flex-1 px-5 py-3.5 bg-slate-600 text-white text-sm font-black text-center rounded-xl shadow-inner opacity-60 cursor-not-allowed"><Icon name="door-closed" class="mr-1.5" />{t('button.closed')}</button>
-            : <a href="/apply" class="flex-1 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black text-center rounded-xl shadow transition"><Icon name="paper-plane" class="mr-1.5" />{t('button.apply_now')}</a>}
+            : <a href={'/apply?job=' + encodeURIComponent(job.code)} class="flex-1 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black text-center rounded-xl shadow transition"><Icon name="paper-plane" class="mr-1.5" />{t('button.apply_now')}</a>}
             <a href={'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waMsg)} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><Icon name="whatsapp" class="mr-1.5" />{t('button.chat_wa')}</a>
           </div>
         </div>
       </div>
     </div>
+    <PamfletModal isOpen={zoomOpen} url={pamfletUrl} onClose={() => setZoomOpen(false)} />
+    </>
   );
 }

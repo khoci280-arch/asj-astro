@@ -39,13 +39,14 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
   };
 
   const handleSend = () => {
-    if (!phone) return showToast('Nomor WA tidak valid', 'error');
-    if (!message.trim()) return showToast('Pesan tidak boleh kosong', 'error');
+    // B02: toasts via key — parity legacy kirimWaPintar (ui.toast_wa_invalid_cand2 / ui.toast_msg_empty)
+    if (!phone) return showToast(t('ui.toast_wa_invalid_cand2'), 'error');
+    if (!message.trim()) return showToast(t('ui.toast_msg_empty'), 'error');
     const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message.trim());
     window.open(url, '_blank');
     onClose();
   };
-
+
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
@@ -53,7 +54,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
       <div class="bg-slate-900 border border-emerald-500/50 p-6 rounded-[2rem] w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-xl font-bold text-emerald-400">
-            <Icon name="whatsapp" class="mr-2" />WA Pintar
+            <Icon name="whatsapp" class="mr-2" />{t('ui.wa_pintar')}
           </h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white transition">
             <Icon name="times" class="text-2xl" />
@@ -63,7 +64,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
         <div class="space-y-4">
           {/* Candidate info */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">KANDIDAT TUJUAN</label>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.kandidat_tujuan')}</label>
             <input type="text" readonly
                    value={candidateName + ' (' + (candidateJob || 'Umum') + ')'}
                    class="w-full p-2.5 rounded-lg bg-black/40 border border-slate-700 text-emerald-300 text-sm font-bold outline-none cursor-not-allowed" />
@@ -71,11 +72,11 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
 
           {/* Template picker */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">PILIH TEMPLATE PESAN</label>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.pilih_template_pesan')}</label>
             <select value={selectedTemplate}
                     onChange={e => handleTemplateSelect((e.target as HTMLSelectElement).value)}
                     class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition">
-              <option value="">-- Ketik Manual / Pilih Template --</option>
+              <option value="">{t('ui.manual_or_template')}</option>
               {templates.map(tpl => (
                 <option value={tpl.id}>{tpl.nama}</option>
               ))}
@@ -84,17 +85,17 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
 
           {/* Message textarea */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">ISI PESAN (Bisa Diedit / Custom)</label>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.isi_pesan_custom')}</label>
             <textarea rows={6} value={message}
                       onInput={e => setMessage((e.target as HTMLTextAreaElement).value)}
                       class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition leading-relaxed resize-none"
-                      placeholder="Ketik pesan atau pilih template di atas..."></textarea>
+                      placeholder={t('ui.ketik_pesan_ph')}></textarea>
           </div>
 
           {/* Send button */}
           <button onClick={handleSend}
                   class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition text-base mt-2">
-            <Icon name="whatsapp" class="mr-2" />Buka WhatsApp & Kirim
+            <Icon name="whatsapp" class="mr-2" />{t('ui.wa_open_send')}
           </button>
         </div>
       </div>

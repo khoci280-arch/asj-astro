@@ -9,7 +9,7 @@ import { useStore } from '@nanostores/preact';
 import PamfletModal from "./PamfletModal";
 import { t } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
-import { getEndpoint } from "../../lib/apiEndpoint";
+import { jobTutupUntukLamar } from '../../lib/jobPhase';
 import LokerDetailModal from './LokerDetailModal';
 import Icon from '../ui/Icon';
 
@@ -80,8 +80,8 @@ export default function LokerTable() {
     const aO = (a.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
     const bO = (b.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
     if (aO !== bO) return bO - aO;
-    const tA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt((a.code || "").replace(/D/g, "")) || 0;
-    const tB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt((b.code || "").replace(/D/g, "")) || 0;
+    const tA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt((a.code || "").replace(/\D/g, "")) || 0;
+    const tB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt((b.code || "").replace(/\D/g, "")) || 0;
     return tB - tA;
   });
 
@@ -107,20 +107,16 @@ export default function LokerTable() {
     if (g.includes("WANITA") || g.includes("PEREMPUAN"))
       return <span class="px-2 py-0.5 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
     return <span class="px-2 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl || "-"}</span>;
-  }
-
-  function jobTutupUntukLamar(j: Job) {
-    if (!j) return true;
-    if ((j.status || "").toUpperCase().includes("CLOSE")) return true;
-    const tp = (j.tahapan || "").toUpperCase().trim();
-    if (!tp || tp === "-" || tp === "LIST" || tp === "PENCARIAN" || tp === "PENDAFTARAN" || tp === "OPEN" || tp === "DAFTAR" || tp === "MENUNGGU" || tp === "REVIEW") return false;
-    return /KAIWA|MENDAN|MENSETSU|LOLOS|USER|MCU|PARPOR|PASPOR|KONTRAK|COE|SISKOP|E-?ID|VISA|FLIGHT|BERANGKAT|TERBANG|TIKET|NAITEI|PEMBERKASAN|MEDICAL/i.test(tp);
-  }
-
-  /** Open application form via bridge, fallback to WhatsApp */
-  async function openForm(job: Job) {
-    try { const res = await fetch(getEndpoint('generateFormBridge'), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "generateFormBridge", args: [job.code, job.kategori || "", "", "", job.dokumenShare || ""] }) }); const data = await res.json(); if (data.formUrl) { window.location.href = data.formUrl; } else { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); } } catch { window.open("https://wa.me/6287889502004?text=" + encodeURIComponent("Halo Admin ASJ, saya tertarik lowongan " + job.code + " (" + job.pekerjaan + ")."), "_blank"); }
-    
+  }  /** Open the native Astro apply wizard (apply.astro) — same route the
+   *  detail modal's "Lamar" uses. B04 (2026-09-05): this used to call the
+   *  legacy generateFormBridge, whose backend handler still points at the
+   *  removed legacy page /apply-full.html → a 404 (or a WA fallback) on
+   *  every row apply. Legacy had ONE action (lamarJob) for row and detail;
+   *  both now converge on the Astro-native /apply?job= surface.
+   */
+  function openForm(job: Job) {
+    if (jobTutupUntukLamar(job)) return;
+    window.location.assign('/apply?job=' + encodeURIComponent(job.code));
   }
 
   function filterCount(s: string) {

@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
+import { t } from '../store/i18n';
 
 interface Props {
   url: string;
@@ -78,6 +79,14 @@ function getPdfViewerUrl(url: string): string {
 // MS Office Viewer for Office docs
 function getOfficeViewerUrl(url: string): string {
   return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
+}
+
+// Drive folder links cannot be previewed inline — legacy bukaPreviewDokumen
+// (03_candidate.ts) opens them in a new tab as the fallback.
+const DRIVE_FOLDER_RE = /drive\.google\.com\/drive\/folders/i;
+
+export function isDriveFolder(url: string): boolean {
+  return DRIVE_FOLDER_RE.test(String(url || ''));
 }
 
 // Client-side Excel/CSV rendering via SheetJS
@@ -167,6 +176,14 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     }
   }, [url]);
 
+  // Drive folder fallback (parity legacy bukaPreviewDokumen)
+  useEffect(() => {
+    if (isDriveFolder(url)) {
+      window.open(url, '_blank', 'noopener');
+      onClose();
+    }
+  }, [url]);
+
   const handleLoad = () => setLoading(false);
   const handleError = () => { setLoading(false); setError(true); };
 
@@ -247,22 +264,22 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
         <div class="text-center space-y-4">
           <Icon name="file" class="text-5xl text-slate-400" />
           <p class="text-sm text-slate-300 font-bold">
-            Tidak bisa dipratinjau {ext && <span class="opacity-60">(.{ext})</span>}
+            {t('ui.preview_unavailable')} {ext && <span class="opacity-60">(.{ext})</span>}
           </p>
-          <p class="text-xs text-slate-500">Tipe file ini tidak bisa ditampilkan di preview browser</p>
+          <p class="text-xs text-slate-500">{t('ui.preview_unavailable_hint')}</p>
           {!previewOnly ? (
             <a href={url} target="_blank" rel="noopener"
                class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-              <Icon name="download" class="mr-2" />Unduh File
+              <Icon name="download" class="mr-2" />{t('ui.download')}
             </a>
           ) : (
-            <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>
+            <p class="text-xs text-slate-500 italic">{t('ui.preview_admin_only_download')}</p>
           )}
         </div>
       </div>
     );
   };
-
+
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
@@ -277,7 +294,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
             {!previewOnly && (
               <a href={url} target="_blank" rel="noopener"
                  class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
-                 title="Unduh">
+                 title={t('ui.download')}>
                 <Icon name="download" />
               </a>
             )}
@@ -293,7 +310,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
             <div class="absolute inset-0 flex items-center justify-center z-10">
               <div class="text-center space-y-2">
                 <Icon spin name="spinner" class="text-2xl text-sky-400" />
-                <p class="text-xs text-slate-400">Memuat pratinjau...</p>
+                <p class="text-xs text-slate-400">{t('ui.preview_loading')}</p>
               </div>
             </div>
           )}
@@ -301,14 +318,14 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
             <div class="flex items-center justify-center h-full">
               <div class="text-center space-y-3">
                 <Icon name="exclamation-triangle" class="text-4xl text-amber-400" />
-                <p class="text-sm text-slate-300 font-bold">Gagal memuat pratinjau</p>
+                <p class="text-sm text-slate-300 font-bold">{t('ui.preview_load_failed')}</p>
                 {!previewOnly ? (
                   <a href={url} target="_blank" rel="noopener"
                      class="inline-block px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition">
-                    <Icon name="download" class="mr-2" />Unduh File
+                    <Icon name="download" class="mr-2" />{t('ui.download')}
                   </a>
                 ) : (
-                  <p class="text-xs text-slate-500 italic">Hanya admin yang bisa mengunduh file ini</p>
+                  <p class="text-xs text-slate-500 italic">{t('ui.preview_admin_only_download')}</p>
                 )}
               </div>
             </div>

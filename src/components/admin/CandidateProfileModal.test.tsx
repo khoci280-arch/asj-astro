@@ -68,8 +68,112 @@ describe('CandidateProfileModal', () => {
     expectExists('175 / 70');
     expectExists('A2');
     expectExists('LULUS');
+    // A19: dossier chrome all via t() keys (legacy #modal-cv/cv.ts dossier).
+    expectExists('Status');
+    expectExists('Biodata');
+    expectExists('JFT / JLPT');
+    expectExists('SSW / Bidang');
+    expectExists('Edit Cepat CV');
+    expectExists('Lengkapi Pemberkasan & Biodata');
+    expectExists('Download Full Biodata');
+    expectExists('Evaluasi Kandidat (Admin)');
+    expectExists('Catatan Internal (Private)');
+    expectExists('Catatan External (Kandidat)');
+    expectExists('Simpan Evaluasi Catatan');
+    expectExists('WhatsApp');
+    expectExists('Tutup');
     // Data comes from the row — no network call at all.
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('A19: Edit Cepat mengirim ROW MENTAH ke openCandidateEdit (prefill EditCandidateModal penuh)', () => {
+    const got: unknown[] = [];
+    const onEdit = (e: Event) => got.push((e as CustomEvent).detail);
+    window.addEventListener('openCandidateEdit', onEdit);
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={mockCandidate}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByText('Edit Cepat CV'));
+    expect(got.length).toBe(1);
+    // Row mentah — bukan data ter-map (dulu prefill EditCandidateModal kosong
+    // karena fisik digabung & tmplahir ≠ tempatLahir).
+    expect(got[0]).toMatchObject({
+      wa: mockCandidate.wa,
+      tb: '175',
+      bb: '70',
+      jftText: 'A2',
+      sswText: 'SSW',
+      catatanInt: mockCandidate.catatanInt,
+    });
+    window.removeEventListener('openCandidateEdit', onEdit);
+  });
+
+  it('A19: status bar menampilkan tahapan DAN status (parity cv-status dossier)', () => {
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={{ ...mockCandidate, status: 'GAGAL' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    // Header card: label + tahapan chip + status chip semuanya tampil.
+    expectExists('Baru (LULUS)');
+    expectExists('GAGAL');
+    expectExists('Status');
+  });
+
+  it('B03: baris Dokumen (BUKA FOTO/CV/JFT/SSW) dari cvUrl/jftUrl/sswUrl/pasPhoto — klik → preview inline', async () => {
+    const withDocs = {
+      ...mockCandidate,
+      pasPhoto: 'https://res.cloudinary.com/x/image/upload/pas_photo/revin.jpg',
+      cvUrl: 'https://x.supabase.co/storage/revin_cv.pdf',
+      jftUrl: 'https://x.supabase.co/storage/revin_jft.pdf',
+      sswUrl: 'https://x.supabase.co/storage/revin_ssw.pdf',
+    };
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={withDocs}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    // A19 menambahkan key open_*; B03 menautkannya — tombol muncul + label via key
+    expectExists('BUKA FOTO');
+    expectExists('BUKA CV');
+    expectExists('BUKA JFT');
+    expectExists('BUKA SSW');
+
+    // Klik BUKA CV → DocumentPreviewModal (iframe Google Docs Viewer utk PDF)
+    const btnCv = screen.getAllByText('BUKA CV')[0] as HTMLButtonElement;
+    fireEvent.click(btnCv);
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    expect(frame).toBeTruthy();
+    expect(frame.src).toContain('docs.google.com/gview?url=');
+    expect(frame.src).toContain(encodeURIComponent('https://x.supabase.co/storage/revin_cv.pdf'));
+  });
+
+  it('B03: tanpa dokumen ter-upload → baris Dokumen tidak dirender', async () => {
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={mockCandidate}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.queryAllByText('BUKA CV').length).toBe(0);
+    expect(screen.queryAllByText('BUKA FOTO').length).toBe(0);
   });
 
   it('falls back to getExistingCandidateJsonByWa when no row is passed', async () => {

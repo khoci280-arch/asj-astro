@@ -32,6 +32,7 @@ import {
 import Icon from "../ui/Icon";
 import { useOverlay } from "../ui/useOverlay";
 import { showToast } from "../Toast";
+import DocumentPreviewModal from "../DocumentPreviewModal";
 
 interface CandidateCtx {
   tahapan?: string;
@@ -157,6 +158,8 @@ export default function PemberkasanModal({
   const [bio, setBio] = useState<Record<string, string>>({});
   // Versi berkas saat modal dibuka — basis cek "file lama" (konfirmasi timpa).
   const [snapshotBerkas, setSnapshotBerkas] = useState<Record<string, string>>({});
+  // B03: preview inline (parity legacy setStatusBerkas → bukaPreviewDokumen).
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -323,19 +326,22 @@ export default function PemberkasanModal({
 
   if (!isOpen) return null;
 
-  const statusMark = (key: string) => {
+  // B03: legacy setStatusBerkas → window.bukaPreviewDokumen — preview INLINE
+  // dalam modal ("bukan buka tab baru"); Astro lama memakai <a target=_blank>
+  // yang membuang admin ke tab baru (PDF sering ter-download di mobile, bukan
+  // preview — persis masalah FIX 2026-08-19 legacy dengan gview wrapper).
+  const statusMark = (key: string, title: string) => {
     const url = snapshotBerkas[key];
     if (hasUrl(url)) {
       return (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          class="text-emerald-400 hover:text-emerald-300 underline text-[9px] font-bold"
+        <button
+          type="button"
+          onClick={() => setPreview({ url: String(url), title })}
+          class="text-emerald-400 hover:text-emerald-300 underline text-[9px] font-bold cursor-pointer"
         >
           <i class="fas fa-check-circle mr-1" />
           {t("ui.uploaded_view")}
-        </a>
+        </button>
       );
     }
     return (
@@ -352,7 +358,7 @@ export default function PemberkasanModal({
         <label class={`text-xs font-bold ${def.amber ? "text-amber-400" : "text-emerald-300"}`}>
           {t(def.label)}
         </label>
-        {statusMark(def.key)}
+        {statusMark(def.key, t(def.label))}
       </div>
       <input
         type="file"
@@ -575,6 +581,13 @@ export default function PemberkasanModal({
           </div>
         )}
       </div>
+      {preview && (
+        <DocumentPreviewModal
+          url={preview.url}
+          title={preview.title}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }
