@@ -10,5 +10,6 @@ export {
   handleHapusJobData,
   handleUpdateTahapanDbJob,
   handleUpdateDokumenShare,
+  handleGetShareTokenForJob,
   handleTandaiGagalJob,
 } from './service';

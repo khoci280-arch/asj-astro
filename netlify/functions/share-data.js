@@ -1,22 +1,32 @@
-// share-data.js — endpoint GET untuk viewer TSK publik.
-//
-// share.html memuat fetch('/api/share-data?job=KODE') (bukan POST action
-// seperti fungsi lain). Netlify me-redirect /api/* -> /.netlify/functions/*,
-// jadi file ini harus ada dengan nama share-data supaya redirect nyambung.
-// Logika di handleShareData (netlify/functions/_lib/actions-share.js —
-// Fase 1.1d: dipindah dari handlers.js, handlers tetap re-export untuk
-// serve-static.mjs yang memakai loadHandlers().handleShareData).
 'use strict';
-// share-data.js — endpoint GET untuk viewer TSK publik.
-// The original actions-share stub was removed. This function now returns
-// NOT_IMPLEMENTED until a real implementation is provided.
+/**
+ * share-data.js — GET endpoint for the public TSK candidate viewer.
+ *
+ * The share view page (share.astro / legacy share.html) fetches
+ * '/.netlify/functions/share-data?job=KODE' (GET, not a POST action).
+ * Netlify maps /.netlify/functions/share-data to this file.
+ *
+ * A15 parity fix (2026-09-05): this file used to be a NOT_IMPLEMENTED stub
+ * ("Fungsi ini belum diimplementasi di backend rebuild"), so the whole
+ * share-card flow produced an error page — the modal's "Buka Share View"
+ * never showed candidates. The real implementation (guard-less public read,
+ * job lookup + candidate docs) lives in contexts/catalog service
+ * handleShareData and is re-exported by _lib/handlers. This endpoint now
+ * delegates to it (same contract as the previous generation build).
+ *
+ * B06 token gate (2026-09-05): the viewer now requires the per-job share
+ * token (?tk=) minted by updateDokumenShare/getShareTokenForJob — bare
+ * ?job= links are rejected server-side (docs/PARITY_CHECKLIST.md B06).
+ */
+const { handleShareData } = require('./_lib/handlers');
 
 exports.handler = async (event) => {
-  const job = (event.queryStringParameters && event.queryStringParameters.job) || '';
+  const p = (event.queryStringParameters) || {};
+  const job = p.job || '';
+  const tk = p.tk || '';
   let out;
   try {
-    // Stub removed — return NOT_IMPLEMENTED.
-    out = { error: 'Fungsi ini belum diimplementasi di backend rebuild.' };
+    out = await handleShareData(job, tk);
   } catch (e) {
     out = { error: 'Error internal: ' + e.message };
   }

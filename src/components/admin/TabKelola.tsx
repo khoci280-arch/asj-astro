@@ -8,13 +8,19 @@ import { t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
+import api from '../../lib/apiClient';
+import { authStore } from '../../store/authReactive';
 import { getEndpoint } from '../../lib/apiEndpoint';
 
+// A15: share config needs dokumenShare/tsk; getAppData('admin') is admin-guarded
+// so the session token must be attached (public fallback has no dokumenShare).
 type Loker = {
   code: string; pekerjaan: string; status: string; kategori: string;
   gender: string; lokasi: string; kuota: string; keterangan: string;
   syarat?: string; templateCv?: string; pamflet?: string;
   updated_at?: string;
+  tsk?: string;
+  dokumenShare?: string;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -36,10 +42,14 @@ export default function TabKelola() {
     try {
       const res = await fetch(getEndpoint('getAppData'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['admin'] }),
+        body: JSON.stringify({
+          action: 'getAppData', args: ['admin'],
+          sessionToken: authStore.get().sessionToken || '',
+        }),
       });
       const data = await res.json();
       if (data.success && data.jobs) setLoker(data.jobs);
+      else if (data.sessionInvalid) setLoker([]);
     } catch (err) { console.error('[TabKelola]', err); }
     finally { setLoading(false); }
   }
@@ -54,22 +64,20 @@ export default function TabKelola() {
   const toggleStatus = async (code: string, newStatus: string) => {
     try {
       const job = loker.find(j => j.code === code);
-      await fetch(getEndpoint('ubahStatusJob'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'ubahStatusJob', args: [code, newStatus, job?.updated_at] }),
-      });
-      setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
+      const data = (await api.secure('ubahStatusJob', [code, newStatus, job?.updated_at])) as {
+        success?: boolean; error?: string;
+      };
+      if (data.success) {
+        setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
+      }
     } catch (e) { console.error(e); }
   };
 
   const deleteJob = async (code: string) => {
     if (!confirm('Yakin hapus loker ' + code + '?')) return;
     try {
-      await fetch(getEndpoint('hapusJobData'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'hapusJobData', args: [code] }),
-      });
-      setLoker(prev => prev.filter(j => j.code !== code));
+      const data = (await api.secure('hapusJobData', [code])) as { success?: boolean; error?: string };
+      if (data.success) setLoker(prev => prev.filter(j => j.code !== code));
     } catch (e) { console.error(e); }
   };
 

@@ -7,7 +7,7 @@
 import {
   handleSimpanJobBaru, handleEditLokerFull, handleUbahStatusJob,
   handleHapusJobData, handleUpdateTahapanDbJob, handleUpdateDokumenShare,
-  handleTandaiGagalJob,
+  handleGetShareTokenForJob, handleTandaiGagalJob,
 } from '../contexts/jobs';
 
 export const JOB_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
@@ -17,5 +17,6 @@ export const JOB_ACTIONS: Record<string, (payload: unknown[], sessionToken?: str
   hapusJobData: (p, s) => handleHapusJobData(p, s),
   updateTahapanDbJob: (p, s) => handleUpdateTahapanDbJob(p, s),
   updateDokumenShare: (p, s) => handleUpdateDokumenShare(p, s),
+  getShareTokenForJob: (p, s) => handleGetShareTokenForJob(p, s),
   tandaiGagalJob: (p, s) => handleTandaiGagalJob(p, s),
 };

@@ -126,7 +126,11 @@ export async function handleGetMonthlyReport(payload: any[], sessionToken?: stri
   }
 }
 
-export async function handleShareData(jobCode: string) {
+// B06 (2026-09-05): the TSK viewer is gated behind a per-job share token
+// (LAZY MINT + STABLE, stored in sys_config by _lib/db/shareTokens). A bare
+// ?job= link or a wrong token is rejected — legacy opened by code alone, which
+// let anyone enumerate candidate dossiers. See docs/PARITY_CHECKLIST.md B06.
+export async function handleShareData(jobCode: string, shareToken?: string) {
   const code = String(jobCode || '').trim();
   if (!code) return { error: 'Kode job tidak ditemukan.' };
   try {
@@ -137,6 +141,14 @@ export async function handleShareData(jobCode: string) {
       jobRow = found.rows.find((r) => String(pick(r, ['code_job', 'code']) || '') === code) || null;
     }
     if (!jobRow) return { error: 'Kode job tidak ditemukan: ' + code };
+    const { getShareTokenForJob } = await import('../../_lib/db/shareTokens');
+    const expected = await getShareTokenForJob(code);
+    if (!expected) {
+      return { error: 'Link share belum diaktifkan untuk loker ini.' };
+    }
+    if (!shareToken || shareToken !== expected) {
+      return { error: 'Akses Ditolak: link share tidak valid.' };
+    }
     const name = toText(pick(jobRow, ['pekerjaan', 'nama_pekerjaan', 'judul', 'title']));
     let candRows: any[] | undefined = await findCandidatesByJobFiltered(code);
     if (candRows === undefined) {
