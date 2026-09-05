@@ -6,7 +6,7 @@
 > dengan keadaan aktual kode: **C3–C6 sudah ditutup** oleh pass backend 2026-09-04 (C4/C5
 > auth hardening, C6 URL allow-list, C3 sweep semua handle*). Item residual: gate wiring
 > share view (`share.astro`) dgn per-job token saat diimplementasi. Status keamanan
-> terkini: `SECURITY_AUDIT_2026-09-03.md` + `TODO.md`.
+> terkini: `docs/archive/SECURITY_AUDIT_2026-09-03.md` + `TODO.md`.
 
 Dokumen ini adalah panduan teknis yang dipetakan dari pipeline data lama (Legacy ASJ) ke arsitektur **Domain-Driven Design (DDD)** di codebase baru (Astro + Netlify). Referensi ini dirancang khusus untuk memandu AI Developer dalam mengeksekusi sisa 20% fitur dan *hardening* sebelum produksi.
 
@@ -48,7 +48,7 @@ Jika Anda (AI Developer) ingin menambahkan atau memperbaiki fitur, ikuti peta ru
 
 ## 🎯 3. Panduan Eksekusi 20% Pekerjaan Tersisa
 
-Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung berdasarkan `TODO.md` dan `HANDOVER.md`:
+Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung berdasarkan `TODO.md` dan `docs/archive/HANDOVER.md`:
 
 ### 🔴 Prioritas 1: Security Hardening (IDOR C3-C6)
 - **Konteks**: celah di mana *endpoint* publik bisa menarik data PII (Identitas Pribadi) kandidat.
@@ -101,6 +101,6 @@ Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung b
 Arsitektur aplikasi ini sudah **80% lengkap** dengan *Best Practice* tingkat tinggi (menggunakan *Lazy Loading*, *Circuit Breaker*, dan *RLS Supabase*).
 Tugas utama Anda bukan lagi melakukan *refactoring* sistem dasar, melainkan **menghubungkan (wiring) UI Preact Islands yang sudah ada ke backend Surfaces**, dan **menutup celah logika keamanan (IDOR)**.
 
-Selalu gunakan TypeScript secara ketat, pertahankan konsep **Domain-Driven Design (DDD)** yang sudah tertata di backend, dan perhatikan file `.env.local` saat *testing*. Jangan lupa *commit* pekerjaan yang tersisa sesuai dengan catatan di `HANDOVER.md`.
+Selalu gunakan TypeScript secara ketat, pertahankan konsep **Domain-Driven Design (DDD)** yang sudah tertata di backend, dan perhatikan file `.env.local` saat *testing*. Jangan lupa *commit* pekerjaan yang tersisa sesuai dengan catatan di `docs/archive/HANDOVER.md`.
 
 **Selamat bekerja! 🚀**

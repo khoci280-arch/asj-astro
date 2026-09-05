@@ -103,14 +103,15 @@ asj-astro/
 │   ├── test-admin.mjs
 │   ├── test-public.mjs
 │   └── test-supabase-auth.mjs
-├── docs/                        # Documentation
+├── docs/                        # Documentation (aktif)
 │   ├── ARCHITECTURE.md          # This file
-│   ├── FASE1-SETUP.md          # Phase 1: Foundation
-│   ├── FASE2-LAYOUT.md         # Phase 2: Layout migration
-│   ├── FASE3-AUTH.md           # Phase 3: Auth state
-│   ├── FASE4-ISLANDS.md        # Phase 4: Preact islands
-│   ├── FASE5-PWA.md            # Phase 5: Service worker
-│   └── FASE6-NETLIFY.md        # Phase 6: Deployment
+│   ├── ENGINEERING_PLAYBOOK.md  # Standar + roadmap tim
+│   ├── CODE_REVIEW_CHECKLIST.md # Checklist review PR
+│   └── archive/                 # Dokumen historis (arsip 2026-09-05)
+│       ├── FASE1..FASE6-*.md
+│       ├── *-DEEP.md
+│       ├── HANDOVER.md
+│       └── CODE_REVIEW / SECURITY_AUDIT / overview.md
 ├── public/
 │   ├── sw.js                    # Anti-cache service worker
 │   └── manifest.webmanifest     # PWA manifest

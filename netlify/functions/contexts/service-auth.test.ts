@@ -1,7 +1,7 @@
 // ==========================================
 // TESTS: auth endpoint hardening (2026-09-04 pass)
 //
-// Closes the app-layer gaps the security audit (SECURITY_AUDIT_2026-09-03.md,
+// Closes the app-layer gaps the security audit (docs/archive/SECURITY_AUDIT_2026-09-03.md,
 // findings C4/C5 + "add authorization checks" recommendation) recorded as
 // open on candidate-PII paths:
 //   - registration: the all-registrants roster is admin-only (a kandidat must

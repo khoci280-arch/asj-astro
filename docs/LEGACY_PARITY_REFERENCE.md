@@ -139,5 +139,6 @@ Saat port/QA satu halaman:
 
 ---
 
-*Referensi pendukung: `TODO.md`, `HANDOVER.md`, `docs/ASTRO_PIPELINE_REFERENCE.md`,
-`SECURITY_AUDIT_2026-09-03.md`, deep-doc legacy di `F:\Asjpow4v7-main\khoci921\docs\`.*
+*Referensi pendukung: `TODO.md`, `docs/archive/HANDOVER.md`,
+`docs/ASTRO_PIPELINE_REFERENCE.md`, `docs/archive/SECURITY_AUDIT_2026-09-03.md`,
+deep-doc legacy di `F:\Asjpow4v7-main\khoci921\docs\`.*

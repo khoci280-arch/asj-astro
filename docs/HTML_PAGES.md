@@ -2,7 +2,8 @@
 
 # Pages — Quick Reference (Astro + Preact)
 
-> Index ringkas semua halaman. Detail lengkap ada di docs/*-DEEP.md.
+> Index ringkas semua halaman. Detail lengkap ada di `docs/archive/*-DEEP.md`
+> (dipindah ke arsip 2026-09-05 — stub legacy, bukan referensi aktif).
 
 ---
 
@@ -25,15 +26,15 @@ Pages (Astro SSG — src/pages/):
 
 | Halaman | Preact Component | Backend Functions | DB Tables | DEEP Doc |
 |---------|-----------------|-------------------|-----------|----------|
-| index.astro | App + LokerTable + LayananSection | get-app-data, bridge-links | jobs | index-admin-DEEP.md |
-| admin.astro | App + AdminPanel + 8 Tab*.tsx | bridge-links, candidates, jobs, config, whatsapp | multiple | index-admin-DEEP.md |
-| candidate.astro | App + CandidateDash | bridge-links, auth | database_candidate | candidate-DEEP.md |
-| public.astro | App + LokerTable | get-app-data | jobs | index-admin-DEEP.md |
-| ai-cv.astro | App + AiCvForm | bridge-links (processAIChat, submitDataAsj) | master_database_candidate | ai_form-DEEP.md |
-| master.astro | App + MasterFullForm | bridge-links (loginKandidat, submitMasterForm) | master_database_candidate | master-full-DEEP.md |
-| siswa-baru.astro | App + SiswaBaruForm | bridge-links (processSiswaAIChat, submitDaftarSiswa) | respon_siswa_baru | siswa-baru-DEEP.md |
-| apply.astro | App + ApplyFullForm | bridge-links (cekDataPelamar, submitApply) | database_asj_form | apply-full-DEEP.md |
-| share.astro | ShareView | share-data (GET) | 5 tables (READ) | share-DEEP.md |
+| index.astro | App + LokerTable + LayananSection | get-app-data, bridge-links | jobs | docs/archive/index-admin-DEEP.md |
+| admin.astro | App + AdminPanel + 8 Tab*.tsx | bridge-links, candidates, jobs, config, whatsapp | multiple | docs/archive/index-admin-DEEP.md |
+| candidate.astro | App + CandidateDash | bridge-links, auth | database_candidate | — (tidak ada deep-doc) |
+| public.astro | App + LokerTable | get-app-data | jobs | docs/archive/index-admin-DEEP.md |
+| ai-cv.astro | App + AiCvForm | bridge-links (processAIChat, submitDataAsj) | master_database_candidate | docs/archive/ai_form-DEEP.md |
+| master.astro | App + MasterFullForm | bridge-links (loginKandidat, submitMasterForm) | master_database_candidate | docs/archive/master-full-DEEP.md |
+| siswa-baru.astro | App + SiswaBaruForm | bridge-links (processSiswaAIChat, submitDaftarSiswa) | respon_siswa_baru | docs/archive/siswa-baru-DEEP.md |
+| apply.astro | App + ApplyFullForm | bridge-links (cekDataPelamar, submitApply) | database_asj_form | docs/archive/apply-full-DEEP.md |
+| share.astro | ShareView | share-data (GET) | 5 tables (READ) | docs/archive/share-DEEP.md |
 
 ---
 
@@ -112,7 +113,8 @@ apply/master/ai-cv/siswa-baru -> / (Back to Portal via FormToolbar)
 ## Workflow: Sentuh Kode
 
 1. Baca docs/HTML_PAGES.md (index ini) -> identifikasi halaman
-2. Baca docs/<halaman>-DEEP.md -> pahami arsitektur + dependensi + flow
+2. Baca docs/archive/<halaman>-DEEP.md -> pahami arsitektur + dependensi + flow
+   (catatan: deep-doc ini mendeskripsikan halaman LEGACY, bukan kode Astro saat ini)
 3. Plan perubahan -> pastikan tidak merusak pipeline atau SW cache
 4. Fix kode (src/components/*.tsx atau src/pages/*.astro)
 5. npx astro build -> verify tidak ada error
