@@ -15,15 +15,15 @@
 - [ ] CORS headers check — pastikan hanya domain yang diizinkan
 
 ### Error Handling
-- [ ] Tambah global error boundary di semua halaman
-- [ ] Tambah error toast/notification untuk semua API calls yang gagal
+- [x] Tambah global error boundary di semua halaman
+- [x] Tambah error toast/notification untuk semua API calls yang gagal (handled via global store/error bounds)
 - [ ] Handle Supabase connection timeout gracefully
 - [ ] Add loading skeletons untuk semua halaman yang load data
 
 ### Environment
-- [ ] Pastikan `.env.local` ada di Netlify dashboard (bukan di git!)
+- [x] Pastikan `.env.local` ada di Netlify dashboard (bukan di git!)
 - [ ] Test cold start Netlify functions (< 3s target)
-- [ ] Set NODE_ENV=production di Netlify
+- [x] Set NODE_ENV=production di Netlify
 
 ---
 
