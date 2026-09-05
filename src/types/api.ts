@@ -62,7 +62,7 @@ export interface Job {
   kuota: string;
   gender: string;
   lokasi: string;
-  syRat: string;
+  syarat: string;
   keterangan: string;
   templateCv?: string;
   pamflet?: string;
@@ -98,7 +98,7 @@ export interface ConfigData {
   kategori?: string[];
   gender?: string[];
   lokasi?: string[];
-  syRat?: string[];
+  syarat?: string[];
   pengumuman?: string;
   socialLinks?: SocialLink[];
 }
@@ -197,7 +197,7 @@ export interface DbJob {
   kuota: string;
   gender: string;
   lokasi: string;
-  syRat: string;
+  syarat: string;
   keterangan: string;
   tahapan?: string[];
   createdAt: string;
@@ -211,7 +211,7 @@ export interface DropdownData {
   kategori: string[];
   gender: string[];
   lokasi: string[];
-  syRat: string[];
+  syarat: string[];
 }
 
 // ── Chat Message ──
