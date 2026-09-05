@@ -28,21 +28,21 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 247,
+    "rootNames": 310,
     "options": {}
   },
-  "universe": 3482,
+  "universe": 3658,
   "counts": {
-    "agreeBound": 3482,
+    "agreeBound": 3658,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1133,
-    "libRefAgree": 1130,
+    "libRefs": 1202,
+    "libRefAgree": 1199,
     "libRefDisagree": 0,
     "libRefFramework": 3,
-    "skippedNonBindable": 1793,
+    "skippedNonBindable": 1894,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,10 +51,10 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3413,
-    "alias-vs-chase": 46,
+    "match": 3584,
+    "alias-vs-chase": 50,
     "merged-declaration": 22,
-    "shadowing-disagreement": 1,
+    "shadowing-disagreement": 2,
     "unmappable": 0
   },
   "perFile": [
@@ -78,20 +78,20 @@
     },
     {
       "path": "src/components/AuthGuard.tsx",
-      "universe": 14,
-      "agreeBound": 14,
+      "universe": 15,
+      "agreeBound": 15,
       "agreeUnresolved": 0,
       "lib": 8,
-      "skipped": 10,
+      "skipped": 11,
       "disagree": 0
     },
     {
       "path": "src/store/i18n.ts",
-      "universe": 38,
-      "agreeBound": 38,
+      "universe": 43,
+      "agreeBound": 43,
       "agreeUnresolved": 0,
-      "lib": 21,
-      "skipped": 10,
+      "lib": 27,
+      "skipped": 11,
       "disagree": 0
     },
     {
@@ -114,10 +114,10 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "universe": 45,
-      "agreeBound": 45,
+      "universe": 83,
+      "agreeBound": 83,
       "agreeUnresolved": 0,
-      "lib": 35,
+      "lib": 54,
       "skipped": 40,
       "disagree": 0
     },
@@ -141,11 +141,11 @@
     },
     {
       "path": "src/lib/cloudinary.ts",
-      "universe": 55,
-      "agreeBound": 55,
+      "universe": 73,
+      "agreeBound": 73,
       "agreeUnresolved": 0,
-      "lib": 33,
-      "skipped": 15,
+      "lib": 38,
+      "skipped": 16,
       "disagree": 0
     },
     {
@@ -163,7 +163,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 6,
+      "skipped": 5,
       "disagree": 0
     },
     {
@@ -186,17 +186,17 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 50,
-      "agreeBound": 50,
+      "universe": 65,
+      "agreeBound": 65,
       "agreeUnresolved": 0,
-      "lib": 7,
-      "skipped": 18,
+      "lib": 9,
+      "skipped": 22,
       "disagree": 0
     },
     {
       "path": "netlify/functions/contexts/master-data/index.ts",
-      "universe": 11,
-      "agreeBound": 11,
+      "universe": 14,
+      "agreeBound": 14,
       "agreeUnresolved": 0,
       "lib": 0,
       "skipped": 0,
@@ -204,11 +204,11 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "universe": 1029,
-      "agreeBound": 1029,
+      "universe": 1065,
+      "agreeBound": 1065,
       "agreeUnresolved": 0,
-      "lib": 201,
-      "skipped": 597,
+      "lib": 219,
+      "skipped": 631,
       "disagree": 0
     },
     {
@@ -240,11 +240,11 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "universe": 752,
-      "agreeBound": 752,
+      "universe": 807,
+      "agreeBound": 807,
       "agreeUnresolved": 0,
-      "lib": 253,
-      "skipped": 527,
+      "lib": 271,
+      "skipped": 588,
       "disagree": 0
     },
     {
@@ -267,10 +267,10 @@
     },
     {
       "path": "netlify/functions/_lib/db/candidates.ts",
-      "universe": 282,
-      "agreeBound": 282,
+      "universe": 287,
+      "agreeBound": 287,
       "agreeUnresolved": 0,
-      "lib": 86,
+      "lib": 87,
       "skipped": 102,
       "disagree": 0
     },
@@ -324,7 +324,7 @@
     },
     {
       "path": "src/components/AuthGuard.tsx",
-      "line": 13,
+      "line": 14,
       "name": "ComponentChildren",
       "role": "TypeRef",
       "reason": "alias-vs-chase",
@@ -333,7 +333,7 @@
     },
     {
       "path": "src/components/AuthGuard.tsx",
-      "line": 19,
+      "line": 20,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -342,12 +342,21 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 8,
+      "line": 9,
       "name": "persistentAtom",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 66 · compiler <unmappable>:3027"
+      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 63 · compiler <unmappable>:3027"
+    },
+    {
+      "path": "src/store/i18n.ts",
+      "line": 19,
+      "name": "atom",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "atom → indexer src/store/i18n.ts decls 120 · compiler <unmappable>:3466"
     },
     {
       "path": "src/store/userStore.ts",
@@ -396,132 +405,6 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 18,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 32,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 35,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 38,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 45,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 46,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 47,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 48,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 49,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 50,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 52,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 57,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 64,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 65,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
       "line": 68,
       "name": "z",
       "role": "Read",
@@ -531,16 +414,7 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 69,
-      "name": "z",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
-    },
-    {
-      "path": "src/lib/schemas.ts",
-      "line": 70,
+      "line": 72,
       "name": "z",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -558,7 +432,7 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 76,
+      "line": 78,
       "name": "z",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -567,7 +441,142 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 82,
+      "line": 85,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 86,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 87,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 88,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 89,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 90,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 92,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 97,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 104,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 105,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 108,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 109,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 110,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 115,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 116,
+      "name": "z",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "z → indexer src/lib/schemas.ts decls 243 · compiler <unmappable>:0"
+    },
+    {
+      "path": "src/lib/schemas.ts",
+      "line": 122,
       "name": "z",
       "role": "TypeRef",
       "reason": "alias-vs-chase",
@@ -576,7 +585,7 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 83,
+      "line": 123,
       "name": "z",
       "role": "TypeRef",
       "reason": "alias-vs-chase",
@@ -585,7 +594,7 @@
     },
     {
       "path": "src/lib/schemas.ts",
-      "line": 84,
+      "line": 124,
       "name": "z",
       "role": "TypeRef",
       "reason": "alias-vs-chase",
@@ -611,8 +620,35 @@
       "compiler": "makeSurfaceHandler → indexer netlify/functions/auth.js decls 395 · compiler netlify/functions/_lib/netlify-wrapper-surface.ts:2290"
     },
     {
+      "path": "netlify/functions/sweep-queue.ts",
+      "line": 57,
+      "name": "payload",
+      "role": "Read",
+      "reason": "shadowing-disagreement",
+      "indexer": "bound",
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2522 · compiler netlify/functions/sweep-queue.ts:2392"
+    },
+    {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 422,
+      "line": 462,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/master-data/service.ts",
+      "line": 490,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/master-data/service.ts",
+      "line": 606,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -675,7 +711,7 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 80,
+      "line": 111,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -684,7 +720,7 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 118,
+      "line": 149,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -693,7 +729,7 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 299,
+      "line": 345,
       "name": "bcrypt",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -702,7 +738,16 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 355,
+      "line": 401,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 807 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 479,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
