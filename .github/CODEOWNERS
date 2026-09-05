@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Review ownership. GitHub requests review from these owners automatically and
+# enforces them via branch protection once "Require review from Code Owners" is
+# enabled on main/develop.
+#
+# ACTION REQUIRED: replace the placeholder handles below with real GitHub
+# usernames (or @org/team names). CODEOWNERS with invalid handles fails silently
+# — no review is requested and nothing warns you. Verify after committing:
+#   Settings → Branches → branch protection → Require review from Code Owners
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Default owners for everything not matched below.
+*                                       @khoci280-arch
+
+# Backend kernel — resilience, logging, DB, job queue, rate limiting.
+# Highest blast radius in the repo; always needs a second pair of eyes.
+/netlify/functions/_lib/kernel/        @khoci280-arch
+
+# Backend business logic
+/netlify/functions/contexts/           @khoci280-arch
+/netlify/functions/surfaces/           @khoci280-arch
+
+# Database migrations — irreversible by nature, review carefully
+/migrations/                           @khoci280-arch
+/netlify/migrations/                   @khoci280-arch
+
+# Frontend
+/src/components/admin/                 @khoci280-arch
+/src/components/forms/                 @khoci280-arch
+/src/store/                            @khoci280-arch
+
+# Auth and session handling — security-sensitive
+/netlify/functions/contexts/identity/  @khoci280-arch
+/src/store/authReactive.ts             @khoci280-arch
+/src/store/userStore.ts                @khoci280-arch
+
+# CI/CD — a broken gate silently disables every other check
+/.github/                              @khoci280-arch
+/scripts/ci/                           @khoci280-arch
+
+# Shared contracts between client and server
+/shared/                               @khoci280-arch
+/netlify/functions/_lib/actions-*.ts   @khoci280-arch
+
+# i18n — keys must stay in parity across both dictionaries
+/src/store/i18n.ts                     @khoci280-arch
+/src/store/i18n-jp.ts                  @khoci280-arch
