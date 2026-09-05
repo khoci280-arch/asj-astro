@@ -3,6 +3,7 @@ import * as session from '../session';
 import { requireRole } from '../../contexts/identity';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
+import { isVipCatatan, unwrapInterviewPayload, lastHistory } from './interview-shared';
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
@@ -119,11 +120,10 @@ import {
   findCandidates,
 } from '../db/candidates.ts';
 
-// Single source of truth for ASJ student status — same regex as
-// isSiswaASJ in db/candidates.ts mapCandidate().
-function isVipCatatan(catatan: unknown) {
-  return /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i.test(String(catatan || ''));
-}
+// VIP / KELAS feature gate — imported from interview-shared (parity legacy
+// js/03_candidate.ts isVipCatatan TIGHTENED: only literal [VIP] or [KELAS x];
+// the old broad /\[[A-Z0-9]+\]/ regex matched ANY bracketed tag like [MCU]).
+// SYNC legacy comment: js/03_candidate.ts:108 says backend must match.
 
 // Skema data yang DIISI OTOMATIS ke form ai_form (kunci persis fieldPaths di
 // js/pages/ai_form.js). AI diminta mengembalikan JSON {reply, data} — tanpa ini
@@ -484,14 +484,20 @@ function buildInterviewSystem(profil: { nama?: string; bidang?: { label: string;
 async function handleProcessAiInterview(payload: unknown[], sessionToken?: string) {
   const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
-  const p = (payload || {}) as Record<string, any>;
-  const profil = await resolveProfilKandidat(p.wa || p.waTarget || '');
+  // Legacy GAS sent an OBJECT {wa,...}; apiClient/job queue send an ARRAY of
+  // args — unwrap both (A16: every sibling handler unwraps payload[0]; this
+  // one did not, so wa/candidateName/history were dropped on every turn).
+  const p = unwrapInterviewPayload(payload);
+  const profil = await resolveProfilKandidat(String(p.wa || p.waTarget || ''));
   const system = buildInterviewSystem(
-    profil || { nama: p.candidateName, bidang: normalizeBidang(p.bidang) || BIDANG_DEFAULT },
-    p.kota || p.jobKota,
+    profil || {
+      nama: String(p.candidateName || ''),
+      bidang: normalizeBidang(p.bidang) || BIDANG_DEFAULT,
+    },
+    String(p.kota || p.jobKota || ''),
   );
   try {
-    return await geminiGenerate(system, Array.isArray(p.history) ? p.history : []);
+    return await geminiGenerate(system, lastHistory(p.history));
   } catch (e) {
     return { reply: 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!' };
   }

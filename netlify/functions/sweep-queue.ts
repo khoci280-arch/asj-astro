@@ -44,7 +44,9 @@ const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unk
     return handleProcessAiInterview(p, s);
   },
 
-  'ingest.parse': async () => NOT_IMPL,
+  // parseDokumenBiodata no longer enqueues 'ingest.parse' — surfaces/ingest
+  // routes it synchronously to the real classify handler (admin AI copilot
+  // upload flow, A11 parity). Worker removed to avoid a dead NOT_IMPL path.
 
   // WA broadcast (kirimTawaranMassal) — surface notify men-queue payload
   // { payload, sessionToken }; worker ini yang benar-benar mengirim lewat

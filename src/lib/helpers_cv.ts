@@ -51,8 +51,8 @@ export function makeV(d: Record<string, unknown>, ai: Record<string, unknown>) {
 export function fmtMonthYearJp(str: string): string {
   if (!str || str === "-") return "";
   const s = String(str).trim();
-  if (/^d{4}$/.test(s)) return s + "年";
-  const m = s.match(/^(d{4})[-/](d{1,2})/);
+  if (/^\d{4}$/.test(s)) return s + "年";
+  const m = s.match(/^(\d{4})[-/](\d{1,2})/);
   if (m) return m[1] + "年" + parseInt(m[2], 10) + "月";
   const dt = new Date(s);
   if (isNaN(dt.getTime())) return s;

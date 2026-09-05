@@ -102,7 +102,7 @@ export default function AdminPanel() {
     return () => window.removeEventListener("asj-toggle-sidebar", handler);
   }, []);
   const undangan = useModal();
-  const aiCopilot = useModal<{wa: string; nama: string}>();
+  const aiCopilot = useModal<{wa: string; nama: string; id?: string}>();
   const pemberkasan = useModal<{wa: string; nama: string; candidate?: Record<string, any> | null}>();
   const profile = useModal<{wa: string; nama: string; candidate?: Record<string, any> | null}>();
   const editModal = useModal<any>();
@@ -197,7 +197,7 @@ export default function AdminPanel() {
 
       {pemberkasan.isOpen && <PemberkasanModal isOpen={pemberkasan.isOpen} onClose={pemberkasan.hide} waTarget={pemberkasan.target?.wa || ''} namaTarget={pemberkasan.target?.nama || ''} candidate={pemberkasan.target?.candidate || null} isAdmin />}
       {undangan.isOpen && <UndanganKelasModal isOpen={undangan.isOpen} onClose={undangan.hide} />}
-      {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.nama} onClose={aiCopilot.hide} />}
+      {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.id} onClose={aiCopilot.hide} />}
       {profile.isOpen && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} candidate={profile.target?.candidate} isOpen={profile.isOpen} onClose={profile.hide} />}
       {editModal.isOpen && editModal.target && <EditCandidateModal candidate={editModal.target} isOpen={editModal.isOpen} onClose={editModal.hide} />}
       {matchmaking.isOpen && matchmaking.target && <MatchmakingModal job={matchmaking.target.job} candidates={matchmaking.target.candidates} isOpen={matchmaking.isOpen} onClose={matchmaking.hide} />}

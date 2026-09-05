@@ -26,6 +26,8 @@ export interface Kandidat {
   catatanInt?: string;
   isVIP?: boolean;
   isSiswaASJ?: boolean;
+  // pas_photo ter-dekorasi (mapCandidate) — fallback foto preview CV (A10).
+  pasPhoto?: string;
 }
 
 // ── Modal State ──────────────────────────────────────────

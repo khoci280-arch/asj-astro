@@ -4,11 +4,18 @@
  * Phase 5: Actions that exceed 10s budget are enqueued as background jobs.
  * Returns 202 + jobId. Client polls via getJobStatus.
  */
-import { enqueue, handleGetJobStatus } from '../_lib/kernel/job-queue';
-import { log } from '../_lib/kernel/log';
+import { handleGetJobStatus } from '../_lib/kernel/job-queue';
 
-/** Actions that must run in background (> 10s budget) */
-const BACKGROUND_ACTIONS = new Set(['processAiInterview']);
+/**
+ * A16 parity (2026-09-05): processAiInterview used to be enqueued as an
+ * 'ai.interview' background job — but an interactive interview chat turn has
+ * to feel live (legacy callAPI returns the reply synchronously). With the
+ * 2-minute sweep the candidate waited minutes per answer. Like the admin AI
+ * copilot chat (A11), it now calls the real handler synchronously. The sweep
+ * worker for 'ai.interview' stays registered so legacy queued jobs still
+ * drain. No action currently requires background enqueue here.
+ */
+const BACKGROUND_ACTIONS = new Set<string>([]);
 
 export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   processAIChat: async (p: unknown[], s?: string) => {
@@ -20,9 +27,8 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     return ai.handleProcessSiswaAIChat(p);
   },
   processAiInterview: async (p: unknown[], s?: string) => {
-    const jobId = await enqueue('ai.interview', { payload: p, sessionToken: s });
-    log.info('ai.background-enqueued', { jobId });
-    return { success: true, status: 'accepted', jobId, message: 'Interview sedang diproses. Gunakan getJobStatus untuk mengecek.' };
+    const ai = await import('../_lib/ai/chat');
+    return ai.handleProcessAiInterview(p, s);
   },
   processAdminAIChat: async (p: unknown[], s?: string) => {
     const { handleProcessAdminAIChat } = await import('../_lib/ai/chat');

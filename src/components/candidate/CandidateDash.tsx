@@ -9,8 +9,8 @@ import { authStore } from '../../store/authReactive';
 import { t } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
-import DocumentPreviewModal from '../DocumentPreviewModal';
-import WAPintarModal from '../WAPintarModal';
+import InterviewSimulatorModal, { canAccessInterview } from './InterviewSimulatorModal';
+import RirekishoBuilder from '../admin/RirekishoBuilder';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadToCloudinary } from "../../lib/cloudinary";
@@ -23,6 +23,8 @@ type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: stri
 type CandidateData = {
   nama: string; wa: string; job: string; tahapan: string; status: string;
   isVIP: boolean; isSiswaASJ?: boolean; kelas?: string; idKandidat?: string;
+  /** catatan internal mentah — sumber tag [VIP]/[KELAS x] utk gate wawancara (A16). */
+  catatanInt?: string;
   cvMiniProgress: number; cvMasterProgress: number;
   riwayat: Riwayat[];
   jadwal: { id: string; nama: string; waktu: string; lokasi: string; link: string; }[];
@@ -33,6 +35,10 @@ type CandidateData = {
   berkas?: Record<string, string>;
   /** Map pendek biodata (kunci c.bio) utk prefill modal. */
   bio?: Record<string, string>;
+  /** Field CV mini (row mapCandidate ter-dekorasi) utk prefill modal — A09. */
+  cvmini?: { gender: string; usia: string; tb: string; bb: string; pendidikan: string; jftText: string; sswText: string; } | null;
+  /** pas_photo baris (mapCandidate) — fallback foto preview CV/rirekisho (A10). */
+  pasPhoto?: string;
   needRevision: boolean; revisionNote: string;
   applications?: { code: string; cv: string; status: string; tahapan: string; }[];
 };
@@ -100,9 +106,8 @@ export default function CandidateDash() {
   const [showCvMiniModal, setShowCvMiniModal] = useState(false);
   const [showESign, setShowESign] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
-  const [showDocPreview, setShowDocPreview] = useState(false);
-  const [docPreviewUrl, setDocPreviewUrl] = useState("");
-  const [docPreviewTitle, setDocPreviewTitle] = useState("");
+  const [showRirekisho, setShowRirekisho] = useState(false);
+  const [showInterview, setShowInterview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
 
   useEffect(() => { loadDashboard(); }, []);
@@ -130,6 +135,8 @@ export default function CandidateDash() {
         const legacyD = result.kandidatData || {};
         const catatanInt = row?.catatanInt || row?.catatan || '';
         const berkasMap: Record<string, string> = row?.berkas || legacyD.berkas || {};
+        // Catatan mentah disimpan utk gate VIP/KELAS wawancara (parity legacy
+        // bukaSimulatorInterview → isVipCatatan pada catatanInt sendiri).
         const kelasMatch = /\[KELAS\s*([A-Z0-9]+)\]/i.exec(String(catatanInt));
         const berkasList = ALL_BERKAS.map((def) => ({
           label: def.label,
@@ -141,6 +148,7 @@ export default function CandidateDash() {
           status: row?.status || legacyD.status || '-',
           isVIP: /\[VIP\]/i.test(catatanInt) || !!legacyD.isVIP,
           isSiswaASJ: !!row?.isSiswaASJ || !!legacyD.isSiswaASJ,
+          catatanInt,
           kelas: (kelasMatch && kelasMatch[1]) || legacyD.kelas || '',
           idKandidat: row?.idKandidat || legacyD.idKandidat || '',
           cvMiniProgress: legacyD.cvMiniProgress || 0, cvMasterProgress: legacyD.cvMasterProgress || 0,
@@ -160,6 +168,20 @@ export default function CandidateDash() {
           berkasList,
           berkas: berkasMap,
           bio: row?.bio || legacyD.bio || {},
+          // A09 CV-mini prefill — sama dgn legacy bukaModalCvMini yang membaca
+          // baris kandidat sendiri (gender/usia/tb/bb/pendidikan/jftText/sswText).
+          cvmini: row
+            ? {
+                gender: String(row?.gender || ''),
+                usia: String(row?.usia || ''),
+                tb: String(row?.tb || ''),
+                bb: String(row?.bb || ''),
+                pendidikan: String(row?.pendidikan || ''),
+                jftText: String(row?.jftText || ''),
+                sswText: String(row?.sswText || ''),
+              }
+            : null,
+          pasPhoto: String(row?.pasPhoto || ''),
           needRevision: !!legacyD.needRevision, revisionNote: legacyD.revisionNote || '',
           applications: row?.applications || legacyD.applications || [],
         });
@@ -177,6 +199,20 @@ export default function CandidateDash() {
         return;
       }
       setShowESign(true);
+    }
+
+    function openInterview() {
+      // A16 parity bukaSimulatorInterview: eksklusif VIP / KELAS LPK (tag
+      // [VIP] / [KELAS xx] di catatan internal — legacy isVipCatatan).
+      if (!(user?.wa || data?.wa)) {
+        showToast(t('ui.toast_session_invalid_relogin'), 'error');
+        return;
+      }
+      if (!canAccessInterview(data?.catatanInt)) {
+        showToast(t('ui.toast_feature_locked'), 'info');
+        return;
+      }
+      setShowInterview(true);
     }
 
 if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
@@ -348,12 +384,12 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             {/* Action buttons grid */}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
               <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition text-center"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</a>
+              <button onClick={openInterview} class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</button>
               <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> AI CV Master Assistant</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
-                            <button onClick={() => { setDocPreviewUrl(''); setDocPreviewTitle('CV Preview'); setShowDocPreview(true); }} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
+                            <button onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="key" class="mr-1.5" /> {t('ui.change_password')}</button>
             </div>
           </div>
@@ -401,10 +437,13 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
       {/* ── Modals ── */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-      {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} />}
-      {showDocPreview && <DocumentPreviewModal url={docPreviewUrl} title={docPreviewTitle} previewOnly={true} onClose={() => setShowDocPreview(false)} />}
+      {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} prefill={data.cvmini || undefined} />}
+      {showRirekisho && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} />}
       {showESign && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} />}
       {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
+      {showInterview && data && (
+        <InterviewSimulatorModal wa={user?.wa || data.wa || ''} nama={data.nama} onClose={() => setShowInterview(false)} />
+      )}
     </div>
   );
 }

@@ -6,7 +6,15 @@ import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc } from "../../lib/helpers_cv";
 
-interface Props { waTarget: string; isOpen: boolean; onClose: () => void; }
+interface Props {
+  waTarget: string;
+  isOpen: boolean;
+  onClose: () => void;
+  /** A10 parity: fallback pas_photo baris kandidat saat uploads.photo master kosong
+   *  (legacy renderCVAjaib: master uploads.photo dulu, lalu pasPhoto dari
+   *  ALL_CANDIDATES). TabPelamar & CandidateDash meneruskan row.pasPhoto. */
+  fotoFallback?: string;
+}
 
 const CSS = `
 .cv-excel{width:100%;border-collapse:collapse;border:1.5px solid black;font-family:Arial,sans-serif;font-size:10px;font-weight:bold;color:black;line-height:1.2}
@@ -108,7 +116,7 @@ function buildCvIdentitas(v: (...keys: string[]) => string) {
   const tStr = tg.includes("KIRI")?"KIRI (左)":tg==="-"?"":"KANAN  (右)";
   let gd = v("GOLONGANDARAH","GOLDAR","identitas.golongan_darah"); if(gd==="-")gd="";
   let nr = v("id_kandidat","IDKANDIDAT","NOMOR","ID");
-  if(nr!=="-"){const m=String(nr).match(/(d{3,})$/);nr=m?"P - "+m[1]:nr;}else{nr="";}
+  if(nr!=="-"){const m=String(nr).match(/(\d{3,})$/);nr=m?"P - "+m[1]:nr;}else{nr="";}
   return {gStr,nStr,jStr,pStr,tStr,gd,nr};
 }
 function buildKertasA4(p: Record<string, any>) {
@@ -129,11 +137,11 @@ function buildKertasA4(p: Record<string, any>) {
   // Row 1: Photo + Nomor + Gender
   h+=btn+tr([rs11(foto),amber("実習生 NOMOR<br>番号"),center(nr),amber("性別&nbsp;&nbsp;&nbsp;JENIS KELAMIN"),center(gS)]);
   // Row 2: Nama + Usia
-  h+=tr([amber("名前&nbsp;&nbsp;&nbsp;NAMA",2),amber("年齢&nbsp;&nbsp;&nbsp;USIA"),center(E(v("USIA","UMUR","identitas.umur").replace(/D/g,""))+" 歳")]);
+  h+=tr([amber("名前&nbsp;&nbsp;&nbsp;NAMA",2),amber("年齢&nbsp;&nbsp;&nbsp;USIA"),center(E(v("USIA","UMUR","identitas.umur").replace(/\D/g,""))+" 歳")]);
   // Row 3: Nama Lengkap + Tinggi
-  h+=tr([td("<i>"+E(v("NAMALENGKAP","NAMA","identitas.nama_lengkap"))+"</i>","val-center uppercase",2),amber("身長&nbsp;&nbsp;&nbsp;TINGGI BADAN"),center(E(v("TB","TINGGI","fisik.tb").replace(/D/g,""))+" CM")]);
+  h+=tr([td("<i>"+E(v("NAMALENGKAP","NAMA","identitas.nama_lengkap"))+"</i>","val-center uppercase",2),amber("身長&nbsp;&nbsp;&nbsp;TINGGI BADAN"),center(E(v("TB","TINGGI","fisik.tb").replace(/\D/g,""))+" CM")]);
   // Row 4: Furigana + Berat
-  h+=tr([td("<i>"+E(v("FURIGANA","KATAKANA","NAMAKATAKANA","identitas.katakana"))+"</i>","val-center",2),amber("体重&nbsp;&nbsp;&nbsp;BERAT BADAN"),center(E(v("BB","BERAT","fisik.bb").replace(/D/g,""))+" KG")]);
+  h+=tr([td("<i>"+E(v("FURIGANA","KATAKANA","NAMAKATAKANA","identitas.katakana"))+"</i>","val-center",2),amber("体重&nbsp;&nbsp;&nbsp;BERAT BADAN"),center(E(v("BB","BERAT","fisik.bb").replace(/\D/g,""))+" KG")]);
   // Row 5: Panggilan + Goldar
   h+=tr([amber("NAMA PANGGILAN<br>ニックネーム"),td("<i>"+E(v("NAMAPANGGILAN","PANGGILAN","PANGGILANID","identitas.panggilan"))+"<br>"+E(v("PANGGILANKATAKANA","KATAKANAPANGGILAN","PANGGILANJP","identitas.panggilan_katakana"))+"</i>","val-center leading-tight"),amber("血液型&nbsp;&nbsp;&nbsp;GOLONGAN DARAH"),center(E(gd)+" 型")]);
   // Row 6: Tgl Lahir + Status Nikah
@@ -147,7 +155,7 @@ function buildKertasA4(p: Record<string, any>) {
   // Row 10: Tempat Lahir JP transliteration + Tangan
   h+=tr([td("<i>"+E(v("TEMPATLAHIRJP","identitas.tempat_lahir_jp")=="-"?"":v("TEMPATLAHIRJP","identitas.tempat_lahir_jp"))+"</i>","val-center",2),amber("利き手&nbsp;&nbsp;&nbsp;TANGAN AHLI"),center(tS)]);
   // Row 11: No HP + Riwayat Penyakit
-  h+=tr([amber("携帯電話番号&nbsp;&nbsp;&nbsp;NO HP"),center("+"+E(wa.replace(/D/g,""))),amber("病歴の有無&nbsp;RIWAYAT PENYAKIT<br>(KERAS, LUKA DLL)"),center(E(v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id")=="-"?"TIDAK (無)":v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id")))]);
+  h+=tr([amber("携帯電話番号&nbsp;&nbsp;&nbsp;NO HP"),center("+"+E(wa.replace(/\D/g,""))),amber("病歴の有無&nbsp;RIWAYAT PENYAKIT<br>(KERAS, LUKA DLL)"),center(E(v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id")=="-"?"TIDAK (無)":v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id")))]);
   // Alamat
   h+=tr([td("通信欄 ALAMAT RUMAH","bg-amber val-center",7)]);
   h+=tr([td(E(v("ALAMATLENGKAP","ALAMAT","ALAMATID","identitas.alamat_id","identitas.alamat")),"val-center uppercase font-normal",7)]);
@@ -179,7 +187,7 @@ function buildKertasA4(p: Record<string, any>) {
   h+="</table>";
   return h;
 }
-export default function RirekishoBuilder({waTarget,isOpen,onClose}:Props) {
+export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:Props) {
   const u = useStore(authStore) as {isLoggedIn?:boolean;role?:string};
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState("");
@@ -201,7 +209,7 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose}:Props) {
         const edu=getArr("pendidikan"),job=getArr("pekerjaan"),fam=getArr("keluarga");
         let tglAsli=v("TGLLAHIR","TANGGALLAHIR","identitas.tgl_lahir");let tglFmt="-";
         if(tglAsli!=="-"){const dt=new Date(tglAsli);if(!isNaN(dt.getTime()))tglFmt=dt.getFullYear()+"年"+String(dt.getMonth()+1).padStart(2,"0")+"月"+String(dt.getDate()).padStart(2,"0")+"日";else tglFmt=tglAsli;}
-        const photo = d.uploads?.photo||"";
+        const photo = (d.uploads && d.uploads.photo) || fotoFallback || "";
         // S4 fix: Escape photo URL and validate scheme (https only).
         // NOTE: gunakan `esc` langsung. `E` hanyalah alias lokal di dalam
         // buildKertasA4() (baris ~116) dan TIDAK terlihat dari scope ini —
@@ -224,7 +232,7 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose}:Props) {
   return h("div",{id:"rirek-modal",class:"fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 overflow-y-auto",onClick:(e)=>{if(e.target===e.currentTarget)onClose();}},
     h("div",{class:"bg-white rounded-xl shadow-2xl max-w-[210mm] w-full max-h-[95vh] overflow-y-auto p-6 relative"},
       h("button",{onClick:onClose,class:"absolute top-3 right-3 z-50 text-slate-500 hover:text-red-500 text-2xl print:hidden"},"×"),
-      loading&&h("div",{class:"text-center py-20 text-slate-500"},"Loading..."),
+      loading&&h("div",{class:"text-center py-20 text-slate-500"},t("ui.loading")),
       error&&h("div",{class:"text-center py-20 text-red-500"},error),
       !loading&&!error&&h("div",{class:"rirek-a4",dangerouslySetInnerHTML:{__html:html}}),
     ),
