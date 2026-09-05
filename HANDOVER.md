@@ -1004,3 +1004,753 @@ Pass i18n tiga lapis (saat ditulis: BELUM di-commit; dikunci sesi ini sebagai co
   valid UTF-8; EOL konsisten (i18n.ts CRLF, i18n-jp.ts LF sesuai blob HEAD).
 - Sisa uncommitted di luar pass ini: file playtest UX (10 file, sesi 2026-09-05 sebelumnya) —
   belum dikunci, menunggu commit terpisah.
+
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A08: ChangePasswordModal (ganti password)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-ganti-pass` + `js/04_auth.ts`
+  `bukaModalGantiPass`/`prosesGantiPasswordKandidat` + backend `_lib/actions-auth.ts`
+  `handleGantiPasswordKandidat`. Astro padanan: `src/components/ChangePasswordModal.tsx`
+  (trigger: tombol CandidateDash `ui.change_password`), endpoint `gantiPasswordKandidat`
+  → surface `surfaces/auth.ts` → `contexts/identity/service.ts changePassword`.
+- Root-fix #1 (backend, PATCH selalu gagal): Astro menulis
+  `password_diubah: new Date().toISOString()` padahal kolom live **boolean** (legacy menulis
+  `true`; `row-types.ts` menyatakan `password_diubah?: boolean`; writer lain pakai false).
+  PostgREST menolak seluruh PATCH → kandidat tak bisa ganti password sama sekali. Kini logika
+  hash+body diekstrak ke `buildPasswordPatch()` (pure, DB-free) → body
+  `{ password_kandidat: <bcrypt>, password_diubah: true }`.
+- Root-fix #2 (klien, sesi tak pernah terkirim): modal lama `fetch` mentah tanpa
+  sessionToken/Authorization → wrapper surface selalu menerima `''` → balas 'Akses ditolak.'
+  untuk semua orang. Kini lewat `apiClient` (`api.secure`) — token Bearer + body, penanganan
+  `sessionInvalid` (toast+redirect) terpusat; catch lokal diam agar tak toast ganda.
+- Root-fix #3 (guard backend): `isOwnerOrAdmin` → admin boleh ganti password kandidat; legacy
+  kandidat-owner-ONLY (`t.role==='kandidat' && normalizeWa(t.wa)===wa` → `sessionInvalid`
+  sebelum DB). Kini `requireRole(sessionToken,'kandidat')` + cek WA (admin/IDOR/refresh
+  ditolak — semua rejection sebelum DB, di-test DB-free).
+- Root-fix #4 (validasi 6–20): `schemas.gantiPassword` memakai `passwordField` (min 4) untuk
+  `baru`; kini `newPasswordField` zod `.min(6).max(20).regex(/^[^\s]+$/)` (server) + klien
+  mengikuti urutan & aturan legacy persis (isi semua → cocok → 6–20 tanpa spasi → hint).
+- Root-fix #5 (error shape): klien baca `data.error` yang tidak pernah dikirim Astro (backend
+  `message`) → fallback generik 'Password salah!'; kini `data.message || data.error`.
+- i18n: label hard-coded Indonesia → `t('changepass.*')` (title/old/new/confirm/btn/loading;
+  key `changepass.ok` baru di id+jp); hint disinkron ke copy legacy `ui.pass_new_hint`
+  (6-20 karakter, tanpa spasi, ≠ 4 digit terakhir No. WA) di kedua dict; tambah
+  autocomplete current/new-password + placeholder legacy (•••••• / 6-20 karakter).
+- Verifikasi: `npm run typecheck` exit 0; backend **27 file / 246 test** (+1 file/+8:
+  `contexts/service-a08.test.ts` — guard kandidat-owner-only, schema 6-20/no-space,
+  `buildPasswordPatch` boolean); frontend **12 file / 84 test** (+1 file/+6:
+  `ChangePasswordModal.test.tsx` — render copy, validasi kosong/cocok/6-20/no-space,
+  happy path args `[wa,lama,baru]` + toast sukses + onClose, error server `data.message`).
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A08 → ✅ 2026-09-05 (detail root-fix) + catatan
+  kronologi; urutan usulan berikutnya digeser ke A09.
+- Status tree: perubahan A08 UNCOMMITTED, menumpuk dengan 9 file playtest UX sesi sebelumnya
+  (BottomNav/LokerDetailModal/BaseLayout + 6 halaman) — total 16 M + 2 untracked test baru.
+
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A09: CvMiniModal (CV mini)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-cv-mini` + `js/03_candidate.ts`
+  `bukaModalCvMini`/`prosesSimpanCvMini`; action `simpanUpdateMaster` → legacy
+  `actions-master.ts` alias ke `handleSubmitMasterForm` (sama dgn Astro contexts/master-data
+  index alias — handler backend sudah contract-faithful, jadi seluruh akar bug A09 di sisi
+  klien). Astro padanan: `src/components/CvMiniModal.tsx` (trigger: tombol CandidateDash
+  `ui.update_cv_mini` / Profil), row kandidat ter-dekorasi sudah dipegang CandidateDash.
+- Root-fix #1 (sesi): modal lama `fetch` mentah tanpa sessionToken → surface master selalu
+  `sessionInvalid`; kini `api.secure('simpanUpdateMaster', [payload])` (token Bearer + body,
+  sessionInvalid/toast terpusat).
+- Root-fix #2 (prefill): bukaModalCvMini legacy mengisi field dari baris kandidat sendiri
+  (gender/usia/tb/bb/pendidikan/jft_text/ssw_text) — Astro lama buka kosong + default
+  gender LAKI-LAKI. Kini CandidateDash meneruskan field row mapCandidate via prop `prefill`
+  (data getAppData 'kandidat' → candidates[0] memang sudah ter-dekorasi) & modal mengisi:
+  gender dinormalisasi persis legacy (PRIA/L→LAKI-LAKI, WANITA/P→PEREMPUAN, '-'/kosong →
+  default LAKI-LAKI), usia/tb/bb digit-only (legacy safeSetVal replace non-digit), jft/ssw
+  '-' → ''. Helper murni `normalizeGender`/`digitsOnly`/`pendidikanLevel` di-export utk test.
+- Root-fix #3 (pendidikan): input free-text → select tetap legacy (SMA/SMK/MA/D3/S1 +
+  placeholder 'Pilih Pendidikan…'); nilai '-' (belum pilih) TIDAK dikirim supaya nilai lama
+  tidak ditimpa '-'. Free text lama tidak pernah round-trip ke `pendidikan_1_tingkat`, jadi
+  progres CV (badge) basi.
+- Root-fix #4 (foto): payload lama memakai key `photo` (base64) — handler bersama membaca
+  MASTER_FILE_COLUMNS yang memetakan `photoFile`→`pas_photo`; key `photo` DIBUANG diam-diam
+  (bug yang juga hidup di legacy live). Upgrade: kirim `photoFile` = URL Cloudinary →
+  PAS FOTO dari CV Mini benar-benar persist + sinkron ke `database_candidate.pas_photo`.
+- Root-fix #5 (refresh): legacy memanggil refreshDataDinamis() setelah sukses; kini dispatch
+  `candidates-changed` (CandidateDash punya listener sejak A05) + toast `ui.toast_cvmini_updated`.
+- i18n: header hard-coded 'Update CV' → `t('ui.update_cv_mini')`; kunci baru id+jp
+  (`ui.master_update_hint`, `ui.save_cv_mini`, `ui.toast_cvmini_updated`, `ui.latest_photo`,
+  `cvmini.pilih_pendidikan` — nilai JP mengikuti copy legacy locales); `cvmini.ssw` disinkron
+  dari 'SSW Score' → 'Bidang SSW' / 'SSW分野' (makna legacy); label lainnya tetap key
+  cvmini.*/form.* yang sudah ada di kedua dict.
+- Verifikasi: `npm run typecheck` exit 0; backend **28 file / 251 test** (+1 file/+5:
+  `contexts/service-a09.test.ts` — alias simpanUpdateMaster==submitMasterForm + guard
+  anon/refresh/IDOR-kandidat/WA-kosong, semua rejection DB-free); frontend **13 file / 91
+  test** (+1 file/+7: `CvMiniModal.test.tsx` — render copy & opsi pendidikan, prefill
+  + normalisasi gender/angka/level, payload tanpa photo/photoFile & tanpa pendidikan '-',
+  pilih SMA → payload.pendidikan, pilih foto → payload.photoFile, error `data.message`);
+  guard coverage i18n ikut hijau (kunci baru ada di id+jp, tanpa duplikat).
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A09 → ✅ 2026-09-05 + catatan kronologi; urutan
+  usulan berikutnya digeser ke A10.
+- Status tree: perubahan A09 UNCOMMITTED, menumpuk dengan A08 + 9 file playtest UX sesi
+  sebelumnya — total 18 M + 4 untracked test baru (A08/A09 backend & frontend).
+
+
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A10: Preview CV / Rirekisho (RirekishoBuilder)
+
+- Ground truth legacy: `js/10_cv_rirekisho.ts` (`bukaPreviewCV` kandidat /
+  `bukaPreviewCV_Admin` tabel admin → `prosesBukaRirekisho` → `getDrafCvMaster`
+  + `renderCVAjaib`) + `js/10b_cv_builders.ts` (buildEduRows/buildJobRows/
+  buildFamRows/buildCvIdentitas/buildCvKertasA4) + `js/helpers_cv.ts`
+  (makeV/fmtMonthYearJp/mergeArrRiwayat/esc). Astro padanan: engine yang sama
+  sudah ada sebagai `src/components/admin/RirekishoBuilder.tsx` (dipakai admin
+  TabPelamar tombol CV) — jadi preview CV kandidat TINGGAL di-wire ke engine ini.
+- Root-fix #1 (tombol kandidat mati): CandidateDash "Preview Desain CV"
+  (`candidate.btn_preview_cv`) lama membuka `DocumentPreviewModal` dengan URL
+  KOSONG → modal fallback "Tidak bisa dipratinjau" (tidak menampilkan CV apa
+  pun). Kini membuka `RirekishoBuilder` dengan waTarget = WA sesi kandidat
+  (engine renderCVAjaib; role kandidat → badge "MODE PREVIEW", tanpa tombol
+  cetak — parity legacy). State DocumentPreviewModal yang hanya dipakai tombol
+  itu dihapus dari CandidateDash.
+- Root-fix #2 (foto fallback): legacy renderCVAjaib memilih uploads.photo master
+  dulu, lalu fallback `pasPhoto` baris kandidat (ALL_CANDIDATES) kalau master
+  kosong; builder Astro hanya membaca `d.uploads.photo` → foto kosong padahal
+  `pas_photo` ada (mis. CV Mini A09 mengisi pas_photo). Kini prop `fotoFallback`
+  (validasi https + escape sama seperti foto utama); TabPelamar (tombol CV
+  admin) & CandidateDash meneruskan `row.pasPhoto`; tipe store `Kandidat`
+  ditambah `pasPhoto?: string`.
+- Root-fix #3 (BUG port tanggal/format rirekisho): regex hasil migrasi
+  KEHILANGAN backslash — `\d` jadi literal `d` dan `\D` jadi literal `D`:
+  - `helpers_cv.ts fmtMonthYearJp`: `/^d{4}$/` & `/^(d{4})[-/](d{1,2})/`
+    tidak pernah match → tahun saja "2024" jatuh ke `new Date('2024')` =
+    Januari 2024 → **2024年1月** (harus `2024年`); format YYYY-MM lolos hanya
+    karena Date-parse kebetulan. Dikoreksi ke `\d`.
+  - `RirekishoBuilder.tsx`: `.replace(/D/g,"")` untuk strip non-digit usia/
+    TB/BB/no-HP (mencocokkan huruf 'D' literal, bukan non-digit) & regex nomor
+    rirekisho `P - xxxx` `/(d{3,})$/` → dikoreksi ke `\D` / `\d` (parity
+    js/helpers_cv.ts + 10b_cv_builders.ts).
+  - Residual serupa ditemukan di `public/LokerTable.tsx` (fallback sort
+    `.replace(/D/g,"")` kode job) — DI LUAR unit A10, belum diubah (butuh
+    konfirmasi bentuk legacy jobs list dulu).
+- Kecil: loading "Loading..." hard-coded → `t('ui.loading')` (ada id+jp).
+- Verifikasi: `npm run typecheck` exit 0; backend **28 file / 251 test** (tak
+  berubah); frontend **15 file / 106 test** (+2 file/+15: `helpers_cv.test.ts`
+  +9 — fmtMonthYearJp tahun/tahun-bulan/kosong, mergeArrRiwayat union+dedupe &
+  string-JSON, esc HTML, getPath/makeV/isGood; `RirekishoBuilder.test.tsx` +6 —
+  preview kandidat MODE PREVIEW tanpa cetak + isi data + tanggal lahir JP
+  `1995年08月14日` & bulan masuk `2010年4月`, admin tombol Cetak Rirekisho/Simpan
+  PDF, error getDrafCvMaster asli, fotoFallback & prioritas uploads.photo,
+  isOpen=false null). Guard coverage i18n ikut hijau (ui.loading dsb di kedua
+  dict).
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A10 → ✅ 2026-09-05 + catatan
+  kronologi (termasuk residual LokerTable); urutan usulan berikutnya digeser ke
+  A11.
+- Status tree: perubahan A10 UNCOMMITTED, menumpuk dengan A08/A09 + 9 file
+  playtest UX — helper staging siap dibuat terpisah per unit kapan pun.
+
+
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A11: Admin AI Copilot (AdminAiCopilot)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-admin-ai` + `js/ai_copilot/admin.ts`
+  (`bukaAdminAiCopilot`/`kirimPesanAdminAi`/`tambahPesanAdminAi`) + `parse.ts`
+  (`uploadDokumenBiodataAdmin`) + `results.ts` (`generateWawancaraModelAdmin`/
+  `lihatHasilWawancaraAdmin`/`updateBiodataDariHasilAdmin`) + backend `_lib/ai/chat.ts`
+  `handleProcessAdminAIChat`/`handleGenerateWawancaraModel`/`handleGetHasilWawancara` +
+  `_lib/ai/classify.ts handleParseDokumenBiodata`. Astro padanan: `src/components/admin/AdminAiCopilot.tsx`
+  (trigger: menu admin App.tsx / tombol AI CV TabPelamar → AdminPanel), surface `ai.ts` + `ingest.ts`.
+- Root-fix #1 (UI, chat tampak mati): pesan dikumpulkan ke state `messages` tapi JSX chat HANYA
+  menampilkan typing indicator — seluruh percakapan tidak pernah dirender. Kini bubbles dirender
+  (esc HTML + **bold** → `<b>`, parity legacy `tambahPesanAdminAi`); helper `boldHtml` di-export.
+- Root-fix #2 (semua aksi): 5 call (`processAdminAIChat`/`parseDokumenBiodata`/
+  `generateWawancaraModel`/`getHasilWawancara`/`submitMasterForm`) memakai raw fetch TANPA session
+  token → wrapper surface menerima `''` → semua kena guard (defect class A08/A09). Kini lewat
+  `api.secure` (Bearer + body, sessionInvalid/network toast+redirect terpusat).
+- Root-fix #3 (parse mati di backend): `surfaces/ingest.ts` men-queue job `ingest.parse` yang
+  worker-nya `NOT_IMPL` di `sweep-queue.ts`, sedangkan handler asli (guard admin → Gemini →
+  `{wa,data,fieldCount,fileName,namaSekarang,riwayat}`) ada di `_lib/ai/classify.ts` dalam keadaan
+  ORFAN (tak diregister siapa pun). Kini surface memanggil handler asli sinkron (kontrak legacy);
+  baris worker `ingest.parse` NOT_IMPL dihapus. Di-pin DB-free (anon/kandidat/refresh ditolak
+  sebelum DB; admin + validasi file sync — bukan `{status:'accepted',jobId}`).
+- Root-fix #4 (parse dua langkah): legacy `uploadDokumenBiodataAdmin` = parse → `submitMasterForm`
+  ({wa, ...data}) — biodata hasil parse BENAR-BENAR di-persist. Modal lama cuma parse lalu toast
+  "berhasil" dan membuang data (`data.fieldCount` juga selalu 0 karena respons job enqueue).
+  Alur dua-langkah dipulihkan + dispatch `candidates-changed` (refresh tabel pelamar).
+- Root-fix #5 (candidateId salah): TabPelamar dispatch `{wa,nama}` tanpa `id`; AdminPanel mengirim
+  `candidateId={target?.nama}` (nama dianggap ID, padahal backend resolve by `id_kandidat`).
+  Kini detail `{id, wa, nama}` → prop `candidateId = id`.
+- Root-fix #6 (parity hasil wawancara): ringkasan chat kini menyertakan updatedAt, nilai, field
+  biodata, backfill WA dari respons (legacy `lihatHasilWawancaraAdmin`); kartu hasil menampilkan
+  updatedAt & nilai.
+- i18n/copy: 18 key baru di id+jp (`ui.ai_copilot`; `admin.ai_tab_chat/parse/results`,
+  `admin.ai_upload_label`, `admin.ai_btn_parse/model/update_bio`, `admin.ai_results_title`,
+  `admin.ai_candidate_label`, `admin.ai_updated_label`, `admin.ai_field_biodata`;
+  `ai.status_parsing/generating/fetching/updating`, `ai.parse_ok_title`, `ai.bidang_label`);
+  label menu AI HR Copilot di App.tsx ikut `t('ui.ai_copilot')`. Verifikasi intent: backend
+  `handleProcessAdminAIChat` free-form Gemini (tanpa keyword-parser) → chip saran aman dii18n-kan.
+- Bonus residual A10: `public/LokerTable.tsx` fallback-sort `replace(/D/g)` (literal) →
+  `replace(/\D/g)` strip non-digit (parity `js/render/{admin,public}.ts`).
+- Gate: backend 29 file/257 test (+6 `service-a11.test.ts`), frontend 16 file/115 test (+9
+  `AdminAiCopilot.test.tsx` + boldHtml unit), typecheck exit 0, guard i18n hijau (18 key baru ada
+  di kedua dict, tanpa duplikat). Dict id tetap CRLF-mixed pra-ada (blok sisipan A09), jp LF.
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A11 → ✅ 2026-09-05 + entri kronologi (catatan
+  residual LokerTable ditutup); urutan usulan digeser ke A12.
+- Status tree: perubahan A11 UNCOMMITTED, menumpuk dengan A08/A09/A10 + 9 file playtest UX —
+  helper staging siap dibuat terpisah per unit kapan pun.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A12: Rincian Biaya & Tahapan builder (RincianBiayaModal)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-rincian-builder` + `js/13_rincian_builder.ts`
+  (`openRincianBuilder`/`rbSerialize`/`rbSeedFromText`/`rbSavePreset`/`rbUnsavePreset`) + form
+  tambah/edit loker admin (field `ef-total-biaya`/`ef-rincian-biaya`) + deep docs. Astro padanan:
+  tab tambah loker `src/components/admin/TabTambah.tsx`, edit `AdminJobEditModal.tsx`, parser
+  publik teks rincian `src/components/public/LokerDetailModal.tsx parseRincianBiaya`.
+- Root-fix #1 (dead button): tombol "Buka Editor Rincian" di TabTambah TANPA onClick (mati) dan
+  `rincian_biaya` tak pernah dikirim (hanya `totalBiaya`). Komponen builder baru
+  `src/components/admin/RincianBiayaModal.tsx` — port setia `#modal-rincian-builder` +
+  `js/13_rincian_builder.ts` (rows nominal + jt, tahapan, chip INCLUDE/EXCLUDE/BENEFIT/PERSYARATAN,
+  CATATAN, preset favorite star). Helper murni di-export utk test: `rincianSerialize`/
+  `parseRincianState`/`fmtNominal`/`rincianSummary` + konstanta `DEFAULT_PRESETS` (fallback legacy).
+- Root-fix #2 (edit loker tak punya field): `AdminJobEditModal` sama sekali tanpa total/rincian;
+  legacy edit form membawa ef-total-biaya + ef-rincian-biaya. Kini kedua kolom ada, editable, dan
+  membuka builder yg sama; `editLokerFull` mengirim `totalBiaya`+`rincianBiaya` via `api.secure`.
+- Root-fix #3 (endpoint tak pernah dipakai): `getRincianPresets`/`saveRincianPreset`/
+  `deleteRincianPreset` sudah ada di backend (surface config) tapi TIDAK PERNAH dipanggil UI mana
+  pun. Builder kini load preset DB + save/unsave favorite (star), fallback DEFAULT_PRESETS bila
+  koleksi kosong/gagal.
+- Root-fix #4 (submit salah jalur): TabTambah mengirim raw multipart POST ke action fiktif
+  `submitFormAdmin` (tak ada di surface — backend memetakan `simpanJobBaru`), jd guard tak pernah
+  cocok. Kini `api.secure('simpanJobBaru', [payload])` dgn payload `{...totalBiaya, rincianBiaya,
+  templateFile, pamfletFile, ...}` (Bearer + body, sessionInvalid/network terpusat).
+- Format round-trip: teks rincian yg disimpan di kolom `total_biaya`+`rincian_biaya` kini stabil
+  thd parser publik popup detail loker (`LokerDetailModal.parseRincianBiaya`) — TOTAL BIAYA /
+  TAHAPAN PEMBAYARAN bernomor / bullet INCLUDE-EXCLUDE-BENEFIT-PERSYARATAN / CATATAN, angka
+  nominal ribuan w/o spasi-jt saat edit.
+- i18n/copy: ~21 key baru id+jp (`ui.rincian_biaya`, judul modal/btn simpan/batal, preset
+  section/star labels, `ui.biaya_total`, status `ui.summary_empty`, dll) — tidak ada copy
+  hard-coded baru yg punya key; guard coverage tetap hijau, kedua dict valid UTF-8.
+- Verifikasi: +5 test backend (`contexts/service-a12.test.ts` — guard preset DB-free:
+  anon/kandidat/refresh ditolak sebelum DB, admin + payload kosong → error validasi) dan +10 test
+  frontend (`admin/RincianBiayaModal.test.tsx` — serialize round-trip, parse→seed, preset load,
+  favorite save/delete, custom item+chip, initialTotal saja, closed state). Gate: backend 30
+  file/262 test, frontend 17 file/125 test (termasuk guard i18n), `npm run typecheck` exit 0.
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A12 → ✅ 2026-09-05 + entri kronologi; urutan usulan
+  digeser ke A13.
+- Status tree: perubahan A12 UNCOMMITTED, menumpuk dgn A08–A11 + 9 file playtest UX — helper
+  staging siap dibuat terpisah per unit kapan pun.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A13: Laporan Bulanan (LaporanBulananModal)
+
+- Ground truth legacy: `js/render/candidate.ts` `showMonthlyReport()` (trigger tombol
+  `data-action="showMonthlyReport"` di index/admin.html) + backend `handleGetMonthlyReport`
+  (`netlify/functions/_lib/actions-public.ts` — guard admin → light projection SEMUA kandidat →
+  group per loker + tahapan + status → `{success, report[], totalCandidates, generatedAt}`) +
+  `assets/jp-locale.js` (nilai JP: `admin.monthly_report` 月次レポート, `report_title`
+  職種別候補者レポート, `report_total` 合計, `report_by_stage` 選考段階別, `report_by_status`
+  ステータス別, `report_empty` 候補者データがありません。). Astro padanan: `src/components/admin/
+  LaporanBulananModal.tsx` + backend `contexts/catalog/service.ts handleGetMonthlyReport`
+  (port setia — guard admin, bentuk respons identik; TIDAK berubah di pass ini).
+- Root-fix #1 (modal tak pernah memanggil backend): komponen lama meng-agregasi store
+  `kandidatList` klien (hanya halaman aktif yang termuat/terfilter ±20–50 baris, punya
+  pagination sendiri) → \"laporan\" = subset tak lengkap, tidak pernah sama dengan legacy yang
+  menghitung atas SEMUA kandidat di server. Kini `api.secure('getMonthlyReport')` (Bearer +
+  body; sessionInvalid/network terpusat di apiClient) saat modal terbuka + state loading.
+- Root-fix #2 (metadata + empty-state hilang): header Total (`admin.report_total`) +
+  totalCandidates + tanggal `generatedAt.slice(0,10)` dan teks `admin.report_empty` (saat
+  report []) kini dirender — dulu tidak ada sama sekali.
+- Root-fix #3 (i18n/hard-code): judul \"Laporan Kandidat per Loker\", \"Total\", \"Per
+  Loker/Tahapan/Status\", \"Tutup\" semua hard-coded → 6 key baru id+jp (`admin.monthly_report`,
+  `admin.report_title`, `admin.report_total`, `admin.report_by_stage`, `admin.report_by_status`,
+  `admin.report_empty`; nilai id/jp mengikuti copy legacy + jp-locale.js). Tombol pemicu di
+  TabPelamar (\"Laporan Bulanan\") ikut `t('admin.monthly_report')`. Kartu per-loker kini memakai
+  chip tahapan+status (parity legacy) + info-toast announce judul laporan saat dibuka (perilaku
+  legacy `showMonthlyReport`). Kontrak data/payload/guard backend terverifikasi identik —
+  tidak ada perubahan backend.
+- Verifikasi: +6 test frontend (`admin/LaporanBulananModal.test.tsx` — closed tanpa fetch;
+  open → `api.secure('getMonthlyReport')` + render data server (loker/chip/header tanggal);
+  empty → `admin.report_empty`; error server → toast `ui.toast_failed_prefix` + pesan asli;
+  network catch → toast error; close → store false). Gate: frontend 18 file/131 test (termasuk
+  guard i18n `i18n.keys.test.ts` — 6 key baru hadir di id+jp), backend 30 file/262 test,
+  `npm run typecheck` exit 0. Kedua dict valid UTF-8.
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A13 → ✅ 2026-09-05 + entri kronologi; urutan usulan
+  digeser ke A14.
+- Status tree: perubahan A13 UNCOMMITTED, menumpuk dgn A08–A12 + 9 file playtest UX — helper
+  staging siap dibuat terpisah per unit kapan pun.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A14: Matchmaking AI (MatchmakingModal)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-matchmaking` + `js/12_esign_match.ts`
+  (`bukaMatchmaking(jobCode, jobName, reqGender)` / `jalankanMatchmaking()` /
+  `kirimTawaranMassal()` — filter gender/usia/TB/BB/pendidikan/keyword/JFT/SSW atas
+  `ALL_CANDIDATES`, sort kelengkapan, blast `kirimTawaranMassal` dgn
+  `{candidates, jobCode, linkGrup, customMessage}` + `window.confirm`) + label JP di
+  `assets/jp-locale.js`. Astro padanan: `src/components/admin/MatchmakingModal.tsx` (trigger:
+  tombol Match TabDbJob → setMatchJob(db), candidates = `allKandidatList`).
+- Root-fix #1 (rule hilang): legacy RULE 1b — kandidat yg `idLoker`-nya sudah berisi kode job
+  ini TIDAK ikut match (jangan menawari kandidat yg sudah mendaftar di job yg sama). Astro lama
+  hanya cek status AKTIF — blast bisa menawari kandidat yg sudah ada di job tsb. Kini rule
+  dijalankan (case-insensitive `includes` thd job.code, parity legacy).
+- Root-fix #2 (sertifikat salah field): kelengkapan JFT/SSW dibaca dari field FILE (`jft`/`ssw`
+  = URL file) padahal legacy memakai TEKS nilai (`jftText`/`sswText`; `-` berarti belum ada).
+  Sort prioritas, aturan \"Wajib JFT/SSW\", dan badge hasil kini konsisten via helper
+  `hasCert()` (di-export utk test) atas `jftText`/`sswText`.
+- Root-fix #3 (gender autofill): hanya mengenali 'LAKI'/'PEREMPUAN'; legacy juga 'PRIA'/
+  'WANITA'. Helper murni `genderFromJob(reqGender)` (L/P/ALL) menangani keempat varian &
+  dipakai inisialisasi + reset (parity bukaMatchmaking).
+- Root-fix #4 (hasil tanpa batas): legacy menampilkan maks 30 agar tidak lag
+  (`matchedCandidates.slice(0, 30)`). Kini `slice(0, 30)`; counter tetap total match. State
+  empty dibedakan: hint awal (`ui.match_hint`) vs hasil kosong setelah pencarian (`ui.no_match`).
+- Root-fix #5 (blast): raw fetch tanpa session token + payload cuma `{candidates, jobCode}` +
+  tanpa konfirmasi. Kini `api.secure('kirimTawaranMassal')` (Bearer + body, sessionInvalid/
+  network terpusat) dengan payload kontrak legacy `{candidates, jobCode, linkGrup,
+  customMessage}` (template WA parity legacy), didahului `window.confirm`; toast pakai
+  `ui.toast_no_cand_offer` / `ui.toast_offer_sent_n` / `ui.toast_offer_send_failed`.
+- i18n/copy: ~26 key baru id+jp (`ui.ai_headhunter`, `ui.target_job`, `ui.search_criteria`,
+  `ui.start_specific_search`, `ui.match_hint`, `ui.sifting_db`, `ui.no_match`, `ui.age_range`,
+  `ui.min_height`, `ui.max_weight`, `ui.min_education`, `ui.experience_skills`,
+  `ui.require_jft`, `ui.require_ssw`, `ui.send_offer_all`, `ui.found_n`, `ui.confirm_offer_n`,
+  `ui.offer_msg_template`, `ui.kw_ph`, `ui.gender_all`, `ui.edu_none/sma/diploma/s1`,
+  `ui.years_short`, `candidate.form_gender`, `admin.btn_match`); 3 key toast offer yg semula
+  HANYA di id kini ditambahkan ke jp (`ui.toast_no_cand_offer`, `ui.toast_offer_sent_n`,
+  `ui.toast_offer_send_failed` — nilai dari jp-locale.js legacy). Tombol Match di TabDbJob →
+  `t('admin.btn_match')`. Guard i18n hijau (143 test frontend termasuk keys test).
+- Verifikasi: +12 test frontend (`admin/MatchmakingModal.test.tsx` — helper genderFromJob
+  (LAKI/PRIA/PEREMPUAN/WANITA) & hasCert; rule 1b exclude kandidat yg sudah di job; non-AKTIF
+  ditolak; wajib-JFT baca jftText (file saja tak cukup); cap 30; sort LENGKAP lebih dulu;
+  empty → ui.no_match; blast confirm→`api.secure('kirimTawaranMassal')` payload kontrak
+  (jobCode/candidates/linkGrup/customMessage) + toast + close; tanpa confirm → tak ada call;
+  results kosong → toast no_cand_offer & tombol blast tak tampil). Gate: frontend 19 file/143
+  test, backend 30 file/262 test (tanpa perubahan backend — kontrak `handleKirimTawaranMassal`
+  sudah menerima payload legacy), `npm run typecheck` exit 0. Kedua dict valid UTF-8.
+- Dokumen: `docs/PARITY_CHECKLIST.md` baris A14 → ✅ 2026-09-05 + entri kronologi; urutan usulan
+  digeser ke A15.
+- Status tree: perubahan A14 UNCOMMITTED, menumpuk dgn A08–A13 + 9 file playtest UX — helper
+  staging siap dibuat terpisah per unit kapan pun.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A15: Share settings job (AdminShareModal)
+
+- Ground truth legacy: `partials/modals-shared.html` `#modal-share-loker` + `js/render/share.ts`
+  (`bukaModalShare`/`renderShareCheckboxes`/`simpanDokumenShare`/`templateShareWa`/
+  `copyShareLink`/`copasShareWa`) + `share.html?job=CODE`. Astro padanan sebelumnya:
+  `AdminShareModal.tsx` (checkbox hard-coded, tak pernah simpan) + `ShareView.tsx` (param
+  `?code` keliru) + `netlify/functions/share-data.js` (stub NOT_IMPLEMENTED → seluruh alur
+  share card mati).
+- Root bugs yang diperbaiki:
+  1. **Endpoint share view MATI total** — `share-data.js` masih stub; handler nyata
+     `handleShareData` (publik guard-less, lookup job + dokumen kandidat) sudah ada di
+     contexts/catalog & di-re-export `_lib/handlers`. Kini file delegasi ke handler
+     (GET `?job=`, error → 400).
+  2. **ShareView baca `?code=`** padahal legacy dan link yang dibangkitkan modal memakai
+     `?job=CODE` → tautan mendarat kosong. Kini `?job` (perbaikan satu baris).
+  3. **TabKelola fetch tanpa session token** → `getAppData` admin selalu sessionInvalid
+     (defect class A08); baris `Loker` juga tak punya `dokumenShare`/`tsk` sehingga tombol
+     Share tak punya data simpanan. Kini `api.secure` + tipe Loker membawa kedua field.
+  4. **Pemilihan dokumen tidak pernah memuat maupun menyimpan `dokumenShare`** — 4 checkbox
+     hard-coded; handler backend `updateDokumenShare` ada tapi tak pernah dipanggil UI. Kini
+     modal memuat chips legacy penuh `SHARE_DOC_CHIPS` (CV/JFT/SSW/SIM A/KTP/KK/AKTE/IJAZAH/
+     IJAZAH SD/SMP/SMA/UNIVERSITAS/ALL, default `CV,JFT,SSW`) pre-check dari
+     `job.dokumenShare`, dan simpan via `api.secure('updateDokumenShare', [code, joined])`.
+     Nilai simpanan di luar daftar tetap dirender (parity legacy).
+  5. **WA copas memakai pesan sekali-pakai** — kini preview + copas memakai template legacy
+     `templateShareWa` (お疲れ様です / DOKUMEN KODE - PEKERJAAN / KAMI APLOD/UPDATE DI SINI /
+     link) dari kode + pekerjaan job + link share.
+  6. **Klik dalam modal ikut menutup via backdrop** (tanpa stopPropagation di div konten) —
+     ditambah, parity modal Astro lain.
+  7. **Copy hard-coded & key `toast.*` tak ada di kamus** → deret key legacy id+jp
+     (`ui.share_modal_title`/`share_link_view`/`share_card_title`/`share_doc_*`/
+     `share_template_label`/`share_open_view`/`share_copas_wa`/`save_share`/`share_card_hint` +
+     `admin.doc_ijazah_*` + toast sukses/gagal kopi).
+- Helper murni di-export untuk test: `parseDocsShare` (split koma/titik-koma, `SIM A` utuh,
+  fallback default `CV,JFT,SSW`), `shareDocLabelKey`, `SHARE_DOC_CHIPS`, `shareWaTemplate`.
+- Kode ikut berubah di luar modal: `share-data.js` (+test), `ShareView.tsx`, `TabKelola.tsx`
+  (session + tipe Loker), `src/store/i18n.ts` + `i18n-jp.ts`.
+- Gates: `npm run typecheck` exit 0; backend 31 file / 266 test hijau (+1 file/+4:
+  `share-data.test.ts` — delegasi handler, `?job` dibaca, tanpa guard, error → 400, DB-free);
+  frontend 20 file / 154 test hijau (+1 file/+11: `AdminShareModal.test.tsx` — helper murni,
+  pre-check dari dokumenShare, toggle, save payload/close/toast sukses, gagal → toast + tanpa
+  close, link `?job=`, chip simpanan non-listed, backdrop tak menutup saat klik Simpan);
+  guard i18n `i18n.keys.test.ts` ikut hijau (key baru di id DAN jp).
+- Berkas utama berubah pada sesi ini: `AdminShareModal.tsx` (rewrite), `AdminShareModal.test.tsx`
+  (baru), `share-data.js` + `share-data.test.ts` (baru), `ShareView.tsx`, `TabKelola.tsx`,
+  `src/store/i18n.ts`, `src/store/i18n-jp.ts`, `docs/PARITY_CHECKLIST.md`, `HANDOVER.md`.
+- Status tree: perubahan A15 UNCOMMITTED, menumpuk dgn playtest UX + A08–A14 — helper staging
+  siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: A16 — AI Interview simulator (`bukaSimulatorInterview`) — cek
+  keberadaan dulu (mungkin di dalam EditCandidate?) sebelum crosscheck.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A16: Simulator Wawancara VIP (InterviewSimulatorModal)
+
+- Ground truth legacy: `#modal-interview` (partials/modals-shared.html) +
+  `js/ai_copilot/interview.ts` (`bukaSimulatorInterview`/`mulaiWawancaraInterview`/
+  `sendInterviewMessage`/`selesaikanWawancaraInterview`/`kirimHasilWawancaraKeAdmin`/
+  `cobaParseJsonLoose`) + gate `isVipCatatan` di `js/03_candidate.ts`. Astro padanan
+  sebelumnya: TIDAK ADA — tombol "Latihan Interview" CandidateDash = `<a href="/ai-cv">`
+  (duplikat tombol AI CV Master Assistant).
+- Root bugs yang diperbaiki:
+  1. **Fitur tidak pernah ada di Astro** — chat simulator wawancara (Jeklin Sensei,
+     `#modal-interview`) tidak pernah di-port. Kini `InterviewSimulatorModal.tsx` port
+     penuh: reset chat + greeting per bidang SSW (typing dots + label), bubble user/AI
+     (**bold** → <b>, pre-wrap), tiap giliran kirim 20 chat terakhir (`history.slice(-20)`),
+     penanda `===HASIL===` di reply → JSON `hasil` → `simpanHasilWawancara` (admin update
+     biodata); tombol hijau Selesai (`check-double`) → `selesaikanWawancara` (rangkum
+     transcript via Gemini, deterministik) → simpan + toast sukses; bubble ringkasan akhir
+     (skor x/10 + nilai, jumlah field biodata, rekomendasi, status terkirim/gagal ke admin).
+  2. **Gate VIP/KELAS hilang & regex backend lapuk** — legacy `bukaSimulatorInterview` cek
+     `isVipCatatan(catatanInt)`; rule TIGHTENED legacy (2026-09): HANYA literal `[VIP]`
+     atau `[KELAS xx]` (regex lama `/\[(?:KELAS…|[A-Z0-9]+)\]/` menyamakan tag apa pun spt
+     [MCU]/[VISA]/[NOTE] sebagai VIP). Backend `_lib/ai/chat.ts` masih regex LAMA → di-sync
+     via modul baru `interview-shared.ts` (`isVipCatatan` di-export, dipakai ulang sama oleh
+     klien lewat `canAccessInterview` — satu rule). CandidateDash menyimpan `catatanInt`
+     mentah dan menutup modal dengan toast `ui.toast_feature_locked` bila tidak lolos.
+  3. **Chat interaktif mati (latensi menit)** — surface `processAiInterview` me-enqueue job
+     `ai.interview` (sweep 2 menit); giliran wawancara harus real-time spt legacy callAPI
+     (preseden A11: admin copilot chat dibuat sinkron). Kini surface memanggil handler asli
+     sinkron; worker `ai.interview` tetap terdaftar di sweep-queue agar job lama ter-drain.
+  4. **Handler tak pernah unwrap args ARRAY** — apiClient/job queue kirim `[{wa,
+     candidateName, history}]`, tapi `handleProcessAiInterview` membaca `p.wa` dari ARRAY
+     (bukan `payload[0]`) → wa/nama/history DIBUANG di tiap giliran (chat tanpa konteks
+     kandidat & history kosong). `unwrapInterviewPayload` + `lastHistory(20)` (parity
+     slice(-20)) di `interview-shared.ts`, dipakai handler & diuji end-to-end (history nyata
+     sampai ke provider).
+  5. **Copy hard-coded** → 21 key baru id+jp: `ui.interview_sim`, `ui.ai_interview_done_btn/
+     done_text/not_started/summarizing/sent`, `ui.toast_feature_locked`,
+     `ui.toast_session_invalid_relogin`, `ui.iv_typing/send/greet_fallback/
+     err_disconnect/err_summarize/res_title/res_skor/res_bio_fields/res_rekom/
+     res_sent_ok/res_sent_fail` + `admin.interview_ph`; `ui.interview_practice` id di-sinkron
+     ke teks legacy "Latihan Interview". Nilai JP diambil dari `i18n/locales/jp/*` legacy;
+     yang legacy biarkan hard-coded (typing/summary/error) diberi nilai JP baru konsisten.
+- Helper murni di-export untuk test: `canAccessInterview`, `parseJsonLooseChat`,
+  `boldSegments`, `buildHasilSummaryText` (modal) + backend `isVipCatatan`,
+  `unwrapInterviewPayload`, `lastHistory` (`interview-shared.ts`).
+- Kode ikut berubah di luar modal: `CandidateDash.tsx` (state + openInterview + host +
+  `catatanInt`), `surfaces/ai.ts` (sync), `_lib/ai/chat.ts` (unwrap + import rule),
+  `_lib/ai/interview-shared.ts` (baru), `src/store/i18n.ts` + `i18n-jp.ts`.
+- Gates: `npm run typecheck` exit 0; backend 32 file / 277 test hijau (+1 file/+11:
+  `service-a16.test.ts` — helper VIP/unwrap/history, guard anon/admin/refresh pre-DB lewat
+  surface sync (bukan bentuk {status:accepted}), unwrap end-to-end ke provider mock);
+  frontend 21 file / 167 test hijau (+1 file/+13: `InterviewSimulatorModal.test.tsx` —
+  helper, greeting empty-history, typing indicator, kirim Enter + history 2 giliran, marker
+  ===HASIL=== → simpanHasilWawancara + bubble ringkasan, Selesai → payload transcript +
+  toast + ringkasan, gagal rangkum → bubble error, network → disconnect, fallback greeting,
+  close); guard i18n `i18n.keys.test.ts` ikut hijau.
+- Catatan residual (bukan scope A16): `handleProcessAIChat` (AI CV master) tampaknya juga
+  belum unwrap args array — ditandai utk unit C03/ai-cv mendatang.
+- Berkas utama berubah pada sesi ini: `InterviewSimulatorModal.tsx` + test (baru),
+  `CandidateDash.tsx`, `surfaces/ai.ts`, `_lib/ai/chat.ts`, `_lib/ai/interview-shared.ts`
+  + `contexts/service-a16.test.ts` (baru), `src/store/i18n.ts`, `src/store/i18n-jp.ts`,
+  `docs/PARITY_CHECKLIST.md`, `HANDOVER.md`.
+- Status tree: perubahan A16 UNCOMMITTED, menumpuk dgn playtest UX + A08–A15 — helper staging
+  siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: A17 — Edit loker (modal/ops job `admin_modal/job.ts`,
+  `AdminJobEditModal.tsx` — sebagian sudah dirambah A12 untuk field rincian biaya).
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A17: Edit loker full (AdminJobEditModal)
+
+- Ground truth legacy: `js/api/jobs.ts` (`bukaEditFullLoker`/`submitEditFullLoker`) +
+  `partials/modals-shared.html` `#modal-edit-full-loker` (ef-code/pekerjaan/kategori/
+  lokasi/gender/syarat/keterangan/tsk/kuota/template/pamflet/total-biaya/rincian-biaya) +
+  row action di `render/admin.ts` (bukaEditFullLoker). CATATAN matriks: checklist
+  menunjuk `admin_modal/job.ts` — file itu ternyata flow LAMAR loker PUBLIK
+  (lamarJob/copyInfoLoker); sumber admin edit = `js/api/jobs.ts` (row `#modal-edit-full-loker`).
+  A12 sudah menyentuh bagian total/rincian + submit `editLokerFull`; sisanya di-crosscheck A17.
+- Root bugs yang diperbaiki:
+  1. **Field Syarat bernama `syRat`** (typo bocor juga ke tipe shared `Job`/`ConfigData`/
+     `DropdownData` di types/api.ts — 4 situs) padahal backend `mapJobPayloadToRow`
+     (JOB_COLUMNS) hanya mengenal `syarat` → kotak Syarat SELALU terbuka kosong dan setiap
+     edit DIBAHANG diam-diam saat simpan. Kini `syarat` end-to-end: form state, payload,
+     tipe; backend tidak perlu berubah (memang sudah benar).
+  2. **Select ef-tsk (TSK pengurus) tidak ada** — pengurus tidak bisa diubah lewat edit.
+     Kini select diisi dropdown config (getAppData admin → dropdowns.tsk, sama dgn
+     TabTambah) + union nilai tersimpan (job.tsk non-config tetap tampil, tidak blank).
+     Kategori & gender ikut pola select-config+union; lokasi tetap text input + datalist
+     (parity ef-lokasi + list-lokasi).
+  3. **Upload ef-template / ef-pamflet tidak ada** — kini dua input file (accept legacy),
+     di-upload ke Cloudinary HANYA bila file dipilih; payload `templateCv`/`pamflet` = URL
+     baru atau `-` (handler server menghapus ''/'-' → nilai lama dipertahankan, parity
+     submitEditFullLoker finalTemplate/finalPamflet).
+  4. **Select "Status" TAMBAHAN yang tidak ada di ef-** — nilai status job_database mentah
+     ("✅ OPEN", "❌ CLOSE"; mapJob kirim mentah) sehingga select OPEN/URGENT/CLOSE blank
+     pada baris ber-emoji dan simpan polos menimpa nilai mentah → select dihapus; perubahan
+     status tetap lewat toggle OPEN/CLOSE khusus (parity row action legacy aksiAdmin).
+     Payload tidak lagi memuat key `status`.
+  5. **Klik dalam modal ikut menutup via backdrop** (tanpa stopPropagation di panel konten —
+     defect class A15, ketahuan test error-path) → ditambah.
+  6. **Label hard-coded** (Kode/TSK/GENDER/KATEGORI/Simpan/UPDATE TEMPLATE CV/UPDATE
+     PAMFLET + judul modal) → 8 key baru id+jp (`admin.form_tsk/form_category/form_gender/
+     form_job_code_ro/modal_edit_job_title`, `button.save_changes`,
+     `ui.update_cv_template/update_pamflet`; nilai dari i18n/locales legacy).
+- Konteks data: `getAppData admin` mengembalikan `jobs === dbJobs` (array mapJob yang kaya:
+  syarat/keterangan/tsk/totalBiaya/rincianBiaya/templateCv/pamflet/status/updated_at) — tipe
+  lokal slim TabDbJob/TabKelola hanya deklarasi; runtime modal menerima baris penuh. Tidak
+  perlu perubahan trigger/backend.
+- Handler backend `handleEditLokerFull`: guard admin + `mapJobPayloadToRow` + hapus
+  ''/'-' (kecuali dokumen_share) + `patchJob` If-Match optimistic concurrency → sudah port
+  setia, TIDAK berubah (hanya dipakai ulang dengan key yang benar).
+- Gates: `npm run typecheck` exit 0; backend 32 file / 277 test hijau (tak berubah); frontend
+  22 file / 176 test hijau (+1 file/+9: `AdminJobEditModal.test.tsx` — prefill job.syarat
+  (regresi syRat), select union config+nilai lama, payload editLokerFull memuat
+  syarat/tsk/pekerjaan/kuota/updated_at TANPA status/syRat, edit syarat & tsk tersimpan,
+  upload template+pamflet → URL Cloudinary di payload & tanpa file → '-' tanpa panggilan
+  upload, gagal → toast error + tidak tutup, label t()); guard i18n `i18n.keys.test.ts`
+  ikut hijau.
+- Berkas utama berubah pada sesi ini: `AdminJobEditModal.tsx` (rewrite penuh), test baru,
+  `src/types/api.ts` (4× syRat→syarat), `src/store/i18n.ts` + `i18n-jp.ts`,
+  `docs/PARITY_CHECKLIST.md`, `HANDOVER.md`.
+- Status tree: perubahan A17 UNCOMMITTED, menumpuk dgn playtest UX + A08–A16 — helper staging
+  siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: A18 — DB filter/sort (`admin_modal/dbfilter.ts`, Tab header
+  filter — TabDbJob sudah punya sort/filter parsial).
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity A18: DB filter/sort (TabDbJob.tsx)
+
+- Ground truth legacy: `js/render/admin.ts` `filterDbJob()` (search OR-includes lower
+  pada code/tsk/pekerjaan/lokasi; bidang/tahapan EKSAK; TERBANYAK = jumlah kandidat DESC;
+  tie/NaN tanggal → code `localeCompare`) + `js/admin_modal/dbfilter.ts`
+  `renderDbFilters()` (chip dua baris dari `DROPDOWNS.kategori/.tahapan` + `public.all`)
+  + `#filter-bidang-container`/`#filter-tahapan-container`.
+- Akar masalah Astro (semua root-fix, A01–A17 spirit): (1) state filter `fBidang`/
+  `fTahapan` ada tapi baris chip TIDAK PERNAH dirender — cuma input cari; (2) sort
+  **TERBANYAK = no-op** (`return 0`), TERBARU/TERLAMA tanpa tie-break; (3) jumlah
+  kandidat per baris dihitung `idLoker.includes(code)` (substring!) per render;
+  (4) heading/kolom/sort-label/empty-state hard-coded.
+- Perbaikan `src/components/admin/TabDbJob.tsx`: helper murni di-export
+  `buildCandidateCountMap` (idLoker multi-job dipisah `,;` → dihitung utk SETIAP kode —
+  perbaikan sadar vs legacy yang keying string utuh sehingga undercount kandidat
+  multi-loker), `filterDbJobs`, `sortDbJobs` (TERBANYAK DESC count; TERBARU/TERLAMA
+  createdAt ± tie-break code; tidak memutasi array). Chip dua baris dirender dari
+  dropdown config (`getAppData → dropdowns.kategori/.tahapan`) UNION nilai yang ada di
+  data jobs (nilai non-config lama tidak hilang). Sel count baris + sort TERBANYAK
+  memakai satu `countMap` (useMemo). Semua copy → `t()`.
+- i18n: 7 key BARU di id DAN jp (`admin.history_internal`, `admin.sort`,
+  `admin.sort_newest/oldest/most`, `table.action_db`, `db.empty`) — nilai dari legacy
+  locales (`id/admin.js`+`id/table.js`, `assets/jp-locale.js`).
+- ⚠️ INSIDEN + PEMULIHAN SESI (penting untuk audit): skrip tambah-key A18 membuka
+  `src/store/i18n.ts` dengan mode truncate → dict ID HILANG (0 byte). Direkonstruksi
+  dari: (a) `git show HEAD` baseline, (b) `i18n-jp.ts` UTUH (memuat semua penambahan
+  A14–A17 + A18), (c) legacy id locale utk 82 key senama, (d) authoring 58 key custom.
+  Setelah itu nilai yg DRIFT (parafrase authoring ≠ nilai asli hasil pass) di-restore
+  EKSAK dari artefak yang selamat: script `i18n_a12*.py`/`i18n_a15.py` (24 nilai:
+  `ui.star_hint` ☆/★, `ui.stage_*`, `ui.rincian_builder_hint`, `ui.catatan_ph`,
+  `ui.toast_fav_*`, `ui.toast_job_created`, `ui.total_cost_ph`, `ui.uploading_job`,
+  `ui.save_share`, `ui.share_*` incl. realignment ID_UPD, `admin.doc_ijazah_*`,
+  `admin.doc_univ`, `alert.network`) + teks legacy yang dipin test pass asal
+  (A08/A11/A12): `changepass.hint`/`changepass.ok` (sentence penuh legacy `pass_new_hint`),
+  `admin.ai_tab_chat` = "Chat", `admin.ai_upload_label`, `admin.ai_btn_model` = "Model Doc",
+  `ai.parse_ok_title` = "Parse berhasil" (= literal di `js/ai_copilot/parse.ts:122`),
+  `ui.custom_item_ph` = "Item custom…". Frontend sempat 8 merah (test A08/A11/A12 yang
+  memin copy) → hijau kembali. Pelajaran: jangan pernah mode truncate/`open(w)` untuk
+  file dict; selalu tulis lewat file temp + verifikasi byte-count setelahnya.
+- Verifikasi: typecheck exit 0; backend **32 file / 277 test hijau** (tidak berubah);
+  frontend **23 file / 182 test hijau** (+1 file / +6: `TabDbJob.test.tsx` — count map
+  multi-job, search/bidang/tahapan, TERBANYAK DESC, tie-break tanggal + code, tidak
+  memutasi); guard i18n `i18n.keys.test.ts` ikut hijau (4 test); kedua dict valid UTF-8
+  (id 985 key / jp 945 key, tanpa duplikat, placeholder `{x}` setara, semua key yang
+  dipakai ada di kedua dict).
+- File set A18: `src/components/admin/TabDbJob.tsx` (helper + chip + sort + i18n),
+  `src/components/admin/TabDbJob.test.tsx` (BARU), `src/store/i18n.ts` +
+  `src/store/i18n-jp.ts` (7 key A18 + restorasi drift di atas — tetap UNCOMMITTED),
+  `docs/PARITY_CHECKLIST.md` (baris A18 ✅ + entri kronologi), `HANDOVER.md` ini.
+- Status tree: perubahan A18 UNCOMMITTED, menumpuk dgn playtest UX + A08–A17 — helper
+  staging siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: A19 — CV manual (`admin_modal/cv.ts`, `InputManualModal`/
+  `RirekishoBuilder`).
+## Sesi 2026-09-05 (lanj.) — Parity A19: CV Digital dossier (CandidateProfileModal) ✅
+
+- Ground truth legacy: `js/admin_modal/cv.ts` (`bukaDigitalCV` → `#modal-cv` — DOSSIER kandidat:
+  header foto/id/badge/status(tahapan+status)/nama/WA-link/pass-row, fakta cepat, job-tags
+  multi-lamaran, quick-edit inline (`isiEditCepatCv`/`simpanEditCepatCv` → `updateKandidatSuper`),
+  pemberkasan (folder + file preview), catatan internal/external + VIP toggle
+  (`simpanCatatanCv` → `updateCatatanKandidat` [id,int,ext,admin])).
+  KOREKSI BARIS: A19 ≠ `InputManualModal` (input manual kandidat, modal lain) dan ≠
+  `RirekishoBuilder` (preview rirekisho, A10) — Astro padanannya `CandidateProfileModal.tsx`
+  (dossier, dibuka via eye/history row kandidat: TabPelamar/TabMail area, ListKandidatModal).
+- Akar masalah Astro (root-fix, A01–A18 spirit): (1) **Edit Data Cepat mengirim data TER-MAP
+  (`CandidateData`: fisik digabung \"175 / 70\", `tmplahir`/`tgllahir`, tanpa `tb`/`bb`) ke event
+  `openCandidateEdit`, padahal `EditCandidateModal` (A03) prefill dari row MENTAH
+  (`tempatLahir`/`tglLahir`/`tb`/`bb`/`jftText`/`sswText`/`catatanInt`) → editor super-edit
+  terbuka separuh kosong (gender/usia ikut tapi fisik/TTL/catatan hilang) — kini `row` mentah
+  (seed row atau `getExistingCandidateJsonByWa`) disimpan terpisah & diteruskan apa adanya;
+  (2) **status kandidat tidak pernah tampil** — legacy `cv-status` = `(tahapan) (status)`; dossier
+  hanya chip tahapan → baris Status kini menampilkan tahapan + status (dua chip);
+  (3) **modal tanpa `t()` sama sekali** — semua chrome hard-coded (0 pemakaian i18n) → 29 key
+  BARU di id+jp (label biodata/JFT/SSW/job/status/tombol/placeholder: `ui.cv_*`, `ui.note_*`,
+  `ui.cand_eval`, `ui.loading_candidates`, `ui.age_years_suffix`, `ui.jft_jlpt`, `ui.ssw_field`,
+  `ui.cv_vip_on/off`, `ui.cv_save_eval`, dll), + jp utk `ui.toast_eval_note_saved` (id sudah ada),
+  + realign nilai id `ui.complete_berkas_biodata` → \"Lengkapi Pemberkasan & Biodata\" (tombol
+  CandidateDash ikut — fungsi sama, wording legacy); toast sukses/gagal/network via key
+  (`toast_eval_note_saved`, `cv_save_failed`, `alert.network`). Perbaikan kecil: typo label tile
+  \"JFT / JFJ\" → `ui.jft_jlpt`.
+- Verifikasi kontrak backend: `handleUpdateCatatanKandidat` (contexts/registry/service.ts) sudah
+  menerima format objek dossier `{wa, catatanInternal, catatanExternal}` DAN legacy posisi
+  `[id,intNote,extNote]` (service-a02 test) — dua-duanya aman → backend TIDAK berubah.
+- Gap TERDOCUMENTASI (sengaja, bukan di-silence): **baris password kandidat legacy
+  (`cv-pass`/`passwordDiubah`: tampil 4 digit WA default / peringatan \"sudah diganti\") tidak
+  di-port** — auth Astro S8 menyimpan bcrypt dan register mewajibkan password eksplisit (bukan
+  default 4 digit WA), tidak ada flag passwordDiubah di data, jadi menampilkan \"4 digit WA\"
+  PASTI menyesatkan; reset password = fitur identity/auth terpisah (catat untuk pass itu).
+- Verifikasi: typecheck exit 0; backend **32 file / 277 test hijau** (tidak berubah); frontend
+  **23 file / 184 test hijau** (+2 test di `CandidateProfileModal.test.tsx`: raw-row dispatch ke
+  openCandidateEdit + baris status tahapan&status + chrome via key ter-pin); guard i18n
+  `i18n.keys.test.ts` hijau (4 test); dict id 1013 / jp 974 key, tanpa duplikat, jp-only 0,
+  valid UTF-8. Penambahan key memakai pola ATOMIK (baca penuh di memori → tulis temp → os.replace)
+  — tidak ada lagi open/truncate langsung (pelajaran A18).
+- File set A19: `src/components/admin/CandidateProfileModal.tsx` (i18n penuh + row mentah +
+  baris status), `src/components/admin/CandidateProfileModal.test.tsx` (+2 test),
+  `src/store/i18n.ts` + `src/store/i18n-jp.ts` (29 key baru + realign), `docs/PARITY_CHECKLIST.md`
+  (baris A19 ✅ + entri kronologi), `HANDOVER.md` ini.
+- Status tree: perubahan A19 UNCOMMITTED, menumpuk dgn playtest UX + A08–A18 — helper staging
+  siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B01 — Login kandidat/admin (`LoginModal.tsx`) — seri A (modal/fitur admin) TUNTAS di A19.
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity B01: Login kandidat/admin (LoginModal)
+
+- Ground truth legacy: `js/04_auth.ts` (`prosesLoginKandidat`/`prosesLoginMaster`/
+  `prosesLoginPersonal`) + `shared/wa-rules.ts` (normalisasi WA ketat) + modal login/admin
+  (`#modal-login`/`#modal-admin`). Padanan Astro: `LoginModal.tsx` + surface `auth` +
+  `contexts/identity` + `src/lib/schemas.ts`.
+- Root-fix #1 — **login admin MATI end-to-end**: modal mengirim `[pin, token-klien]`
+  (pola legacy) padahal kernel `z.tuple` ber-arity EKSAK → `checkAdminMaster`/
+  `checkAdminPersonal` selalu gagal validasi (`Array must contain at most 1/2 element(s)`).
+  Payload kini `[pin]` / `[name, pin]`; token bukan bagian payload. Dikunci di
+  `service-b01.test.ts` (arg ekstra → ditolak, identity tak dipanggil).
+- Root-fix #2 — **daftar kandidat juga MATI**: modal kirim 3 arg `[nama, wa, password]`
+  tapi `kandidatRegister` tuple 4-slot (zod 3: `.optional()` item TIDAK melonggarkan arity)
+  → `VALIDATION_FAILED` selalu. `kandidatRegister` kini union tuple 2/3/4 arg — caller
+  legacy 2-arg tetap jalan; `usia` diterima tapi tak dipakai `registerKandidat`.
+- Root-fix #3 — **regex WA klien rusak** `/^8d{10,12}$/` ('d' literal, bukan `\d`) →
+  8xx selalu ditolak. `waSchema` klien ditulis ulang memirror rule backend
+  `netlify/functions/shared/wa-rules.ts`: ID `628xx` 12-15 digit + JP `81xx` 10-15 digit;
+  `normalizeWaInput` menghasilkan kanonik 628/81 — nomor Jepang 090/070/080 kini valid
+  (parity rule backend), bukan Indonesia-only seperti legacy.
+- Root-fix #4 — **`onClose()` dipanggil SAAT RENDER** (side-effect dalam render) → pindah
+  ke `useEffect` yang menutup setelah `isLoggedIn` berubah.
+- Root-fix #5 — seluruh copy/toast/placeholder hard-coded → 16 key baru di id+jp
+  (`login.wa_invalid/pass_min/pass_max/pass_nospace/nama_min/pin_required/
+  admin_name_required/btn_masuk/btn_daftar/nama_ph/wa_ph/pass_ph/api_error/reg_ok/
+  reg_failed/failed/pin_salah/selamat_datang/back`, `admin.pin_master/pin_personal/
+  select_account/auth_title/enter_pin`) + `tErr()` memetakan pesan zod → key
+  (fallback: pesan asli). Nilai dari locale legacy.
+- Catatan: daftar akun admin step-2 tetap array statis `[SACHOU, AYOK, KHOLIS, KHOCI]`
+  (parity admin.html legacy yang juga statis); sumber akun terpusat = pekerjaan C-series.
+- Verifikasi: typecheck exit 0; backend 33 file/283 test (+1 file/+6: `service-b01.test.ts` —
+  arity eksak ditolak, normalisasi WA di surface sebelum identity, register 2/3/4-arg);
+  frontend 24 file/201 test (+1 file/+8: `LoginModal.test.tsx` — normalisasi 08xx/8xx/090→81xx,
+  invalid → toast tanpa API, payload arity eksak admin, register payload, onClose via efek;
+  mock store memakai nanostores atom karena `useStore` butuh `.listen()`); guard
+  `i18n.keys.test.ts` (4 test) hijau; dict id⊇jp, UTF-8 valid.
+- Status tree: perubahan B01 UNCOMMITTED, menumpuk dgn A08–A19 — helper staging siap
+  dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B02 — WA Pintar (`WAPintarModal.tsx`).
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity B02: WA Pintar (WAPintarModal + TabWA)
+
+- Ground truth legacy: `js/08_wa_pintar.js` (`injectModalWaPintar`/`bukaModalWaPintar`/
+  `terapkanTemplateWa`/`kirimWaPintar`/`submitWaTemplate`/`editWaTemplate`/`prosesHapusWa`)
+  + `#modal-wa-pintar` + tab admin-wa. Template CRUD via `callAPI("simpanWaTemplate",
+  [id, nama, isi, S])`/`hapusWaTemplate` (rute ke endpoint whatsapp); daftar template dari
+  `getAppData → waTemplates` (parity `window.ALL_WA_TEMPLATES`). Astro padanan:
+  `WAPintarModal.tsx` + `TabWA.tsx`; backend `simpanWaTemplate`/`hapusWaTemplate`
+  (surface notify, admin-guarded) — sudah benar, tak berubah.
+- Root-fix #1 — **modal tidak pernah bisa dibuka di admin**: WAPintarModal hanya import
+  yatim di CandidateDash (tidak pernah di-render — import dihapus); tombol WA di baris
+  kandidat (TabPelamar) membuka `https://wa.me/<wa>` polos tanpa template/pesan (degradasi
+  `bukaModalWaPintar(idKandidat)` legacy dgn title `ui.send_wa_call`). Kini tombol membuka
+  modal smart-sender: nama + `(idLoker)` + phone ternormalisasi (`normalizeWaInput`),
+  picker template (`<<NAMA>>`/`<<JOB>>` di-substitusi, parity `terapkanTemplateWa`),
+  `wa.me` ter-encode (parity `kirimWaPintar`).
+- Root-fix #2 — **TabWA save/delete MATI**: POST body mentah `{nama, isi}`/`{id}` ke
+  `/.netlify/functions/config` (kontrak tidak ada) → CRUD template tak pernah bekerja.
+  Kontrak benar: `simpanWaTemplate [id?, nama, isi]` / `hapusWaTemplate [id]` via
+  `api.secure` (session auto-inject + routing surface). `alert()`/`location.reload()` →
+  `showToast` + refetch in-place (parity showToast + refreshDataDinamis('wa')).
+- Root-fix #3 — seluruh copy hard-coded (modal + tab) → 29 key baru id+jp, nilai dari
+  locale legacy (`ui.wa_open_send`, `ui.manual_or_template`, `ui.toast_wa_invalid_cand2`,
+  `ui.send_wa_call`, `ui.toast_wa_template_saved`, `ui.manage_wa_templates`,
+  `ui.new_template`, `ui.template_name/message/code_hint/saved/edit_title/edit/delete/empty`,
+  `ui.save_template`, `ui.toast_error_prefix`, `ui.featured_badge`, `ui.invite_class_wa_desc`,
+  `ui.kandidat_tujuan/pilih_template_pesan/isi_pesan_custom/ketik_pesan_ph/memuat_template`,
+  `ui.confirm_delete_template/template_deleted`, `admin.wa_template_name_wajib/ph_nama/ph_isi`)
+  + nilai `ui.wa_pintar` jp dikoreksi "WAテンプレート" → legacy "WAスマート" + jp
+  `ui.toast_cand_not_found` ditambah. Render template via JSX = auto-escape (menghindari
+  XSS F1 audit legacy). Kartu Undangan Grup Kelas (A06) tetap + key A06 dipakai.
+- Catatan insiden i18n (audit-worthy): skrip penambah key pertama menulis nilai JP ke dict
+  id (destructure `k, _, v` salah) dan blok terselip di luar objek `id` → keduanya
+  diperbaiki dgn rebuild terverifikasi; `admin.wa_template_ph_isi` sempat jadi newline
+  literal → escape `\n`; hasil akhir: typecheck 0 + guard i18n hijau, id 1055 / jp 1017,
+  jp ⊆ id, UTF-8 valid.
+- Verifikasi: typecheck exit 0; backend 33 file/283 test (tak berubah); frontend
+  26 file/212 test (+2 file/+11: `WAPintarModal.test.tsx` 6 — placeholder <<NAMA>>/<<JOB>>,
+  select kosong → textarea kosong, toast invalid/empty tanpa open, wa.me ter-encode + close,
+  chrome via key; `TabWA.test.tsx` 5 — load getAppData, simpan baru ['' ,nama,isi] + toast +
+  refetch, edit → id dikirim, hapus [id] + confirm + toast, chrome via key); guard
+  `i18n.keys.test.ts` (4 test) hijau.
+- Status tree: perubahan B02 UNCOMMITTED, menumpuk dgn A08–B01 — helper staging siap
+  dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B03 — Preview dokumen (`DocumentPreviewModal.tsx`).
+# 🔄 HANDOVER Sesi 2026-09-05 — Parity B03: Preview dokumen (DocumentPreviewModal)
+
+- Ground truth legacy: `js/init/preview.ts` (`previewFileInFrame` — SATU pintu preview
+  inline: gambar/PDF native/gview, CSV → SheetJS lokal lazy, Office → MS Office viewer,
+  zip/dll → pesan + tombol Unduh anti auto-download, 8s fallback timer) + `js/03_candidate.ts`
+  (`bukaPreviewDokumen` — Drive folder → window.open fallback; `setStatusBerkas` — preview
+  INLINE modal, komentar eksplisit \"bukan buka tab baru\") + dossier `#modal-cv`
+  (tombol BUKA CV/JFT/SSW/FOTO dari `cvUrl`/`jftUrl`/`sswUrl`/`pasPhoto`).
+  Astro padanan: `DocumentPreviewModal.tsx` + pemanggilnya.
+- Root-fix #1 — **seluruh chrome DocumentPreviewModal hard-coded** (loading/error/fallback/
+  unduh/admin-only) → key id+jp dari nilai legacy: `ui.preview_loading` (jp ditambah),
+  `ui.preview_unavailable` (jp ditambah), `ui.preview_unavailable_hint` + `ui.download`
+  (baru), `ui.preview_load_failed` + `ui.preview_admin_only_download` (baru, ditulis),
+  `ui.doc_preview_title` jp ditambah ("書類プレビュー").
+- Root-fix #2 — **Drive folder link** (`drive.google.com/drive/folders`) tidak bisa di-preview
+  → fallback buka tab baru + tutup modal (parity `bukaPreviewDokumen`); helper murni
+  `isDriveFolder` di-export & di-test.
+- Root-fix #3 — **PemberkasanModal \"Sudah (Lihat)\" memakai `<a target=_blank>`** — legacy
+  `setStatusBerkas` mem-buka `bukaPreviewDokumen` INLINE (\"bukan buka tab baru\"; PDF di
+  tab baru sering ter-download di mobile — persis masalah yg gview wrapper FIX 2026-08-19
+  selesaikan) → kini tombol membuka DocumentPreviewModal; test A05 lama di-update
+  (link → tombol + iframe gview).
+- Root-fix #4 — **dossier `#modal-cv` kehilangan tombol BUKA CV/JFT/SSW/FOTO**: row
+  ter-dekorasi membawa `cvUrl`/`jftUrl`/`sswUrl`/`pasPhoto` (mapCandidate) tapi
+  `mapApiToCandidate` hanya menyalin `foto` → URL sertifikat dibuang; key `ui.open_*`
+  ada di dict sejak A19 tapi tak pernah dipakai komponen mana pun. Baris \"Preview Dokumen\"
+  baru dgn 4 tombol (label via key) → DocumentPreviewModal inline. Ikon: `file-alt` (CV),
+  `file-pdf` (JFT/SSW), `camera` (FOTO) — sprite punya; `certificate`/`image` tidak dipakai
+  (`certificate` tidak ada di sprite).
+- Catatan i18n: aturan A19/B01 dipegang (read-modify-write atomik, tak pernah truncate);
+  skrip kali ini menulis (k, id, jp) benar & menyisipkan di dalam objek `id` (i18n.ts) /
+  sebelum `};` akhir (i18n-jp.ts) — terverifikasi typecheck + guard. id 1063 / jp 1028 key,
+  jp ⊆ id, UTF-8 valid, tanpa duplikat.
+- Verifikasi: typecheck exit 0; backend 33 file/283 test (tak berubah); frontend
+  27 file/222 test (+1 file/+10: `DocumentPreviewModal.test.tsx` 8 — routing gambar/
+  PDF gview/Office/fallback zip/previewOnly/drive folder/keyed chrome; dossier +2 —
+  baris Dokumen render + klik BUKA CV → iframe gview, tanpa dokumen → baris tak muncul)
+  + test PemberkasanModal A05 di-rework (link → tombol + preview inline); guard
+  `i18n.keys.test.ts` (4 test) hijau.
+- Status tree: perubahan B03 UNCOMMITTED, menumpuk dgn A08–B02 — helper staging siap
+  dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B04.
+## 🔄 HANDOVER 2026-09-05 (lanj.) — Parity B04: Detail loker publik (LokerDetailModal)
+- Ground truth legacy: `js/01_public.ts` `bukaDetailLoker()` (render + aksi: pamflet klik→`bukaPamflet` zoom, badge gender, kuota, total+rincian, syarat/keterangan, tombol Format / `lamarJob` / WA dari `ASSETS.SOCIAL.whatsapp`) + `jobTutupUntukLamar` — SATU aturan dipakai list (`render/public.ts`) dan detail — + `js/admin_modal/job.ts` `lamarJob` (guard + bridge). Astro host: `LokerTable` (index/public) → `LokerDetailModal`.
+- Root-fix 1 — aturan fase diduplikasi dan MELENCENG: modal membuang `LIST-CHECK/PENCARIAN/PENDAFTARAN/DAFTAR` dari set fase-masih-buka (loker tahapan PENCARIAN/DAFTAR → tombol Lamar DISABLED padahal rekrutmen masih jalan; list juga tanpa LIST-CHECK). Aturan kanonik legacy-eksak diekstrak ke `src/lib/jobPhase.ts` dan dipakai modal + list.
+- Root-fix 2 — pamflet modal statis: legacy membuka zoom `bukaPamflet` saat klik (title `ui.click_zoom`, sama seperti baris list) → kini diklik membuka PamfletModal; img memakai decoding lazy + title i18n.
+- Root-fix 3 — tombol Lamar di BARIS list MATI: `openForm` fetch `generateFormBridge`, handler backend-nya masih mengarah `/apply-full.html` (halaman legacy YANG TIDAK ADA di Astro) → 404 atau fallback wa.me tak menentu; legacy memakai SATU aksi `lamarJob` untuk baris dan detail → baris dikonvergenkan ke rute native `/apply?job=<code>` (sama dgn modal; ApplyFullForm membaca `?job=`).
+- i18n: SEMUA key yang dipakai modal sudah ada di kedua dict (id+jp) — tidak ada edit dict, guard `i18n.keys.test.ts` (4 test) tetap hijau.
+- Verifikasi: `npm run typecheck` exit 0; backend **33 file/283 test** (tidak berubah); frontend **29 file/232 test** (+2 file/+10: `src/lib/jobPhase.test.ts` 4 — pin set fase legacy-eksak termasuk case/whitespace & status CLOSE mentah case-sensitive + unknown tahapan tetap buka; `src/components/public/LokerDetailModal.test.tsx` 6 — tahapan PENCARIAN/DAFTAR masih bisa Lamar (regresi), FLIGHT disabled, zoom pamflet buka/tutup, keyed chrome, close header).
+- Status tree: perubahan B04 UNCOMMITTED (3 file src + 2 file test baru + 2 docs), menumpuk dgn A08–B03 — helper staging siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B05 (Pamflet — `PamfletModal.tsx`); sudah sebagian diperiksa selama B04 (dipakai LokerTable/LokerDetailModal; prop isOpen/url/onClose) — tinggal crosscheck legacy `bukaPamflet`/pamflet modal shell.
+## 🔄 HANDOVER 2026-09-05 (lanj.) — Parity B05: Pamflet (PamfletModal)
+- Ground truth legacy: `js/08_wa_pintar.ts` `bukaPamflet`/`tutupPamflet` (guard `!url || url==='-'` → no-op; buka = set `#gambarPamfletFull.src` + unhide `#pamfletModal`; tutup = hide + clear src 300ms) + shell modal di index.html (tombol × `data-lang-aria="public.close"`) + CSS `.modal-content-pamflet` (object-fit contain; width 100%; max-width 700px; max-height 90vh; radius 16px; shadow 0 0 40px hitam). Pemakai legacy: thumb baris list + `bukaDetailLoker` → di Astro kedua titik sudah memakai PamfletModal (LokerTable + LokerDetailModal sejak B04) — cakupan trigger LENGKAP, tanpa titik pamflet lain.
+- Root-fix 1 — aria tombol × hard-coded Inggris "Close": legacy melokalisasi label via `data-lang-aria="public.close"` → kini `t('public.close')` (id "Tutup" / jp "終了" — kedua dict SUDAH punya key, guard hijau tanpa edit dict).
+- Root-fix 2 — klik di dalam overlay menutup zoom & tombol × memanggil `onClose` 2×: `onBackdropClick` (dari useOverlay) = onClose mentah dan container dalam PamfletModal TIDAK stopPropagation, jadi klik tombol ATAU gambar ikut membakar handler overlay (legacy hanya menutup lewat ×; Astro menambah backdrop/Escape sebagai upgrade aksesibilitas — harusnya hanya backdrop sungguhan yang menutup) → container dalam kini `stopPropagation`: × tepat 1×, gambar tidak menutup zoom.
+- Geometri: sudah persis parity CSS legacy (contain / 700px / 90vh / radius 16 / shadow) — tanpa perubahan; fade-in + spinner saat load adalah peningkatan Astro (legacy tampil langsung).
+- Verifikasi: `npm run typecheck` exit 0; backend **33 file/283 test** (tidak berubah); frontend **30 file/237 test** (+1 file/+5: `PamfletModal.test.tsx` — guard url kosong/'-'/state tutup, geometri + aria keyed (bukan "Close" Inggris), × tepat 1×, backdrop-close, fade-in setelah load); test B04 disesuaikan (zoom ditutup via aria `public.close`); guard `i18n.keys.test.ts` (4 test) hijau.
+- Status tree: perubahan B05 UNCOMMITTED (PamfletModal.tsx + test baru + test B04 di-update + 2 docs), menumpuk dgn A08–B04 — helper staging siap dibuat terpisah per unit kapan pun.
+- Berikutnya di checklist: B06 (baca baris utk konfirmasi komponen/flow legacy-nya dulu).
+## 🔄 HANDOVER 2026-09-05 (lanj.) — Parity B06: Share viewer TSK (P1 §5 + row C06 tuntas)
+- Ground truth legacy: `share.html` + `js/pages/share.ts` (fetch `/api/share-data?job=`, renderGrid kartu, submitSelection, showError, toggleLang — bahasa dari localStorage `asj_lang`) + `js/render/share.ts` (link/template) + kontrak respons handler share-data.
+- KEPUTUSAN USER (ask_questions): gate token = **lazy-mint + WAJIB + stabil** (sesuai §5 P1). Token disimpan di `sys_config` (config_type=`share_token`, config_key=jobCode) via file baru `netlify/functions/_lib/db/shareTokens.ts` (`getShareTokenForJob`/`ensureShareTokenForJob`, randomBytes 16). `handleShareData(jobCode, tk)` kini MENOLAK `?job` polos / token salah / job yang belum pernah di-share. `handleUpdateDokumenShare` & handler baru `handleGetShareTokenForJob` (admin-guarded) mint-sekali (stabil — tidak rotate tiap simpan) & mengembalikan token. `netlify/functions/share-data.js` meneruskan `?tk=`; `getShareTokenForJob` di-surface jobs + surfaces/index + apiEndpoint + MUTATING list; test `share-data.test.ts` di-update ke kontrak (job, tk).
+- Root-fix 1 — **ShareView membaca field ciptaan**: view lama pakai `id/nama/wa/photo/cvUrl/jftUrl/sswUrl/jftLevel/…` padahal API mengembalikan `id_kandidat/nama_lengkap/no_wa/pas_photo/file_cv/jft/ssw/nilai_jft_text/bidang_ssw_text/extraDocs` + `job {code,name,tsk}` → setiap kartu render nama/gender kosong, tanpa tombol dokumen, `wa.me/<undefined>`. `ShareView.tsx` ditulis ulang ke kontrak nyata + parity kartu legacy renderGrid: foto klik→zoom preview + fallback ui-avatars, chip gender/usia/tb/bb, chip JFT (`nilai_jft_text`) & SSW (`bidang_ssw_text`), tombol CV/JFT/SSW + 1 tombol per dokumen ekstra folder (klasifikasi `src/lib/shareDocs.ts` — port `docTypeOf`/label legacy: `NAMA_<loker>CV`→"CV <loker>", cap 16 char), seleksi seluruh kartu via overlay button aria-pressed + cek pojok (a11y legacy), filter semantik legacy (PEREMPUAN→p default l, usia 0 bukan <20, JFT A2/N4 & B1/N3), empty/error/loading state.
+- Root-fix 2 — **"Kirim Pilihan" tanpa nomor + pesan sekali-pakai**: kini pesan legacy (greet + `*CODE - NAME*:`, `N. Nama (ID: id)`, closing) → `wa.me/6287889502004?text=…`.
+- Root-fix 3 — **bahasa**: komponen lama punya map id/jp inline + toggle lokal; kini ikut `langStore` (`asj_lang` — kunci yg sama dgn legacy) & chrome dipindah ke dict: **20 key baru id+jp `share.*`** dgn nilai persis locale legacy (secure_title, err_title/msg, empty_*, filter, gen_*, age_all, jft_all, age_yr, gender_m/f, sel_count/btn, select, wa_greet/closing, link_pending).
+- Root-fix 4 — AdminShareModal (A15) disesuaikan ke kontrak token: muat token saat buka via `api.secure('getShareTokenForJob', [code])` (mint otomatis), link/WA-template/preview kini `…/share?job=CODE&tk=<token>`; tombol copy/open disabled bila token belum siap; `updateDokumenShare` mengembalikan token.
+- Insiden skrip i18n (klas B02): blok key id terselip DI LUAR objek `id` (antara baris `jp: {}` dan tutup objek) → error TS; direpair dgn skrip posisi (pindah blok ke dalam id sebelum `  },` penutup) + diverifikasi: count id 1091/jp 1051 unik, dupe 0, jp⊆id 0 hilang, 22 key `share.*` di kedua dict, guard hijau.
+- Verifikasi: `npm run typecheck` exit 0; backend **34 file/289 test** (+1 file +6: `service-b06.test.ts` 5 — gate DB-free tanpa-token/ditolak/salah/matched/unknown-job; `share-data.test.ts` +1 ke 5 — ?job+?tk diteruskan); frontend **32 file/250 test** (+2 file +13: `ShareView.test.tsx` 6, `shareDocs.test.ts` 6, `AdminShareModal.test.tsx` di-update ke kontrak token); guard `i18n.keys.test.ts` (4) hijau.
+- Status tree: perubahan B06 UNCOMMITTED (backend: shareTokens.ts baru, catalog service, jobs service/index, surfaces jobs+index, handlers.ts, share-data.js + 2 file test; frontend: ShareView.tsx rewrite, lib/shareDocs.ts baru, AdminShareModal + apiEndpoint, i18n ts/jp, 2 docs + 3 file test), menumpuk dgn A08–B05 — helper staging siap dipisah per unit kapan pun.
+- Berikutnya: seri B tuntas — lanjut per urutan usulan: C04 (siswa-baru: chat 404 + save no-op S1–S3) → C02 (master M1/M2) → C03 (ai-cv AI2/AI3) → C01 (apply polish) → C05.
+## 🔄 HANDOVER 2026-09-05 (lanj.) — Parity C04: siswa-baru (SiswaBaruForm)
+- Ground truth legacy: `siswa-baru.html` + `js/pages/siswa_baru.js` (`xe()`=sendMessage & `Xe()`=saveToDatabase) + dict `form.siswa_*` (nilai id di bridge.js / jp di jp-locale.js).
+- Root-fix 1 — **chat 404 (S1)**: `handleSend` POST action `processSiswaAIChat` ke `getEndpoint('submitDaftarSiswa')` (= surface REGISTER) padahal action itu dilayani fungsi ai-chat → 404 "not handled by this surface" (temuan Sesi-6 QA). Kini via `getEndpoint('processSiswaAIChat')` (ai-chat).
+- Root-fix 2 — **pesan user TIDAK pernah sampai AI**: payload array-of-one `[{message, history, biodata}]` padahal `handleProcessSiswaAIChat` membaca objek `{history, currentData}` dan mengabaikan field `message` (turn user hilang → AI menjawab tanpa konteks). Kini turn user di-append ke `history` (slice 20, parity legacy `v.slice(-20)`) dan payload dikirim sebagai OBJEK apa adanya (kontrak `callAPI` legacy; lihat komentar di surfaces/register.ts soal payload objek).
+- Root-fix 3 — **auto-fill mati**: komponen baca `data.biodata`; handler mengembalikan `data.data` snake_case (`wa_siswa`, `wa_ortu`, …) → merge snake→camel (`SNAKE_TO_CAMEL`) hanya nilai non-kosong.
+- Root-fix 4 — **save no-op (S2/S3)**: submit pakai multipart FormData → `/.netlify/functions/ai-form-submit` (wrapper JSON-parse body jadi `{}` → NOT_IMPLEMENTED; `res.ok`=200 → toast "sukses" padahal TIDAK tersimpan). Kini parity `Xe()`: validasi kelengkapan → upload `ktp/kk/ijazah` ke Cloudinary (`uploadToCloudinary`) → JSON objek snake + URL dokumen ke `submitDaftarSiswa` (register; publik — TANPA header Authorization). Sukses → hapus draf + toast + tombol `✓ BERHASIL!`; gagal server → `siswa.failed + message`; gagal upload → `siswa.upload_failed + message`; error lain → `siswa.network_error` (nilai legacy).
+- Root-fix 5 — **wajib isi**: legacy `saveToDatabase` menuntut SEMUA 9 field biodata + 3 scan & menampilkan daftar kurang dalam satu toast (header legacy `⚠️ Dede Jeklin lihat…` + bullet + footer) + pindah tab form di mobile; Astro sebelumnya hanya cek `nama`.
+- Root-fix 6 — **bubble**: teks chat kini render `**bold**` legacy (`renderChatText`, aman — JSX escape, hanya split marker); greeting = welcome legacy-eksak (tanpa duplikasi 👑).
+- i18n (atomic, tanpa insiden): **9 key baru id+jp** (`siswa.chat_error/success_btn/upload_doc/saving/form_title/form_hint/draft_stale/send` + `upload_failed` yg ditangkap guard) dan **8 nilai di-sync ke legacy-eksak** (greeting, success, failed, network_error, analyzing, missing_header, missing_footer, placeholder_chat dgn ellipsis legacy `…`). Dict akhir: id 1094 / jp 1014 unik, dupe 0, guard i18n hijau.
+- Verifikasi: `npm run typecheck` exit 0; backend **34 file/289 test** (tidak berubah — tidak ada perubahan backend); frontend **33 file/256 test** (+1 file/+6: `SiswaBaruForm.test.tsx` — rute ai-chat + payload objek dgn history berisi turn baru + currentData snake, render bold + merge `data.data` snake→camel ke form, bubble error saat fetch gagal, submit data kurang → toast daftar tanpa API, submit lengkap → Cloudinary lalu `submitDaftarSiswa` objek snake + tanpa header auth + toast sukses + draf dibersihkan + tombol BERHASIL, gagal server → toast `siswa.failed`); guard `i18n.keys.test.ts` (4 test) hijau.
+- Status tree: perubahan C04 UNCOMMITTED (SiswaBaruForm.tsx rewrite, SiswaBaruForm.test.tsx baru, i18n.ts/jp.ts, 2 docs), menumpuk dgn A08–B06 — helper staging siap dipisah per unit kapan pun.
+- Berikutnya: C02 (master-full `submitMasterForm` no-op M1/M2) → C03 (ai-cv AI2/AI3) → C01 (apply polish) → C05.

@@ -9,9 +9,13 @@ import { logoutSupabase } from '../store/userStore';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
 
-export default function BottomNav() {
+export default function BottomNav({ show = false }: { show?: boolean }) {
   const auth = useStore(authStore);
-  if (!auth.isLoggedIn) return null;
+  // Mounted on every BaseLayout page; only portal pages (admin/candidate) ask
+  // for it. (Gated via prop rather than `{showBottomNav && <BottomNav/>}` in
+  // the .astro — Astro 5.12 codegen mis-compiles a JS `&&`/ternary wrapping a
+  // client:only island and emits the expression text as visible output.)
+  if (!show || !auth.isLoggedIn) return null;
 
   async function handleLogout() {
     await logoutSupabase();

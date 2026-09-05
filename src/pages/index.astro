@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
-import Toast from '../components/Toast.tsx';
 import LokerTable from '../components/public/LokerTable.tsx';
 import LayananSection from '../components/public/LayananSection.astro';
 import Icon from '../components/ui/Icon';
@@ -9,7 +8,6 @@ import Icon from '../components/ui/Icon';
 
 <BaseLayout title="PT Amanah Sakura Japan — Job Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
   <App client:only="preact" />
-  <Toast client:only="preact" />
 
   <!-- Global Announcement Marquee (public page only) -->
 <div id="global-announcement" class="hidden max-w-7xl mx-auto px-4 mt-4">

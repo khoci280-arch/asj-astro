@@ -2,13 +2,11 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ApplyFullForm from '../components/forms/ApplyFullForm.tsx';
 import App from '../components/App.tsx';
-import Toast from '../components/Toast.tsx';
 import FormToolbar from "../components/forms/FormToolbar";
 ---
 
 <BaseLayout title="ASJ - Form Lamaran Kerja" description="Form pendaftaran lamaran kerja ke Jepang melalui LPK ASJ">
   <App showHeader={false} client:only="preact" />
-  <Toast client:only="preact" />
 
   
 

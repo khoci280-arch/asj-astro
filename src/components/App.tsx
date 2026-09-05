@@ -153,7 +153,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
           </div>)}
           {u.isLoggedIn && u.role === "admin" && (<div class="space-y-3">
             <a href="/admin" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="cogs" class="mr-2" /> {t("header.admin")}</a>
-            <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="robot" class="mr-2" /> AI HR Copilot</button>
+            <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="robot" class="mr-2" /> {t("ui.ai_copilot")}</button>
             <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="globe" class="mr-2" /> {t("header.public")}</a>
             <button onClick={handleLogout} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="sign-out-alt" class="mr-2" /> {t("header.logout")}</button>
           </div>)}

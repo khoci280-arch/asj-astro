@@ -74,7 +74,7 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     <slot />
   
   {showFooter && <Footer />}
-  {showBottomNav && <BottomNav client:only="preact" />}
+  <BottomNav client:only="preact" show={showBottomNav} />
 
   <!-- Mounted here, once, so it can never be forgotten on a new page.
        It was previously duplicated onto 6 of 9 pages, leaving
