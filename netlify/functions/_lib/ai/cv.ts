@@ -199,7 +199,10 @@ async function handleBuildAdminAiCandidateSummary(payload: unknown[], sessionTok
 // submitDataAsj — simpan data AI form (ai_form.html) ke ai_form_submissions
 // ---------------------------------------------------------------------------
 async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
-  const d = (payload || {}) as Record<string, any>;
+  // AI2 parity (2026-09-05): callAPI sends ARRAY (args); legacy GAS sends the
+  // object directly — accept both (pattern simpanDataTtdNaitei A07).
+  const raw = Array.isArray(payload) ? (payload[0] || {}) : payload || {};
+  const d = raw as Record<string, any>;
   const ctx = d.context || {};
   const identitas = d.identitas || {};
   const wa = normalizeWa(String(ctx.wa || identitas.hp || ''));

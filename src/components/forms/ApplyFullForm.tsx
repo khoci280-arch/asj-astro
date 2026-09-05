@@ -12,6 +12,7 @@ import { validateFile } from '../../lib/uploadGuard';
 import { getEndpoint } from "../../lib/apiEndpoint";
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { requiredDocsFromJob } from '../../lib/applyDocs';
 
 interface FormData {
   job: string; bidang: string; wa: string; nama: string; email: string;
@@ -27,11 +28,6 @@ const INIT_FORM: FormData = {
   gender: '', usia: '', tb: '', bb: ''
 };
 
-const JOB_PARAMS: Record<string, { bidang: string; required: string[] }> = {
-  TG658ASJ: { bidang: 'Tukang Gypsum', required: ['cv', 'jft', 'ssw'] },
-  TK658ASJ: { bidang: 'Tukang Kayu', required: ['cv', 'jft', 'ssw'] },
-  default: { bidang: '', required: [] }
-};
 
 export default function ApplyFullForm() {
   const [step, setStep] = useState(1);
@@ -44,26 +40,51 @@ export default function ApplyFullForm() {
   const [waMsg, setWaMsg] = useState('');
   const [waWarn, setWaWarn] = useState('');
   const [extraDocs, setExtraDocs] = useState<string[]>([]);
+  const [oldDocs, setOldDocs] = useState<{ photo?: string; jft?: string; ssw?: string }>({});
 
   // Read job code from URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const jobCode = params.get('job') || '';
     const bidang = params.get('bidang') || '';
-    if (jobCode) {
-      setForm(prev => ({ ...prev, job: jobCode, bidang }));
-      const config = JOB_PARAMS[jobCode] || JOB_PARAMS.default;
-      if (config.bidang && !bidang) {
-        setForm(prev => ({ ...prev, bidang: config.bidang }));
+    if (!jobCode) return;
+    setForm(prev => ({ ...prev, job: jobCode, bidang }));
+    // A5 (2026-09-05): local-only draft (legacy saveDraft/restoreDraft) — the
+    // apply draft stays in localStorage (asj_apply_<job>), never POSTed.
+    const draftKey = 'asj_apply_' + jobCode;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.form) setForm(prev => ({ ...prev, ...d.form }));
+        if (typeof d.agree === 'boolean') setAgree(d.agree);
+        if (d.oldDocs) setOldDocs(d.oldDocs);
+        (Array.isArray(d.docKeys) ? d.docKeys : []).forEach((key: string) => {
+          setUploads(prev => prev[key] ? prev : { ...prev, [key]: { file: null, preview: null, name: t('apply.file_none'), warn: false } });
+        });
       }
-      // Show required upload cards
-      config.required.forEach(doc => {
-        setUploads(prev => ({
-          ...prev,
-          [doc]: prev[doc] || { file: null, preview: null, name: t('apply.file_none'), warn: false }
-        }));
-      });
-    }
+    } catch { /* draft korup - abaikan */ }
+    // A4 (2026-09-05): required upload cards come from the SERVER job
+    // (getAppData public payload -> dokumenShare), not a hardcoded table.
+    // PARITY_QA A4: backend submitApply already gates on dokumen_share, so the
+    // card set must mirror it. Bidang falls back to the job's kategori.
+    fetch(getEndpoint('getAppData'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getAppData', payload: ['public'] }),
+    })
+      .then(r => r.json().catch(() => ({})))
+      .then((data) => {
+        const jobs: any[] = Array.isArray(data.jobs) ? data.jobs : [];
+        const job = jobs.find((j: any) => String(j.code || j.rowIndex || '') === jobCode) || null;
+        if (!bidang && job && job.kategori) {
+          setForm(prev => ({ ...prev, bidang: String(job.kategori) }));
+        }
+        requiredDocsFromJob(job).forEach(doc => {
+          setUploads(prev => prev[doc.key] ? prev : { ...prev, [doc.key]: { file: null, preview: null, name: t('apply.file_none'), warn: false } });
+        });
+      })
+      .catch(() => { /* non-fatal: fallback default cards */ });
   }, []);
 
   const updateForm = (field: keyof FormData, value: string) => {
@@ -88,7 +109,9 @@ export default function ApplyFullForm() {
       if (res.ok) {
         const data = await res.json();
         if (data.found) {
-          setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email }));
+          setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email, gender: data.gender || prev.gender, usia: data.usia || prev.usia, tb: data.tb || prev.tb, bb: data.bb || prev.bb }));
+          // A3 parity: carry previous docs so re-applicants keep them on submit
+          setOldDocs({ photo: data.photoUrl || data.pasPhoto || '', jft: data.jftUrl || '', ssw: data.sswUrl || '' });
           setWaMsg(t('apply.wa_found'));
           // Show dynamic docs based on requirements
           if (data.requiredDocs) {
@@ -140,6 +163,20 @@ export default function ApplyFullForm() {
     setStep(next);
   };
 
+  // A5 (2026-09-05): local-only draft - legacy saveDraft/restoreDraft parity.
+  // Files cannot be serialized to localStorage; the draft preserves the text
+  // fields, the shown card set, and the previous-docs refill (oldDocs).
+  const saveDraft = () => {
+    if (!form.job) { showToast(t('apply.error_submit'), 'error'); return; }
+    const docKeys = Object.keys(uploads);
+    try {
+      localStorage.setItem('asj_apply_' + form.job, JSON.stringify({ savedAt: Date.now(), form, agree, docKeys, oldDocs }));
+      showToast(t('toast.draft_saved'), 'success');
+    } catch {
+      showToast(t('toast.failed'), 'error');
+    }
+  };
+
   const submitApply = async () => {
     if (!agree) { showToast(t('apply.error_agree'), 'error'); return; }
     var vr = validate(registerSchema, { nama: form.nama, wa: form.wa }); if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
@@ -148,10 +185,15 @@ export default function ApplyFullForm() {
     try {
       // 1) Upload files to Cloudinary first (pipeline: validate -> Cloudinary -> send URL)
       const fileUrls: Record<string, string> = {};
+      const extraFiles: { name: string; url: string }[] = [];
       for (const [key, u] of Object.entries(uploads)) {
-        if (u.file) {
-          showToast('Mengunggah ' + key.toUpperCase() + '...', 'info');
-          fileUrls[key] = await uploadToCloudinary(u.file);
+        if (!u.file) continue;
+        showToast('Mengunggah ' + key.toUpperCase() + '...', 'info');
+        const url = await uploadToCloudinary(u.file);
+        if (key.indexOf('extra_') === 0) {
+          extraFiles.push({ name: key.slice(6), url });
+        } else {
+          fileUrls[key] = url;
         }
       }
       // 2) Parity fix (2026-09-04): backend submitApply expects a FLAT payload
@@ -172,7 +214,11 @@ export default function ApplyFullForm() {
         cvFile: fileUrls['cv'] || null,
         jftFile: fileUrls['jft'] || null,
         sswFile: fileUrls['ssw'] || null,
-        extraFiles: [],
+        // A3 parity: backend submitApply falls back to old* when no new file
+        oldPhoto: oldDocs.photo || null,
+                oldJft: oldDocs.jft || null,
+        oldSsw: oldDocs.ssw || null,
+        extraFiles,
       };
       const res = await fetch(getEndpoint('submitApply'), {
         method: 'POST',
@@ -182,6 +228,7 @@ export default function ApplyFullForm() {
       const data = await res.json().catch(() => ({}));
       if (data.success) {
         setSuccess(true);
+        try { localStorage.removeItem('asj_apply_' + form.job); } catch { /* non-fatal */ }
       } else {
         showToast(data.message || t('apply.error_submit'), 'error');
       }
@@ -291,6 +338,11 @@ export default function ApplyFullForm() {
                 bgClass="bg-gradient-to-br from-emerald-500 to-emerald-700" btnClass="bg-emerald-600"
                 accept=".pdf" onChange={(f) => handleUpload('ssw', f)} state={uploads.ssw} />
             )}
+            {Object.keys(uploads).filter(k => k.indexOf('extra_') === 0).map(k => (
+              <UploadCard type={k} label={k.slice(6)} sub="PDF / JPG (MAX 2MB)" icon="fa-file"
+                bgClass="bg-gradient-to-br from-violet-500 to-purple-700" btnClass="bg-violet-600"
+                accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" onChange={(f) => handleUpload(k, f)} state={uploads[k]} />
+            ))}
           </div>
 
           {/* STEP 3: KONFIRMASI */}
@@ -326,6 +378,10 @@ export default function ApplyFullForm() {
             <Icon name="chevron-left" /> Kembali
           </button>
         )}
+        <button onClick={saveDraft} disabled={loading}
+          class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-700 text-white hover:bg-slate-600 transition-all flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50">
+          <Icon name="save" /> Draft
+        </button>
         {step < 3 && (
           <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
             Lanjut <Icon name="chevron-right" />

@@ -72,7 +72,7 @@ const MASTER_COLUMN_MAP: Record<string, string> = {
   daruratHubungan: 'kontak_darurat_hubungan', daruratWa: 'kontak_darurat_wa',
   kenalanNama: 'kenalan_di_jepang_nama', kenalanHubungan: 'kenalan_di_jepang_hubungan',
   kenalanPekerjaan: 'kenalan_di_jepang_pekerjaan', kenalanUsia: 'kenalan_di_jepang_usia',
-  kenalanAlamat: 'kenalan_di_jepang_alamat', lamaJepang: 'status_eks_jepang',
+  kenalanAlamat: 'kenalan_di_jepang_alamat',
   gajiYen: 'harapan_gaji_yen', tabungan: 'harapan_tabungan', bhsJepang: 'bahasa',
   nilai: 'jft', lisensi: 'bidangssw', ssw: 'ssw', noPaspor: 'no_paspor',
   tglTerbitPaspor: 'tgl_terbit_pasport', expPaspor: 'exp_pasport',
@@ -140,6 +140,9 @@ export function buildMasterNested(row: any): any {
       email: v('email'), alamat: v('alamat_lengkap'), alamat_jp: v('alamat_jp'),
       hp: v('no_wa'), hp_darurat: v('kontak_darurat_wa'), ktp: v('nik'),
       paspor: v('no_paspor'), sim: v('driver_license'), status_eks_jepang: v('status_eks_jepang'),
+      no_coe: v('no_coe'), tgl_terbit_paspor: v('tgl_terbit_pasport'),
+      exp_paspor: v('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
+      kontak_darurat_nama: v('kontak_darurat_nama'), kontak_darurat_hubungan: v('kontak_darurat_hubungan'),
     },
     fisik: { tb: v('tb'), bb: v('bb'), topi: v('ukuran_topi'), baju: v('ukuranbaju'),
       sepatu: v('ukuransepatu'), tangan_dominan: v('tangandominan'), tahan_ac: v('tahan_ac') },
@@ -161,6 +164,7 @@ export function buildMasterNested(row: any): any {
       rencana_setelah_pulang: v('rencana_setelah_pulang'), rencana_setelah_pulang_jp: v('rencana_setelah_pulang_jp'),
       rencana_pulang_id: v('rencana_setelah_pulang'), rencana_pulang_jp: v('rencana_setelah_pulang_jp'),
       gaji_yen: v('harapan_gaji_yen'), tabungan: v('harapan_tabungan'),
+      lama_di_jepang: (aiParsed && aiParsed.wawancara && aiParsed.wawancara.lama_di_jepang !== undefined ? toText(aiParsed.wawancara.lama_di_jepang) : ''),
     },
     sertifikasi: { bahasa: v('bahasa'), jft: v('jft'), ssw: v('ssw'),
       bidang: v('bidangssw') || v('bidang'), bahasa_jepang: v('jft'), nilai: v('jft'), lisensi: v('ssw') },
@@ -268,6 +272,9 @@ function buildAiOverflow(d: any): Record<string, unknown> | null {
     }
   }
   if (kel.length) out.keluarga = kel;
+  const waw: Record<string, unknown> = {};
+  set(waw, 'lama_di_jepang', d.lamaJepang);
+  if (Object.keys(waw).length) out.wawancara = waw;
   return Object.keys(out).length ? out : null;
 }
 
@@ -284,10 +291,61 @@ function mergeAiOverflow(ai: any, overflow: any): any {
     }
   };
   if (overflow.kenalan_jepang) ai.kenalan_jepang = mergeObj(ai.kenalan_jepang, overflow.kenalan_jepang);
+  if (overflow.wawancara) ai.wawancara = mergeObj(ai.wawancara, overflow.wawancara);
   if (overflow.pendidikan) setSlot('pendidikan', overflow.pendidikan, (e) => cleanKey((e.tingkat || '') + (e.sekolah || '')));
   if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => cleanKey(e.perusahaan || ''));
   if (overflow.keluarga) setSlot('keluarga', overflow.keluarga, (e) => cleanKey((e.nama || '') + (e.hubungan || '')));
   return ai;
+}
+
+export function buildMasterBody(d: any): Record<string, any> {
+  const body: Record<string, any> = {};
+  for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
+  }
+  for (const [from, to] of [['jft_text', 'nilai'], ['jftText', 'nilai'], ['ssw_text', 'lisensi'], ['sswText', 'lisensi']] as const) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
+  }
+  for (const [from, col] of Object.entries(MASTER_COLUMN_MAP)) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '') body[col] = String(d[from]);
+  }
+  const pickItem = (p: any, ...keys: string[]) => { for (const k of keys) { if (p[k] !== undefined && p[k] !== null) return p[k]; } return ''; };
+  const setSlots = (prefix: string, list: any, count: number, defs: ReadonlyArray<readonly [string, ...string[]]>) => {
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < count; i++) {
+      const p = list[i] || {};
+      const vals: Record<string, string> = {};
+      for (const [suffix, ...pickKeys] of defs) {
+        const v = String(pickItem(p, ...pickKeys));
+        if (v !== '') vals[prefix + (i + 1) + suffix] = v;
+      }
+      if (!Object.keys(vals).length) continue;
+      Object.assign(body, vals);
+    }
+  };
+  setSlots('pendidikan_', d.pendidikan, 5, [
+    ['_tingkat', 'tingkat'],
+    ['_nama_sekolah', 'nama_sekolah', 'namaSekolah', 'sekolah'],
+    ['_jurusan_id', 'jurusan', 'jurusan_id'],
+    ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
+    ['_tahun_lulus', 'tahun_lulus', 'tahunLulus', 'lulus'],
+  ] as const);
+  setSlots('pekerjaan_', d.pekerjaan, 3, [
+    ['_nama_perusahaan', 'nama_perusahaan', 'namaPt', 'namaPerusahaan', 'perusahaan'],
+    ['_jabatan', 'jabatan', 'jabatan_id', 'posisi'],
+    ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
+    ['_tahun_keluar', 'tahun_keluar', 'tahunKeluar', 'keluar'],
+    ['_gaji', 'gaji', 'pendapatan'],
+  ] as const);
+  setSlots('keluarga_', d.keluarga, 5, [
+    ['_hubungan', 'hubungan', 'hubungan_id'],
+    ['_nama', 'nama'],
+    ['_usia', 'usia', 'umur'],
+    ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
+    ['_gaji', 'gaji', 'pendapatan'],
+  ] as const);
+  for (const col of Object.keys(body)) { if (MASTER_COLUMN_MISSING.has(col)) delete body[col]; }
+  return body;
 }
 
 async function autoTranslateToJp(idFields: Record<string, string>, existingJp?: Record<string, string>): Promise<Record<string, string>> {
@@ -441,13 +499,8 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     for (const [from, col] of Object.entries(MASTER_FILE_COLUMNS)) {
       if (d[from]) { const prefix = from.replace(/File$/, '').toUpperCase(); const url = await resolveFileUrl(d[from], folder, prefix + '.jpg'); if (url) fileUrls[col] = url; }
     }
-    for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) { if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from]; }
-    for (const [from, to] of [['jft_text', 'nilai'], ['jftText', 'nilai'], ['ssw_text', 'lisensi'], ['sswText', 'lisensi']] as const) {
-      if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
-    }
     const pendidikanStr = typeof d.pendidikan === 'string' && d.pendidikan.trim() !== '' ? d.pendidikan.trim() : null;
-    const body: Record<string, any> = { no_wa: wa, updated_at: new Date().toISOString() };
-    for (const [from, col] of Object.entries(MASTER_COLUMN_MAP)) { if (d[from] !== undefined && d[from] !== null && d[from] !== '') body[col] = String(d[from]); }
+    const body: Record<string, any> = { no_wa: wa, updated_at: new Date().toISOString(), ...buildMasterBody(d) };
     body.nama_lengkap = nama;
     Object.assign(body, fileUrls);
     if (pendidikanStr) body.pendidikan_1_tingkat = pendidikanStr;
@@ -468,35 +521,6 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
       if (newVal !== oldVal) { const label = MASTER_FIELD_LABEL[col] || col; if (!changedLabels.includes(label)) changedLabels.push(label); }
     }
 
-    const pickItem = (p: any, ...keys: string[]) => { for (const k of keys) { if (p[k] !== undefined && p[k] !== null) return p[k]; } return ''; };
-    if (Array.isArray(d.pendidikan)) {
-      for (let i = 0; i < 5; i++) { const p = d.pendidikan[i] || {}; const n = i + 1;
-        body['pendidikan_' + n + '_tingkat'] = String(pickItem(p, 'tingkat'));
-        body['pendidikan_' + n + '_nama_sekolah'] = String(pickItem(p, 'nama_sekolah', 'namaSekolah', 'sekolah'));
-        body['pendidikan_' + n + '_jurusan_id'] = String(pickItem(p, 'jurusan', 'jurusan_id'));
-        body['pendidikan_' + n + '_tahun_masuk'] = String(pickItem(p, 'tahun_masuk', 'tahunMasuk', 'masuk'));
-        body['pendidikan_' + n + '_tahun_lulus'] = String(pickItem(p, 'tahun_lulus', 'tahunLulus', 'lulus'));
-      }
-    }
-    if (Array.isArray(d.pekerjaan)) {
-      for (let i = 0; i < 3; i++) { const p = d.pekerjaan[i] || {}; const n = i + 1;
-        body['pekerjaan_' + n + '_nama_perusahaan'] = String(pickItem(p, 'nama_perusahaan', 'namaPt', 'namaPerusahaan', 'perusahaan'));
-        body['pekerjaan_' + n + '_jabatan'] = String(pickItem(p, 'jabatan', 'jabatan_id', 'posisi'));
-        body['pekerjaan_' + n + '_tahun_masuk'] = String(pickItem(p, 'tahun_masuk', 'tahunMasuk', 'masuk'));
-        body['pekerjaan_' + n + '_tahun_keluar'] = String(pickItem(p, 'tahun_keluar', 'tahunKeluar', 'keluar'));
-        body['pekerjaan_' + n + '_gaji'] = String(pickItem(p, 'gaji', 'pendapatan'));
-      }
-    }
-    if (Array.isArray(d.keluarga)) {
-      for (let i = 0; i < 5; i++) { const p = d.keluarga[i] || {}; const n = i + 1;
-        body['keluarga_' + n + '_hubungan'] = String(pickItem(p, 'hubungan', 'hubungan_id'));
-        body['keluarga_' + n + '_nama'] = String(pickItem(p, 'nama'));
-        body['keluarga_' + n + '_usia'] = String(pickItem(p, 'usia', 'umur'));
-        body['keluarga_' + n + '_pekerjaan'] = String(pickItem(p, 'pekerjaan', 'pekerjaan_id'));
-        body['keluarga_' + n + '_gaji'] = String(pickItem(p, 'gaji', 'pendapatan'));
-      }
-    }
-    for (const col of Object.keys(body)) { if (MASTER_COLUMN_MISSING.has(col)) delete body[col]; }
     const aiOverflow = buildAiOverflow(d);
 
     if (row && row.id !== undefined) {

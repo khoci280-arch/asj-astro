@@ -17,7 +17,7 @@
  * the overlay — image included — closed it, and the × double-fired).
  */
 import { h } from "preact";
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { useOverlay } from '../ui/useOverlay';
 import { t } from '../../store/i18n';
 
@@ -25,7 +25,15 @@ interface Props { isOpen: boolean; url: string; onClose: () => void; }
 
 export default function PamfletModal({ isOpen, url, onClose }: Props) {
   const [loaded, setLoaded] = useState(false);
-  useEffect(() => { if (isOpen) setLoaded(false); }, [isOpen, url]);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoaded(false);
+    // A cached image can finish loading before Preact attaches onLoad — if it
+    // is already complete by the time this effect runs, never spin forever.
+    const el = imgRef.current;
+    if (el && el.complete) setLoaded(true);
+  }, [isOpen, url]);
 const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   if (!isOpen || !url || url === "-") return null;
@@ -46,8 +54,10 @@ const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
       }, "\u00d7"),
       h("img", {
         src: url,
+        ref: imgRef,
         alt: "Pamflet",
         onLoad: () => setLoaded(true),
+        onError: () => setLoaded(true),
         class: "bg-slate-900 border border-slate-700 rounded-2xl",
         style: `object-fit: contain; width: 100%; max-width: 700px; max-height: 90vh; box-shadow: 0 0 40px rgba(0,0,0,0.9); opacity: ${loaded ? 1 : 0}; transition: opacity 0.3s;`,
       }),

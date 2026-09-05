@@ -20,12 +20,20 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/pr
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SiswaBaruForm from './SiswaBaruForm';
 import { showToast } from '../Toast';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, uploadMany } from '../../lib/cloudinary';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
 vi.mock('../../lib/cloudinary', () => ({
   uploadToCloudinary: vi.fn(async (f: File) => 'https://cloud.test/' + (f && f.name || 'doc')),
+  uploadMany: vi.fn(async (files: Record<string, File | null>, map: Record<string, string>) => {
+    const urls: Record<string, string> = {};
+    for (const [k, pk] of Object.entries(map)) {
+      const f = files[k];
+      if (f) urls[pk] = 'https://cloud.test/' + (f && f.name || 'doc');
+    }
+    return urls;
+  }),
 }));
 
 const fetchMock = vi.fn();
@@ -153,6 +161,25 @@ describe('SiswaBaruForm (C04)', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'siswa.submit_btn' }));
 
     await waitFor(() => expect(showToast).toHaveBeenCalledWith('siswa.failed Nama wajib diisi.', 'error'));
+    expect(screen.getByRole('button', { name: 'siswa.submit_btn' })).toBeTruthy();
+  });
+
+  it('upload gagal (Cloudinary) → toast siswa.upload_failed + pesan asli, TANPA panggilan register, tombol kembali ke SUBMIT DATA', async () => {
+    vi.mocked(uploadMany).mockRejectedValueOnce(new Error('Upload Cloudinary gagal (HTTP 500): boom'));
+    render(<SiswaBaruForm />);
+    await fillAll();
+    await fireEvent.click(screen.getByRole('button', { name: 'siswa.submit_btn' }));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('siswa.upload_failed Upload Cloudinary gagal (HTTP 500): boom', 'error'));
+    expect(fetchMock).not.toHaveBeenCalled(); // register tidak pernah dipanggil
+    expect(screen.getByRole('button', { name: 'siswa.submit_btn' })).toBeTruthy();
+  });
+
+  it('gagal di tahap SIMPAN (network) → toast siswa.network_error (BUKAN upload_failed) — FIX label per tahap', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('net down')); // uploadMany mock sukses; postAction gagal
+    render(<SiswaBaruForm />);
+    await fillAll();
+    await fireEvent.click(screen.getByRole('button', { name: 'siswa.submit_btn' }));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('siswa.network_error', 'error'));
     expect(screen.getByRole('button', { name: 'siswa.submit_btn' })).toBeTruthy();
   });
 });

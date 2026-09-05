@@ -8,6 +8,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import type { ComponentChildren } from 'preact';
 import Icon from './ui/Icon';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface Props {
   children: ComponentChildren;
@@ -49,5 +50,5 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
   }
 
   // Authorized → render children
-  return <>{children}</>;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }

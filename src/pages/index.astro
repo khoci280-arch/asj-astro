@@ -19,7 +19,8 @@ import Icon from '../components/ui/Icon';
   </div>
 </div>
 <script>
-  fetch("/.netlify/functions/get-app-data", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"getAppData",args:["public"]}) }).then(function(r){ return r.json(); }).then(function(d){ if(d.success && d.pengumuman){ var el=document.getElementById("global-announcement"); var txt=document.getElementById("marquee-text"); if(el && txt && d.pengumuman.trim()){ txt.textContent=d.pengumuman; el.classList.remove("hidden"); } } }).catch(function(){});
+  import { getPublicData } from "../lib/publicData";
+  getPublicData().then(function(d){ if(d.success && d.pengumuman){ var el=document.getElementById("global-announcement"); var txt=document.getElementById("marquee-text"); if(el && txt && d.pengumuman.trim()){ txt.textContent=d.pengumuman; el.classList.remove("hidden"); } } }).catch(function(){});
 </script>
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 pb-16 min-h-[50vh] flex flex-col gap-6">

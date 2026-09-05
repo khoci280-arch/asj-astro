@@ -6,16 +6,18 @@
 import { useState, useEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
-import { apiClient } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 import { getEndpoint } from "../../lib/apiEndpoint";
 import Icon from '../ui/Icon';
+import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
+import { MASTER_FILE_COLUMNS } from '../../lib/documentColumns';
+import { mapMasterNestedToForm } from '../../lib/masterPrefill';
 
 /* ── Types ── */
 interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; alamat: string; }
 interface JobRecord { perusahaan: string; jabatan: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; }
-interface FamRecord { nama: string; hubungan: string; ttl: string; gender: string; pekerjaan: string; alamat: string; wa: string; }
+interface FamRecord { nama: string; hubungan: string; usia: string; pekerjaan: string; }
 
 interface MasterData {
   nama: string; furigana: string; panggilan: string; panggilanKatakana: string;
@@ -64,7 +66,7 @@ export default function MasterFullForm() {
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }]);
   const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }]);
-  const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', ttl:'', gender:'', pekerjaan:'', alamat:'', wa:'' }]);
+  const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', usia:'', pekerjaan:'' }]);
   const [daruratNama, setDaruratNama] = useState('');
   const [daruratHubungan, setDaruratHubungan] = useState('');
   const [daruratWa, setDaruratWa] = useState('');
@@ -78,6 +80,44 @@ export default function MasterFullForm() {
   const [gateMsg, setGateMsg] = useState('');
   const [gateWa, setGateWa] = useState('');
 
+  /** C02 prefill (2026-09-05): muat data master yang sudah ada via getDrafCvMaster
+      supaya form tidak mulai kosong. Draft localStorage (asj_master_<wa>) menang
+      untuk data; dokumen lama tetap ditampilkan. */
+  const applyUploads = (up: any) => {
+    setFileNames(f => ({
+      ...f,
+      photo: up.photo || f.photo, jft: up.jft || f.jft, ssw: up.ssw || f.ssw,
+      ijazahSd: up.ijazahSd || f.ijazahSd, ijazahSmp: up.ijazahSmp || f.ijazahSmp,
+      ijazahSma: up.ijazahSma || f.ijazahSma, univ: up.univ || f.univ,
+      ktpFile: up.ktp || f.ktpFile, kk: up.kk || f.kk,
+    }));
+  };
+
+  const loadServerDraft = async (wa: string) => {
+    const token = authStore.get().sessionToken;
+    if (!token || !wa) return;
+    try {
+      const res = await fetch(getEndpoint('getDrafCvMaster'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'getDrafCvMaster', payload: [wa], sessionToken: token }),
+      });
+      const d = await res.json();
+      if (!d || !d.identitas) return;
+      applyUploads(d.uploads || {});
+      if (localStorage.getItem('asj_master_' + wa)) return; // draft lokal menang
+      const p = mapMasterNestedToForm(d);
+      setData(prev => ({ ...EMPTY, ...p.data, wa: prev.wa || '' }));
+      setEduList(p.eduList);
+      setJobList(p.jobList);
+      setFamList(p.famList);
+      setKenalan(p.kenalan);
+      setDaruratNama(p.daruratNama);
+      setDaruratHubungan(p.daruratHubungan);
+      setDaruratWa(p.daruratWa);
+    } catch { /* prefill non-fatal */ }
+  };
+
   useEffect(() => {
     const u = new URLSearchParams(window.location.search);
     const wa = u.get('wa') || '';
@@ -86,7 +126,11 @@ export default function MasterFullForm() {
     if (saved) { try { setData({ ...EMPTY, ...JSON.parse(saved) }); } catch {} }
     // Check auth
     const auth = authStore.get();
-    if (auth.sessionToken && auth.wa) { setLoginGate(false); setData(d => ({ ...d, wa: auth.wa || '' })); }
+    if (auth.sessionToken && auth.wa) {
+      setLoginGate(false);
+      setData(d => ({ ...d, wa: auth.wa || '' }));
+      loadServerDraft(auth.wa);
+    }
   }, []);
 
   const gateLogin = async () => {
@@ -98,6 +142,7 @@ export default function MasterFullForm() {
         authStore.set({...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa: gateWa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
         setData(prev => ({ ...prev, wa: gateWa }));
         setLoginGate(false);
+        loadServerDraft(gateWa);
       } else {
         setGateMsg('Password salah atau akun tidak ditemukan.');
       }
@@ -118,26 +163,59 @@ export default function MasterFullForm() {
       if (data.email) { const ve = validate(emailSchema, data.email); if (!ve.success) { showToast(ve.errors[0], "error"); return; } }
     }
     setSaving(true);
+    if (isDraft) {
+      // M4 parity: legacy draft is localStorage-only (asj_master_<wa>),
+      // never posted to the server.
+      localStorage.setItem('asj_master_' + data.wa, JSON.stringify(data));
+      showToast(t('toast.draft_saved'), 'success');
+      setSaving(false);
+      return;
+    }
     try {
-      const fd = new FormData();
-      fd.append('data', JSON.stringify(data));
-      fd.append('edu', JSON.stringify(eduList));
-      fd.append('job', JSON.stringify(jobList));
-      fd.append('fam', JSON.stringify(famList));
-      fd.append('darurat', JSON.stringify({ nama: daruratNama, hubungan: daruratHubungan, wa: daruratWa }));
-      fd.append('kenalan', JSON.stringify(kenalan));
-      fd.append('isDraft', String(isDraft));
-      Object.entries(files).forEach(([k, f]) => { if (f) fd.append(k, f); });
+      // M1/M2 parity fix (2026-09-04): legacy uploads each file to Cloudinary
+      // first, then posts a flat JSON payload via submitMasterForm. The old
+      // code sent raw FormData without an action field, so the JSON dispatcher
+      // parsed it as action=ping -> no-op pong (false-success toast).
+      let fileUrls: Record<string, string>;
+      try {
+        fileUrls = await uploadMany(files, MASTER_FILE_COLUMNS);
+      } catch (ue) {
+        const ue2 = ue as UploadCollectionError;
+        showToast('Gagal upload ' + (fileNames[ue2.key] || ue2.key) + ': ' + ue2.message, 'error');
+        setSaving(false);
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        ...data,
+        pendidikan: eduList.filter(e => e.jenjang).map(e => ({
+          tingkat: e.jenjang, nama_sekolah: e.nama,
+          tahun_masuk: e.thnAwal, tahun_lulus: e.thnAkhir, jurusan: e.jurusan,
+        })),
+        pekerjaan: jobList.filter(j => j.perusahaan).map(j => ({
+          nama_perusahaan: j.perusahaan, jabatan: j.jabatan,
+          tahun_masuk: j.thnAwal, tahun_keluar: j.thnAkhir, gaji: j.gaji,
+        })),
+        keluarga: famList.filter(f => f.nama).map(f => ({
+          nama: f.nama, hubungan: f.hubungan, usia: f.usia, pekerjaan: f.pekerjaan,
+        })),
+        daruratNama, daruratHubungan, daruratWa,
+        kenalanNama: kenalan.nama, kenalanHubungan: kenalan.hubungan,
+        kenalanPekerjaan: kenalan.pekerjaan, kenalanUsia: kenalan.usia, kenalanAlamat: kenalan.alamat,
+        ...fileUrls,
+      };
       const token = authStore.get().sessionToken;
-      const res = await fetch('/.netlify/functions/master-data', {
+      const res = await fetch(getEndpoint('submitMasterForm'), {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: fd
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'submitMasterForm', payload: [payload], sessionToken: token })
       });
-      if (res.ok) {
+      const data2 = await res.json();
+      if (res.ok && data2.success) {
         localStorage.setItem('asj_master_' + data.wa, JSON.stringify(data));
         showToast(isDraft ? t('toast.draft_saved') : t('toast.saved'), 'success');
-      } else { showToast(t('toast.failed'), 'error'); }
+      } else {
+        showToast((data2.message || data2.error || t('toast.failed')) as string, 'error');
+      }
     } catch (e) { showToast('Error: ' + (e as Error).message, 'error'); }
     finally { setSaving(false); }
   };
@@ -403,23 +481,14 @@ export default function MasterFullForm() {
                         <option value="">{t("form.mf_pilih")}</option><option value="Ayah">Ayah</option><option value="Ibu">Ibu</option><option value="Suami">Suami</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Saudara">Saudara</option><option value="Lainnya">Lainnya</option>
                       </select>
                     </div>
-                    <div class="mb-3"><label class="label">TTL</label>
-                      <input class="input" value={fam.ttl} onInput={(e) => { const v = [...famList]; v[i].ttl = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Gender</label>
-                      <select class="input" value={fam.gender} onChange={(e) => { const v = [...famList]; v[i].gender = (e.target as HTMLSelectElement).value; setFamList(v); }}>
-                        <option value="">{t("form.mf_pilih")}</option><option value="L">Laki-laki</option><option value="P">Perempuan</option>
-                      </select>
-                    </div>
+                    <div class="mb-3"><label class="label">Usia</label>
+                      <input class="input" type="number" value={fam.usia} onInput={(e) => { const v = [...famList]; v[i].usia = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                     <div class="mb-3"><label class="label">Pekerjaan</label>
                       <input class="input" value={fam.pekerjaan} onInput={(e) => { const v = [...famList]; v[i].pekerjaan = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Alamat</label>
-                      <input class="input" value={fam.alamat} onInput={(e) => { const v = [...famList]; v[i].alamat = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
-                    <div class="mb-3"><label class="label">No. WA</label>
-                      <input class="input" type="number" value={fam.wa} onInput={(e) => { const v = [...famList]; v[i].wa = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', ttl:'', gender:'', pekerjaan:'', alamat:'', wa:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Keluarga</button>}
+              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Keluarga</button>}
 
               <div class="section-title mt-6">Kontak Darurat (Wajib)</div>
               <div class="p-4 rounded-xl" style={{ background: '#0f172a', border: '1px solid rgba(14,165,233,.3)' }}>

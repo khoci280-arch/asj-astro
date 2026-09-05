@@ -85,3 +85,43 @@ export async function uploadToCloudinary(
 
   throw lastError || new Error('Upload Cloudinary gagal setelah ' + maxRetries + ' percobaan');
 }
+
+/**
+ * UploadCollectionError — gagal meng-upload salah satu file dalam uploadMany.
+ * key = file-key di map (caller memakai label-nya utk toast, kontrak lama).
+ */
+export class UploadCollectionError extends Error {
+  readonly key: string;
+  constructor(key: string, message: string) {
+    super(message);
+    this.name = 'UploadCollectionError';
+    this.key = key;
+  }
+}
+
+/**
+ * Upload banyak file sekaligus: iterate map (file-key → payload-key), upload
+ * tiap file yang ADA ke Cloudinary, kumpulkan URL dgn payload-key. File yang
+ * tidak ada dilewati; error pertama membatalkan sisa upload dan melempar
+ * UploadCollectionError (message = pesan asli) — caller memutuskan toast/path
+ * error (kontrak per form dipertahankan byte-identical).
+ *
+ * Map dipegang terpusat di src/lib/documentColumns.ts.
+ */
+export async function uploadMany(
+  files: Record<string, File | null | undefined>,
+  map: Record<string, string>,
+  upload: (file: File) => Promise<string> = uploadToCloudinary
+): Promise<Record<string, string>> {
+  const urls: Record<string, string> = {};
+  for (const [stateKey, payloadKey] of Object.entries(map)) {
+    const file = files[stateKey];
+    if (!file) continue;
+    try {
+      urls[payloadKey] = await upload(file);
+    } catch (e: any) {
+      throw new UploadCollectionError(stateKey, (e && e.message) || String(e));
+    }
+  }
+  return urls;
+}

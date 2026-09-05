@@ -8,11 +8,13 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { t } from '../../store/i18n';
 import { apiClient } from '../../lib/apiClient';
-import { validate, waSchema } from '../../lib/schemas';
+import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
 import type { ChatMessage } from '../../types/api';
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
+import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
+import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -65,6 +67,8 @@ const SUGGESTIONS = [
 
 
 /** Strip dangerous HTML tags — prevents XSS from AI output. */
+const waFromUrl = () => { try { return new URLSearchParams(window.location.search).get('wa') || ''; } catch { return ''; } };
+
 function sanitizeAiHtml(text: string): string {
   return text
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -86,6 +90,17 @@ export default function AiCvForm() {
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
+  // chat (processAIChat H4) DAN simpan (submitDataAsj); apiClient tanpa sesi
+  // redirect ke '/' → seluruh state CV hilang. Gate saat mount + guard di
+  // saveToDatabase supaya sesi yang hilang tidak pernah drop CV diam-diam.
+  const [loginGate, setLoginGate] = useState(() => {
+    const a = authStore.get();
+    return !a.sessionToken || !a.isLoggedIn;
+  });
+  const [gateWa, setGateWa] = useState(waFromUrl);
+  const [gatePass, setGatePass] = useState('');
+  const [gateMsg, setGateMsg] = useState('');
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -116,9 +131,11 @@ export default function AiCvForm() {
     setShowSuggestions(false);
     try {
       const trimmedHistory = messages.slice(-20).map(m => ({ role: m.role, content: m.text }));
+      const token = authStore.get().sessionToken;
       const res = await fetch(getEndpoint('processAIChat'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'processAIChat', payload: [{ message: msg, history: trimmedHistory, cvData: cv }] })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+        body: JSON.stringify({ action: 'processAIChat', payload: [{ message: msg, history: trimmedHistory, cvData: cv }], ...(token ? { sessionToken: token } : {}) })
       });
       if (res.ok) {
         const data = await res.json();
@@ -154,24 +171,135 @@ export default function AiCvForm() {
     }
   };
 
-  const saveToDatabase = async () => {
-    if (cv.hp) { var vw = validate(waSchema, cv.hp); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
+  /** C03 parity (pola MasterFullForm.gateLogin): login kandidat via loginKandidat. */
+  const gateLogin = async () => {
+    const wa = gateWa.trim();
+    const vg = validate(kandidatLoginSchema, { wa, password: gatePass });
+    if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
-      const token = authStore.get().sessionToken;
-      const fd = new FormData();
-      fd.append('cvData', JSON.stringify(cv));
-      Object.entries(docs).forEach(([k, f]) => { if (f) fd.append(k, f); });
-      const res = await fetch('/.netlify/functions/ai-form-submit', {
+      const res = await fetch(getEndpoint('loginKandidat'), {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: fd
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa, password: gatePass }] }),
       });
-      if (res.ok) { showToast(t('toast.saved'), 'success'); }
-      else { showToast('Gagal menyimpan.', 'error'); }
-    } catch (e) { showToast('Error: ' + (e as Error).message, 'error'); }
+      if (res.ok) {
+        const d = await res.json();
+        authStore.set({ ...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
+        setCv(prev => ({ ...prev, hp: prev.hp || wa }));
+        setLoginGate(false);
+      } else {
+        setGateMsg('Password salah atau akun tidak ditemukan.');
+      }
+    } catch { setGateMsg('Error koneksi.'); }
+  };
+
+  const saveToDatabase = async () => {
+    // AI2/AI3 parity (2026-09-04): legacy ai_form uploads docs to Cloudinary
+    // first, then posts a flat JSON object to submitDataAsj (nested
+    // ai_data_json sections). The old code sent raw FormData to
+    // /ai-form-submit, which the JSON dispatcher no-ops (false-success toast
+    // — nothing was saved).
+    // C03 guard: tanpa sesi, buka gate login (bukan apiClient yang redirect ke
+    // '/' dan menghapus seluruh CV). Sesi expired di tengah jalan ditangani
+    // guard yang sama pada klik berikutnya.
+    const auth = authStore.get();
+    if (!auth.sessionToken || !auth.isLoggedIn) {
+      setGateWa(cv.hp || waFromUrl() || auth.wa);
+      setLoginGate(true);
+      return;
+    }
+    if (!cv.hp) { showToast('Nomor WA belum diisi.', 'error'); return; }
+    const vw = validate(waSchema, cv.hp);
+    if (!vw.success) { showToast(vw.errors[0], 'error'); return; }
+    try {
+      let fileUrls: Record<string, string>;
+      try {
+        fileUrls = await uploadMany(docs, AI_FILE_COLUMNS);
+      } catch (ue) {
+        const ue2 = ue as UploadCollectionError;
+        showToast('Gagal upload ' + (docStatus[ue2.key] || ue2.key) + ': ' + ue2.message, 'error');
+        return;
+      }
+      const payload = {
+        context: { wa: cv.hp },
+        identitas: {
+          nama_lengkap: cv.nama, katakana: cv.katakana, panggilan: cv.panggilan,
+          panggilan_katakana: cv.panggilan_katakana, tempat_lahir: cv.tmplahir,
+          tgl_lahir: cv.tgllahir, umur: cv.umur, gender: cv.gender, agama: cv.agama,
+          golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
+          email: cv.email, alamat: cv.alamat, hp: cv.hp, hp_darurat: cv.hpdarurat,
+          ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
+          status_eks_jepang: cv.riwayatjepang,
+        },
+        fisik: { tb: cv.tb, bb: cv.bb, tangan_dominan: cv.tangan, sepatu: cv.sepatu, baju: cv.baju, topi: cv.topi, tahan_ac: cv.tahan_ac },
+        medis: {
+          mata_kiri: cv.matakiri, mata_kanan: cv.matakanan, kacamata: cv.kacamata,
+          buta_warna: cv.butawarna, tato: cv.tato, rokok: cv.rokok, alkohol: cv.alkohol,
+          alergi_id: cv.alergi_id, alergi_jp: cv.alergi_jp,
+          riwayat_medis_id: cv.medis_id, riwayat_medis_jp: cv.medis_jp,
+          riwayat_kecelakaan_id: cv.laka_id, riwayat_kecelakaan_jp: cv.laka_jp,
+        },
+        wawancara: {
+          promosi_id: cv.promo_id, promosi_jp: cv.promo_jp,
+          kelebihan_id: cv.lebih_id, kelebihan_jp: cv.lebih_jp,
+          kekurangan_id: cv.kurang_id, kekurangan_jp: cv.kurang_jp,
+          hobi_id: cv.hobi_id, hobi_jp: cv.hobi_jp,
+          keahlian_khusus: cv.keahlian_id, keahlian_khusus_jp: cv.keahlian_jp,
+          motivasi_ke_jepang: cv.moti_id, motivasi_ke_jepang_jp: cv.moti_jp,
+          alasan_memilih_bidang: cv.alasan_id, alasan_memilih_bidang_jp: cv.alasan_jp,
+          rencana_setelah_pulang: cv.pulang_id, rencana_setelah_pulang_jp: cv.pulang_jp,
+          keinginan_pribadi: cv.keinginan_id, keinginan_pribadi_jp: cv.keinginan_jp,
+          tujuan_ke_jepang: cv.tujuan_id, tujuan_ke_jepang_jp: cv.tujuan_jp,
+          riwayat_jepang: cv.riwayatjepang, gaji_yen: cv.gaji_yen, tabungan: cv.tabungan,
+        },
+        sertifikasi: { bahasa: cv.bhs_jepang, jft: cv.nilai, ssw: cv.lisensi, bidang: cv.lisensi },
+        kenalan_jepang: {
+          nama_id: cv.kenalan_nama_id, nama_jp: cv.kenalan_nama_jp,
+          hubungan_id: cv.kenalan_hub_id, hubungan_jp: cv.kenalan_hub_jp,
+          pekerjaan_id: cv.kenalan_kerja_id, pekerjaan_jp: cv.kenalan_kerja_jp,
+          usia: cv.kenalan_usia,
+          alamat_id: cv.kenalan_alamat_id, alamat_jp: cv.kenalan_alamat_jp,
+        },
+        ...fileUrls,
+      };
+      const data2 = await apiClient('submitDataAsj', [payload]);
+      if (data2.success) {
+        showToast(t('toast.saved'), 'success');
+      } else {
+        showToast((data2.message || data2.error || 'Gagal menyimpan.') as string, 'error');
+      }
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg !== 'No valid session' && msg !== 'Session expired') {
+        showToast('Error: ' + msg, 'error');
+      }
+    }
   };
 
   const updateCv = (field: string, value: string) => setCv(prev => ({ ...prev, [field]: value }));
+
+  if (loginGate) {
+    return (
+      <div class="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+        <div class="bg-[#0b1220] border border-amber-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <div class="text-center mb-4">
+            <div class="text-2xl mb-1 text-amber-400"><Icon name="lock" /></div>
+            <div class="font-bold text-white text-sm">Verifikasi Akun Kandidat</div>
+            <div class="text-slate-400 text-xs mt-1">Login diperlukan untuk chat & menyimpan CV — data CV yang sudah diisi tidak akan hilang.</div>
+          </div>
+          <label class="label">Nomor WhatsApp</label>
+          <input type="tel" class="input" value={gateWa} placeholder="08xxxxxxxxxx"
+            onInput={(e) => setGateWa((e.target as HTMLInputElement).value)} />
+          <label class="label mt-3">{t("form.mf_password")}</label>
+          <input type="password" class="input" value={gatePass} placeholder="••••••••"
+            onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
+          <button onClick={gateLogin} class="w-full mt-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">Masuk</button>
+          {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]" style={{ height: '100dvh' }}>

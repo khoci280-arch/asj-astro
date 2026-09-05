@@ -67,3 +67,27 @@ describe('PamfletModal (B05)', () => {
     });
   });
 });
+
+describe('PamfletModal loading (no infinite spinner)', () => {
+  it('stops spinning when the image errors (no dead onError path)', async () => {
+    const { container } = render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
+    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    fireEvent.error(img);
+    await waitFor(() => {
+      expect((screen.getByAltText('Pamflet') as HTMLImageElement).style.opacity).toBe('1');
+    });
+    expect(container.querySelector('[class*="animate-spin"]')).toBeNull();
+  });
+
+  it('shows a cached image without waiting for onLoad (complete reconcile)', async () => {
+    const { rerender, container } = render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
+    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    // Simulate a fully-cached image that completed before Preact attached onLoad.
+    Object.defineProperty(img, 'complete', { value: true, configurable: true });
+    rerender(<PamfletModal isOpen={true} url={URL + '#cached'} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect((screen.getByAltText('Pamflet') as HTMLImageElement).style.opacity).toBe('1');
+    });
+    expect(container.querySelector('[class*="animate-spin"]')).toBeNull();
+  });
+});

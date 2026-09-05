@@ -8,7 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
-import { langStore, t, translateDataLang } from '../store/i18n';
+import { langStore, t, translateDataLang, ensureJpLoaded, jpReady } from '../store/i18n';
 
 // ─── Named Constants ───
 const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
@@ -20,6 +20,7 @@ import CekSiswaModal from './CekSiswaModal';
 import AdminAiCopilot from './admin/AdminAiCopilot';
 import { showToast } from './Toast';
 import Icon from './ui/Icon';
+import { ErrorBoundary } from './ErrorBoundary';
 
 /** User state from auth store */
 interface UserState {
@@ -34,6 +35,14 @@ type ModalMode = 'closed' | 'login' | 'daftar';
 export default function App({ showHeader = true }: { showHeader?: boolean } = {}) {
   const u: UserState = useStore(authStore) as UserState;
   const lang = useStore(langStore);
+  const [, bumpJpReady] = useState(0);
+  useEffect(() => {
+    // Re-render once the lazy JP dict lands (e.g. page loaded with lang=jp) so
+    // t() consumers stop showing Indonesian fallbacks.
+    const off = jpReady.subscribe(() => bumpJpReady((n) => n + 1));
+    bumpJpReady((n) => n + 1); // dict may already be installed before we subscribed
+    return off;
+  }, []);
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
@@ -72,7 +81,15 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   function closeModal() { setModalMode("closed"); }
   async function handleLogout() { await logoutSupabase(); window.location.reload(); }
   function toggleMenu() { setMenuOpen(!menuOpen); }
-  function toggleLang() { langStore.set(lang === "id" ? "jp" : "id"); window.dispatchEvent(new Event("asj-lang-change")); translateDataLang(); }
+  async function toggleLang() {
+    const next = lang === "id" ? "jp" : "id";
+    if (next === "jp") {
+      try { await ensureJpLoaded(); } catch (e) { console.error("[i18n] gagal memuat kamus JP:", e); }
+    }
+    langStore.set(next);
+    window.dispatchEvent(new Event("asj-lang-change"));
+    translateDataLang();
+  }
   // Theme lives in store/theme.ts. Its subscriber writes `data-theme` +
   // the legacy `.light` class, moves the banner artwork, and fires
   // `asj-theme-change` (which the headerBg effect above listens for).
@@ -85,7 +102,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
   return (
-    <>
+    <ErrorBoundary>
       {showHeader && <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700" style={`background-image: url(${headerBg})`}>
         <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
         <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
@@ -168,6 +185,6 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
       {showAiCopilot && <AdminAiCopilot onClose={() => setShowAiCopilot(false)} />}
       {showCekSiswa && <CekSiswaModal onClose={() => setShowCekSiswa(false)} />}
       {hydrated && <LoginModal mode={modalMode} onClose={closeModal} onSwitchMode={setModalMode} />}
-    </>
+    </ErrorBoundary>
   );
 }

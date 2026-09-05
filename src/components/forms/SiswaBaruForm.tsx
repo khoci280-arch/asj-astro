@@ -30,7 +30,8 @@ import { showToast } from '../../components/Toast';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
 import { t } from '../../store/i18n';
 import { getEndpoint } from '../../lib/apiEndpoint';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadMany } from '../../lib/cloudinary';
+import { SISWA_FILE_COLUMNS } from '../../lib/documentColumns';
 import Icon from '../ui/Icon';
 
 interface ChatMessage {
@@ -252,7 +253,6 @@ export default function SiswaBaruForm() {
   };
 
   const handleSubmit = async () => {
-    const phaseBefore = submitPhase;
     if (submitPhase === 'uploading' || submitPhase === 'saving' || submitPhase === 'done') return;
     const missing = missingFields();
     if (missing.length > 0) {
@@ -264,14 +264,13 @@ export default function SiswaBaruForm() {
     }
     if (biodata.waSiswa) { const vw = validate(waSchema, biodata.waSiswa); if (!vw.success) { showToast(vw.errors[0], 'error'); return; } }
     if (biodata.email) { const ve = validate(emailSchema, biodata.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
+    let failedStage: 'upload' | 'save' | null = null;
     setSubmitPhase('uploading');
     try {
       // Legacy: upload ktp/kk/ijazah → Cloudinary first, then send the URLs.
-      const urls: Record<string, string> = {};
-      for (const type of ['ktp', 'kk', 'ijazah'] as const) {
-        const f = docs[type];
-        if (f) urls[type] = await uploadToCloudinary(f);
-      }
+      failedStage = 'upload';
+      const urls = await uploadMany(docs, SISWA_FILE_COLUMNS);
+      failedStage = 'save';
       setSubmitPhase('saving');
       const payload = { ...toSnakePayload(biodata), ktp: urls.ktp || null, kk: urls.kk || null, ijazah: urls.ijazah || null };
       const res = await postAction('submitDaftarSiswa', payload);
@@ -284,9 +283,12 @@ export default function SiswaBaruForm() {
         showToast(t('siswa.failed') + ' ' + String((res && (res.message || res.error)) || ''), 'error');
       }
     } catch (e: unknown) {
-      const uploadPhase = phaseBefore === 'uploading';
+      // Label by the stage that actually failed: upload-stage error →
+      // upload_failed; save-stage network error → network_error. (FIX 2026-09-05:
+      // phaseBefore ditangkap di entry → selalu 'idle' saat klik pertama, jadi
+      // upload gagal di-label network_error dan save gagal di-label upload_failed.)
       setSubmitPhase('idle');
-      if (uploadPhase) {
+      if (failedStage === 'upload') {
         showToast(t('siswa.upload_failed') + ' ' + ((e as Error)?.message || ''), 'error');
       } else {
         showToast(t('siswa.network_error'), 'error');

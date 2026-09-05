@@ -2,6 +2,7 @@
  * i18n.ts - Language toggle store (123 keys)
  */
 import { persistentAtom } from '@nanostores/persistent';
+import { atom } from 'nanostores';
 
 export type Lang = "id" | "jp";
 
@@ -12,12 +13,23 @@ export const langStore = persistentAtom<Lang>("asj_lang", "id", {
 
 // P9 fix: jp translations lazy-loaded from separate chunk (~670 lines, ~20KB).
 // Only loaded when user switches to Japanese, cutting initial bundle by ~50%.
+// P9b: dict install is async while renders are sync — without a notify after the
+// chunk arrives, the first JP switch renders Indonesian fallbacks and stays stuck
+// until an unrelated re-render. jpReady bumps subscribers once the dict is in.
+export const jpReady = atom(false);
 let _jpTranslations: Record<string, string> | null = null;
 async function loadJp(): Promise<Record<string, string>> {
   if (_jpTranslations) return _jpTranslations;
   const mod = await import('./i18n-jp');
   _jpTranslations = mod.jpTranslations;
+  translations.jp = _jpTranslations;
   return _jpTranslations;
+}
+
+/** Ensure the JP dict is loaded AND installed before a JP render reads it. */
+export async function ensureJpLoaded(): Promise<void> {
+  if (Object.keys(translations.jp).length > 0) return;
+  await loadJp();
 }
 
 export const translations: Record<Lang, Record<string, string>> = {
@@ -1132,15 +1144,21 @@ export const translations: Record<Lang, Record<string, string>> = {
 // P9 fix: Preload jp translations when user switches to Japanese.
 // On init, if lang is already jp, preload immediately so translations
 // are available before first render.
+// P9b: once the dict is installed, notify subscribers (jpReady -> App re-render)
+// and re-patch static [data-lang] nodes so the UI actually switches to Japanese.
+function onJpReady() {
+  jpReady.set(true);
+  translateDataLang();
+}
 if (typeof window !== 'undefined') {
   langStore.subscribe((lang) => {
     if (lang === 'jp' && Object.keys(translations.jp).length === 0) {
-      loadJp().then((jp) => { translations.jp = jp; });
+      loadJp().then(onJpReady).catch(() => {});
     }
   });
   // Preload if already jp
   if (langStore.get() === 'jp') {
-    loadJp().then((jp) => { translations.jp = jp; });
+    loadJp().then(onJpReady).catch(() => {});
   }
 }
 

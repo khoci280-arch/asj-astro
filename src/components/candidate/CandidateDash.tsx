@@ -18,6 +18,7 @@ import { showToast } from "../Toast";
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
+import { ErrorBoundary } from '../ErrorBoundary';
 
 type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
 type CandidateData = {
@@ -228,6 +229,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
   const uniqueLokers = [...new Set(data.riwayat.map(r => r.jobCode).filter(Boolean))];
 
   return (
+    <ErrorBoundary>
     <div class="pb-16">
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         <Icon name="id-card" class="text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl" />
@@ -445,5 +447,6 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         <InterviewSimulatorModal wa={user?.wa || data.wa || ''} nama={data.nama} onClose={() => setShowInterview(false)} />
       )}
     </div>
+    </ErrorBoundary>
   );
 }

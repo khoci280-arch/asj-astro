@@ -10,6 +10,8 @@ import PamfletModal from "./PamfletModal";
 import { t } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
 import { jobTutupUntukLamar } from '../../lib/jobPhase';
+import { getPublicData } from '../../lib/publicData';
+import { ErrorBoundary } from '../ErrorBoundary';
 import LokerDetailModal from './LokerDetailModal';
 import Icon from '../ui/Icon';
 
@@ -58,13 +60,8 @@ export default function LokerTable() {
 
   async function fetchJobs() {
     try {
-      const res = await fetch("/.netlify/functions/get-app-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getAppData", args: ["public"] }),
-      });
-      const data = await res.json();
-      if (data.success && data.jobs) setJobs(data.jobs);
+      const data = await getPublicData();
+      if (data.success && data.jobs) setJobs(data.jobs as unknown as Job[]);
     } catch (err) {
       console.error("[LokerTable] fetch error:", err);
     } finally {
@@ -132,6 +129,7 @@ export default function LokerTable() {
   ];
 
   return (
+    <ErrorBoundary>
     <div class="animate-fade-in">
       <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
@@ -224,5 +222,6 @@ export default function LokerTable() {
       {selectedJob && <LokerDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
           <PamfletModal isOpen={showPamflet} url={pamfletUrl} onClose={() => setShowPamflet(false)} />
 </div>
+    </ErrorBoundary>
   );
 }
