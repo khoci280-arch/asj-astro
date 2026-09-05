@@ -61,9 +61,14 @@ export const AUTH_ACTIONS: Record<string, (payload: unknown[], sessionToken?: st
   gantiPasswordKandidat: async (payload, sessionToken) => {
     const [rawWa, lama, baru] = validatePayload(payload, schemas.gantiPassword);
     const wa = normalizeWa(rawWa);
-    // Verify ownership
-    if (!identity.isOwnerOrAdmin(sessionToken || '', wa)) {
-      return { success: false, message: 'Akses ditolak.' };
+    // A08 fix: legacy contract (actions-auth.ts handleGantiPasswordKandidat)
+    // is candidate-owner-ONLY — an admin or another candidate must never
+    // change a password, and rejection is sessionInvalid before any DB read.
+    // isOwnerOrAdmin stays for admin document/catalog reads, not passwords.
+    const owner = identity.requireRole(sessionToken || '', 'kandidat');
+    if ('error' in owner) return owner.error;
+    if (normalizeWa(owner.token.wa || '') !== wa) {
+      return { success: false, sessionInvalid: true, message: 'Sesi kandidat tidak valid' };
     }
     return identity.changePassword(wa, lama, baru);
   },

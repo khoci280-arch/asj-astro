@@ -90,16 +90,27 @@ export const refreshToken = z.tuple([z.string().min(1, 'Token harus diisi')]);
 /** loginKandidat: [wa, password] */
 export const kandidatLogin = z.tuple([waField, passwordField]);
 
-/** daftarKandidat: [nama, wa, password?, usia?, ...] */
-export const kandidatRegister = z.tuple([
-  namaField,
-  waField,
-  z.string().optional(),
-  z.number().min(16).max(50).optional(),
+/** daftarKandidat: [nama, wa, password?, usia?] — trailing args genuinely
+ * optional. B01 fix: z.tuple() optional items do NOT relax arity (zod 3),
+ * so the modal's [nama, wa, password] always failed the old 4-slot tuple
+ * and candidate registration was dead end-to-end. Union keeps legacy
+ * 2-arg callers working too. usia is accepted but unused by identity. */
+export const kandidatRegister = z.union([
+  z.tuple([namaField, waField, z.string(), z.number().min(16).max(50)]),
+  z.tuple([namaField, waField, z.string()]),
+  z.tuple([namaField, waField]),
 ]);
 
-/** gantiPassword: [wa, lama, baru] */
-export const gantiPassword = z.tuple([waField, passwordField, passwordField]);
+/** Password baru (ganti password): 6-20 karakter tanpa spasi — parity legacy 2026-08-12.
+ * Terpisah dari passwordField (min 4) karena register/login tetap menerima
+ * password awal 4 digit, tapi ganti password wajib 6-20 tanpa spasi. */
+const newPasswordField = z.string()
+  .min(6, 'Password baru minimal 6 karakter')
+  .max(20, 'Password baru maksimal 20 karakter')
+  .regex(/^[^\s]+$/, 'Password baru tidak boleh mengandung spasi');
+
+/** gantiPassword: [wa, lama, baru] — `baru` divalidasi 6-20 tanpa spasi */
+export const gantiPassword = z.tuple([waField, passwordField, newPasswordField]);
 
 // ── Master data schemas ──────────────────────────────────────────────────────
 

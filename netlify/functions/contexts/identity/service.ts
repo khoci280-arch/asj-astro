@@ -128,19 +128,33 @@ export async function registerKandidat(nama: string, wa: string, password?: stri
   }
 }
 
+/** Build the bcrypt PATCH body for a password change. Pure (DB-free).
+ * A08 fix: `password_diubah` is a live boolean column — legacy writes `true`
+ * (admin UI reads it as "not the 4-digit default anymore"). Writing an ISO
+ * timestamp here made the whole PATCH fail against the boolean column, so a
+ * candidate could never change their password on Astro. */
+export async function buildPasswordPatch(
+  storedPass: string,
+  lama: string,
+  baru: string,
+): Promise<{ ok: true; body: { password_kandidat: string; password_diubah: boolean } } | { ok: false; error: string }> {
+  // S6 fix: Only use bcrypt comparison — never plaintext.
+  const ok = await bcrypt.compare(lama, storedPass || '');
+  if (!ok) return { ok: false, error: 'Password lama salah.' };
+  const hash = await bcrypt.hash(baru, 10);
+  return { ok: true, body: { password_kandidat: hash, password_diubah: true } };
+}
+
 export async function changePassword(wa: string, lama: string, baru: string) {
   const cand = await repo.findCandidateForAuth(wa);
   if (!cand) return { success: false, message: 'Kandidat tidak ditemukan.' };
-  const storedPass = String(cand.password_kandidat || '');
-  // S6 fix: Only use bcrypt comparison — never plaintext.
-  const ok = await bcrypt.compare(lama, storedPass);
-  if (!ok) return { success: false, message: 'Password lama salah.' };
-  const hash = await bcrypt.hash(baru, 10);
+  const built = await buildPasswordPatch(String(cand.password_kandidat || ''), lama, baru);
+  if (!built.ok) return { success: false, message: built.error };
   const { supabaseJson } = await import('./repository');
   try {
     await supabaseJson('PATCH', 'database_candidate', {
       query: { no_wa: 'eq.' + wa },
-      body: { password_kandidat: hash, password_diubah: new Date().toISOString() },
+      body: built.body,
       headers: { Prefer: 'return=minimal' },
     });
     return { success: true };

@@ -3,23 +3,64 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  waSchema, emailSchema, passwordSchema,
+  waSchema, normalizeWaInput, emailSchema, passwordSchema,
   candidateProfileSchema, kandidatLoginSchema, registerSchema,
   validate,
 } from './schemas';
 
 describe('Zod Schemas', () => {
+  describe('normalizeWaInput (B01, parity legacy shared/wa-rules)', () => {
+    it('0xx… → 62xx…', () => {
+      expect(normalizeWaInput('081234567890')).toBe('6281234567890');
+    });
+    it('8xx… (tanpa nol) → 628xx…', () => {
+      expect(normalizeWaInput('81234567890')).toBe('6281234567890');
+    });
+    it('buang non-digit', () => {
+      expect(normalizeWaInput('+62 812-3456-7890')).toBe('6281234567890');
+    });
+    it('628… tetap dipertahankan; kosong aman', () => {
+      expect(normalizeWaInput('6281234567890')).toBe('6281234567890');
+      expect(normalizeWaInput('')).toBe('');
+    });
+  });
+
   describe('waSchema', () => {
-    it('accepts valid 08xx phone', () => {
+    // B01: parity legacy shared/wa-rules — gate = normalisasi + /^628\\d{9,11}$/
+    it('accepts canonical 628xx phone (12-13 digit)', () => {
       expect(waSchema.safeParse('6281234567890').success).toBe(true);
+      expect(waSchema.safeParse('628123456789').success).toBe(true);
     });
 
-    it('accepts valid 628xx phone', () => {
-      expect(waSchema.safeParse('6281234567890').success).toBe(true);
+    it('accepts 08xx input (dinormalisasi ke 628xx)', () => {
+      expect(waSchema.safeParse('081234567890').success).toBe(true);
+    });
+
+    it('accepts bare 8xx input (tanpa nol depan — regex rusak /^8d{10,12}$/ diperbaiki)', () => {
+      expect(waSchema.safeParse('81234567890').success).toBe(true);
+    });
+
+    it('accepts input with separators (strip non-digit)', () => {
+      expect(waSchema.safeParse('+62 812-3456-7890').success).toBe(true);
     });
 
     it('rejects too short phone', () => {
       expect(waSchema.safeParse('08123').success).toBe(false);
+    });
+
+    it('accepts Japan numbers (090/070/080/81xx — parity backend wa-rules)', () => {
+      expect(waSchema.safeParse('09012345678').success).toBe(true); // → 819012345678
+      expect(waSchema.safeParse('819012345678').success).toBe(true);
+      expect(waSchema.safeParse('07012345678').success).toBe(true); // → 817012345678
+    });
+
+    it('accepts 14-15 digit Indonesia (628 + 11-12 digit — parity backend)', () => {
+      expect(waSchema.safeParse('628123456789012').success).toBe(true);
+    });
+
+    it('rejects nomor terlalu pendek / tidak dikenal', () => {
+      expect(waSchema.safeParse('08123').success).toBe(false);
+      expect(waSchema.safeParse('9999999999999').success).toBe(false);
     });
   });
 

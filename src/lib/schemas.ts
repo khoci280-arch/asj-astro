@@ -15,18 +15,58 @@ import { z } from 'zod';
  * - Japan (+81): 81xx (10-15 digit)
  * - Internasional lain: 10-15 digit (tanpa spasi/simbol)
  */
+/**
+ * Normalisasi WA — port KLIENT dari netlify/functions/shared/wa-rules.ts
+ * (satu-satunya sumber kebenaran backend: auth/kandidat/mail/upload).
+ * B01 fix: dulu klien punya aturan sendiri + regex RUSAK (/^8d{10,12}$/ —
+ * huruf 'd' literal, bukan \\d) sehingga 8xx tanpa nol selalu ditolak;
+ * sekarang aturan klien = aturan backend persis (Indonesia 628xx 12-15 digit,
+ * Jepang 81xx 10-15 digit; 08xx→628, 090/070→81, 8xx→628, typo 6208→628).
+ */
+export function normalizeWaInput(v: string): string {
+  let s = String(v || '').replace(/\D/g, '');
+  if (!s) return '';
+  if (s.startsWith('0')) {
+    const second = s.charAt(1);
+    if (second === '8') s = '62' + s.slice(1);
+    else if (second === '9' || second === '7') s = '81' + s.slice(1);
+    else if (s.length >= 12) s = '62' + s.slice(1);
+    else return '';
+  }
+  // 6208 typo → 628
+  if (s.startsWith('620') && s.charAt(3) === '8') s = '62' + s.slice(3);
+  if (s.startsWith('628')) return s;
+  if (s.startsWith('81') && /[890]/.test(s.charAt(2))) return s;
+  if (s.startsWith('81')) {
+    const third = s.charAt(2);
+    if (third === '0' || third === '7' || third === '8' || third === '9') {
+      if (s.length >= 12) return '62' + s;
+      return s;
+    }
+    return '62' + s;
+  }
+  if (s.startsWith('8') && s.length >= 10) return '62' + s;
+  return '';
+}
+
+/** Validasi format WA — mirror isValidWaFormat backend (ID 628xx 12-15, JP 81xx 10-15). */
+function isWaValid(v: string): boolean {
+  const n = normalizeWaInput(v);
+  if (!n) return false;
+  if (n.startsWith('628')) {
+    const after = n.slice(3);
+    return after.length >= 9 && after.length <= 12;
+  }
+  if (n.startsWith('81')) {
+    const after = n.slice(2);
+    return after.length >= 8 && after.length <= 12;
+  }
+  return false;
+}
+
+/** WA valid = kanonik Indonesia (628xx) atau Jepang (81xx) — parity backend. */
 export const waSchema = z.string()
-  .refine((val) => {
-    const digits = val.replace(/[^0-9]/g, '');
-    if (!digits) return false;
-    // Indonesia: 08xx/628xx/bare 8xx → 12-14 digits
-    if (/^(08|628)/.test(digits) && digits.length >= 12 && digits.length <= 15) return true;
-    if (/^8d{10,12}$/.test(digits)) return true;
-    // Japan: 090/070/080 or 81xx → 10-15 digits
-    if (/^(090|070|080)/.test(digits) && digits.length >= 10 && digits.length <= 15) return true;
-    if (/^81[890]d{7,11}$/.test(digits)) return true;
-    return false;
-  }, 'Nomor WA tidak valid. Gunakan format 08xx, 628xx, atau +81xx');
+  .refine(isWaValid, 'Nomor WA tidak valid. Gunakan format 08xx/628xx (Indonesia) atau 090/070/080/81xx (Jepang).');
 
 /** Email (optional) */
 export const emailSchema = z.string()

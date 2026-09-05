@@ -8,7 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive';
 import { showToast } from './Toast';
-import { validate, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
+import { validate, normalizeWaInput, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
@@ -45,8 +45,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     // cleanup handled below
   }, []);
 
-  if ($user.isLoggedIn) { onClose(); return null; }
-  if (mode === "closed") return null;
+  // B01 fix: dulu onClose() dipanggil SAAT RENDER (side-effect dalam render).
+  const loggedIn = $user.isLoggedIn;
+  useEffect(() => {
+    if (loggedIn) onClose();
+  }, [loggedIn, onClose]);
+
+  if (loggedIn || mode === "closed") return null;
 
   // ─── Admin API (routes to surface-specific endpoints) ───
   async function api(action: string, args: unknown[] = []) {
@@ -55,23 +60,40 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload: args }),
     });
-    if (!r.ok) throw new Error("API " + r.status);
+    if (!r.ok) throw new Error(t('login.api_error').replace('{s}', String(r.status)));
     return r.json();
+  }
+
+  // Terjemahkan pesan error schema (zod, hard-coded id) ke i18n — parity toast
+  // legacy (toastWaFormat / alert.mandatory). Pesan tak dikenal → asli.
+  function tErr(msg: string): string {
+    const map: Record<string, string> = {
+      'Nomor WA tidak valid. Gunakan format 08xx/628xx (Indonesia) atau 090/070/080/81xx (Jepang).': 'login.wa_invalid',
+      'Password minimal 4 karakter': 'login.pass_min',
+      'Password maksimal 20 karakter': 'login.pass_max',
+      'Password tidak boleh mengandung spasi': 'login.pass_nospace',
+      'Nama minimal 2 karakter': 'login.nama_min',
+      'PIN harus diisi': 'login.pin_required',
+      'Nama admin harus diisi': 'login.admin_name_required',
+    };
+    const k = map[msg];
+    return k ? t(k) : msg;
   }
 
   // ─── Register ───
   async function handleReg() {
     const vr = validate(registerSchema, { nama: regNama, wa: regWa });
-    if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
+    if (!vr.success) { showToast(tErr(vr.errors[0]), 'error'); return; }
     setLoading(true);
     try {
-      const password = regWa.slice(-4);
-      const r = await api('daftarKandidat', [regNama, regWa, password]);
+      const waNorm = normalizeWaInput(regWa);
+      const password = waNorm.slice(-4);
+      const r = await api('daftarKandidat', [regNama, waNorm, password]);
       if (r.success) {
-        showToast(r.message || 'Registrasi berhasil! Silakan login.', 'success');
+        showToast(r.message || t('login.reg_ok'), 'success');
         onSwitchMode('login');
       } else {
-        showToast(r.error || 'Registrasi gagal', 'error');
+        showToast(r.error || t('login.reg_failed'), 'error');
       }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setLoading(false); }
@@ -80,16 +102,18 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // ─── Login ───
   async function handleLogin() {
     const vl = validate(kandidatLoginSchema, { wa: logWa, password: logPass });
-    if (!vl.success) { showToast(vl.errors[0], 'error'); return; }
+    if (!vl.success) { showToast(tErr(vl.errors[0]), 'error'); return; }
     setLoading(true);
     try {
-      const r = await api('loginKandidat', [logWa, logPass]);
+      const waNorm = normalizeWaInput(logWa);
+      const r = await api('loginKandidat', [waNorm, logPass]);
       if (r.success) {
-        loginAsKandidat(r.nama || r.name || logWa, logWa, r.token || r.sessionToken || '', r.refreshToken || '');
-        showToast('Selamat datang, ' + (r.nama || r.name || logWa) + '!', 'success');
+        const name = r.nama || r.name || logWa;
+        loginAsKandidat(name, r.wa || waNorm, r.token || r.sessionToken || '', r.refreshToken || '');
+        showToast(t('login.selamat_datang') + name + '!', 'success');
         onClose();
       } else {
-        showToast(r.error || 'Login gagal', 'error');
+        showToast(r.error || t('login.failed'), 'error');
       }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setLoading(false); }
@@ -98,11 +122,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // ─── Admin Master PIN ───
   async function handleMaster() {
     const vm = validate(adminMasterPinSchema, { pin: masterPin });
-    if (!vm.success) { showToast(vm.errors[0], "error"); return; }
+    if (!vm.success) { showToast(tErr(vm.errors[0]), "error"); return; }
     setLoading(true);
     try {
-      const tk = Date.now().toString(36) + Math.random().toString(36).substr(2);
-      const r = await api("checkAdminMaster", [masterPin, tk]);
+      // B01 fix: dulu kirim [pin, token-klien] (pola legacy) — kernel
+      // z.tuple([pinField]) ARITY EKSAK → login admin SELALU gagal validasi.
+      // Kontrak Astro: [pin] saja; token bukan bagian payload.
+      const r = await api("checkAdminMaster", [masterPin]);
       if (r.success) setAdminStep(2);
       else showToast(r.error || t('login.pin_salah'), "error");
     } catch (e: unknown) { showToast(e instanceof Error ? e.message : String(e), "error"); }
@@ -114,13 +140,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // ─── Admin Personal PIN ───
   async function handlePersonal() {
     const vp = validate(adminPersonalPinSchema, { name: selectedAdmin, pin: personalPin });
-    if (!vp.success) { showToast(vp.errors[0], "error"); return; }
+    if (!vp.success) { showToast(tErr(vp.errors[0]), "error"); return; }
     setLoading(true);
     try {
-      const tk = Date.now().toString(36) + Math.random().toString(36).substr(2);
-      const r = await api("checkAdminPersonal", [selectedAdmin, personalPin, tk]);
+      // B01 fix: arity eksak [name, pin] (kernel tuple) — token-klien legacy dihapus.
+      const r = await api("checkAdminPersonal", [selectedAdmin, personalPin]);
       if (r.success) {
-        loginAsAdmin(selectedAdmin, r.token || r.sessionToken || tk, r.refreshToken || "");
+        loginAsAdmin(selectedAdmin, r.token || r.sessionToken || "", r.refreshToken || "");
         showToast(t('login.selamat_datang') + selectedAdmin + "!", "success");
         onClose();
         window.location.reload();
@@ -145,26 +171,26 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {mode === "daftar" && (
           <div>
             <h3 class="text-xl font-bold text-emerald-400 mb-6 border-b border-emerald-900/50 pb-4 text-center">
-              <Icon name="user-plus" class="mr-2" /> Daftar
+              <Icon name="user-plus" class="mr-2" /> {t('header.register')}
             </h3>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">Nama Lengkap</label>
+            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.nama_label')}</label>
             <input type="text" value={regNama} onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
               placeholder={t("login.nama_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">No WhatsApp</label>
+            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
             <input type="tel" value={regWa} onInput={(e) => setRegWa((e.target as HTMLInputElement).value)}
               placeholder={t("login.wa_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
             <div class="px-4 py-3 rounded-2xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-6 text-center">
-              Password = 4 digit terakhir WA
+              {t('login.pass_hint_reg')}
             </div>
             <button onClick={handleReg} disabled={loading}
               class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50">
               {loading ? t("login.btn_daftar_loading") : t("login.btn_daftar")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              Sudah punya akun?{" "}
-              <button onClick={() => onSwitchMode("login")} class="text-emerald-400 underline font-bold">Login</button>
+              {t('login.have_account')}{" "}
+              <button onClick={() => onSwitchMode("login")} class="text-emerald-400 underline font-bold">{t('login.btn_masuk')}</button>
             </p>
           </div>
         )}
@@ -188,8 +214,8 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
               {loading ? t("login.btn_masuk_loading") : t("login.btn_masuk")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              Belum punya akun?{" "}
-              <button onClick={() => onSwitchMode("daftar")} class="text-sky-400 underline font-bold">Daftar</button>
+              {t('login.no_account')}{" "}
+              <button onClick={() => onSwitchMode("daftar")} class="text-sky-400 underline font-bold">{t('login.btn_daftar')}</button>
             </p>
           </div>
         )}
@@ -231,7 +257,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             </div>
             <p class="text-sm text-center mt-5 text-slate-400">
               <button onClick={() => { setAdminStep(1); setMasterPin(""); }} class="text-amber-400 underline font-bold">
-                Kembali
+                {t('login.back')}
               </button>
             </p>
           </div>
@@ -253,7 +279,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
               <button onClick={() => { setAdminStep(2); setPersonalPin(""); }} class="text-amber-400 underline font-bold">
-                Kembali
+                {t('login.back')}
               </button>
             </p>
           </div>
